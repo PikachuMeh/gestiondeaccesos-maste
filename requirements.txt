@@ -1,0 +1,32 @@
+# FastAPI y dependencias principales
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Base de datos
+sqlalchemy==2.0.23
+alembic==1.13.1
+psycopg2-binary==2.9.9
+
+# Autenticación y seguridad
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Middleware y utilidades
+slowapi==0.1.9
+# python-cors==1.7.0  # No existe, se usa fastapi[all]
+
+# Desarrollo y testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+pytest-cov==4.1.0
+
+# Logging y monitoreo
+structlog==23.2.0
+
+# Validación de datos
+email-validator==2.1.0
+# phone-validator==0.0.1  # No existe
