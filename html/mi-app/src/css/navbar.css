@@ -37,6 +37,89 @@
     display:block;
   }
   
+/* ≥640px (sm) */
+@media (min-width: 640px){
+    .nav{ padding:14px 18px; }
+  }
+  
+  /* ≥960px (md) */
+  @media (min-width: 960px){
+    .nav{ padding:16px 24px; gap:24px; }
+  }
+  
+  /* Adaptaciones por debajo de 960px */
+  @media (max-width: 960px){
+    .nav{
+      flex-wrap: wrap;              /* permite que los bloques bajen */
+      border-radius: 0;             /* estilo barra completa si quieres */
+    }
+    .nav__left{
+      flex: 1 1 100%;
+      min-width: 0;
+      justify-content: space-between;
+    }
+    .tabs{ flex: 0 1 auto; }
+    .nav__center{
+      order: 3;                     /* la búsqueda baja */
+      flex: 1 1 100%;
+      justify-content: stretch;
+    }
+    .search{ width: 100%; }
+    .nav__right{
+      order: 2;
+      flex: 1 1 100%;
+      justify-content: flex-start;
+      gap:10px;
+    }
+    .btn, .link{ font-size:13px; }
+    .btn{ height:34px; padding:0 14px; }
+    .search__input{ height:38px; }
+  }
+  
+  /* Adaptaciones por debajo de 640px (móvil) */
+  @media (max-width: 640px){
+    .nav{
+      gap:12px;
+      padding:10px 12px;
+    }
+    .nav__left{
+      gap:12px;
+    }
+    .nav__logo{
+      height:90px;
+    }
+    .tabs{
+      gap:10px;
+    }
+    .tab{ 
+      font-size:13px; 
+      padding:6px 0;
+    }
+    .tab.is-active::after{ bottom:-6px; }
+    .nav__right{
+      gap:8px;
+      flex-wrap: wrap;             /* permite salto si falta espacio */
+    }
+    .btn{ 
+      height:32px; 
+      padding:0 12px; 
+      border-radius:16px;
+    }
+    .link{ font-size:12.5px; }
+  
+    /* Controles táctiles más cómodos */
+    .tab, .btn, .link{ touch-action: manipulation; }
+    .search__input{ font-size:14px; }
+  }
+  
+  /* Extra pequeño (≤360px) */
+  @media (max-width: 360px){
+    .tabs{ display:none; }         /* opcional: esconder tabs ultra-pequeños */
+    .nav__right{ gap:6px; }
+    .btn{ padding:0 10px; }
+    .link{ display:none; }         /* opcional: esconder “Desconectar” */
+  }
+
   /* Tabs */
   .tabs{
     display:flex;

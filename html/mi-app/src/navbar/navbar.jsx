@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import './App.css'
-import "./css/navbar.css";  
-import "./img/seniat_logo.png"
+import "../css/navbar.css";  
+import "../img/seniat_logo.png"
 
 export default function Navbar() {
   const [active, setActive] = useState("accesos");
@@ -10,6 +9,7 @@ export default function Navbar() {
     <header className="nav">
       <div className="nav__left">
         <img className="nav__logo" src="src/img/seniat_logo.png" alt="SENIAT" />
+        |
         <nav className="tabs" role="tablist" aria-label="Secciones">
           <button
             className={`tab ${active === "accesos" ? "is-active" : ""}`}
