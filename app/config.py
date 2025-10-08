@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     
     # Configuración de CORS
-    allowed_origins: list = ["http://localhost:3000", "http://localhost:8080"]
+    allowed_origins: list = ["http://localhost:3000", 
+                             "http://localhost:8080", 
+                             "http://localhost:5173",
+                             "http://127.0.0.1:5173"]
     allowed_methods: list = ["GET", "POST", "PUT", "DELETE", "PATCH"]
     allowed_headers: list = ["*"]
     
