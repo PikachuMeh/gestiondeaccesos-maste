@@ -5,12 +5,11 @@ import Navbar from "./jsx/navbar/navbar";
 export default function App() {
   return (
     <>
-      
+
       <Navbar />
       <main style={{ padding: "24px" }}>
         <Outlet />
       </main>
-      <div style={{padding:24, color:"black"}}>App se monta</div>;
     </>
   );
   

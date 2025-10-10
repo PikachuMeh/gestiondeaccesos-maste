@@ -20,6 +20,7 @@ class Persona(Base):
     empresa = Column(String(200), nullable=True)
     cargo = Column(String(100), nullable=True)
     direccion = Column(Text, nullable=True)
+    unidad= Column(String(100), nullable=True)
     observaciones = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())

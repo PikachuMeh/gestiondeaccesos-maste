@@ -14,7 +14,7 @@ class PersonaBase(BaseModel):
     direccion: Optional[str] = None
     observaciones: Optional[str] = None
     activo: bool = True
-
+    unidad: Optional[str] = None
 class PersonaCreate(PersonaBase):
     pass
 

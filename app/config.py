@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Configuración de la base de datos
-    database_url: str = "postgresql://midbuser:123456@localhost/gestion_accesos"
+    database_url: str = "postgresql://admin01:123456@localhost/gestion_accesos"
     database_echo: bool = False
     
     # Configuración de autenticación JWT
