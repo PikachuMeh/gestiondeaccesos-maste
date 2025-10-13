@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 
 from app.database import get_db
-from app.models import Visita, EstadoVisita, TipoActividad, Persona, CentroDatos, Area
+from app.models import Visita, EstadoVisita, TipoActividad, Persona, CentroDatos
 from app.schemas import (
     VisitaCreate,
     VisitaUpdate,
@@ -26,7 +26,6 @@ def _ensure_fk_visita(
     *,
     persona_id: Optional[int],
     centro_datos_id: Optional[int],
-    area_id: Optional[int],
     estado_id: Optional[int] = None,
     tipo_actividad_id: Optional[int] = None
 ):
@@ -35,8 +34,6 @@ def _ensure_fk_visita(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Persona no encontrada")
     if centro_datos_id is not None and not db.query(CentroDatos.id).filter(CentroDatos.id == centro_datos_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Centro de datos no encontrado")
-    if area_id is not None and not db.query(Area.id).filter(Area.id == area_id).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Área no encontrada")
     # OJO: en tu modelo actual EstadoVisita usa id_estado; si en tu models.py final usas idestado, cambia aquí a EstadoVisita.idestado
     if estado_id is not None and not db.query(EstadoVisita.id_estado).filter(EstadoVisita.id_estado == estado_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Estado de visita no encontrado")
@@ -53,7 +50,6 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
         .options(
             joinedload(Visita.persona),
             joinedload(Visita.centro_datos),
-            joinedload(Visita.area),
             joinedload(Visita.estado),
             joinedload(Visita.actividad),
         )
@@ -71,7 +67,6 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
         db,
         persona_id=payload.persona_id,
         centro_datos_id=payload.centro_datos_id,
-        area_id=payload.area_id,
         estado_id=getattr(payload, "estado_id", None),
         tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
     )
@@ -117,7 +112,6 @@ async def list_visitas(
             q.options(
                 joinedload(Visita.persona),
                 joinedload(Visita.centro_datos),
-                joinedload(Visita.area),
                 joinedload(Visita.estado),
                 joinedload(Visita.actividad),
             )
@@ -161,7 +155,6 @@ async def update_visita(visita_id: int, payload: VisitaUpdate, db: Session = Dep
         db,
         persona_id=payload.persona_id,
         centro_datos_id=payload.centro_datos_id,
-        area_id=payload.area_id,
         estado_id=getattr(payload, "estado_id", None),
         tipo_actividad_id=payload.tipo_actividad_id if hasattr(payload, "tipo_actividad_id") else None,
     )

@@ -13,7 +13,6 @@ from app.schemas import (
     CentroDatosUpdate,
     CentroDatosResponse,
     CentroDatosListResponse,
-    CentroDatosWithAreas,
 )
 
 
@@ -62,16 +61,6 @@ async def list_centros_datos(
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Error listando centros de datos: {exc}")
-
-@router.get("/{cd_id}", response_model=CentroDatosWithAreas)
-async def get_centro_datos(cd_id: int, db: Session = Depends(get_db)):
-    try:
-        return _get_cd_or_404(db, cd_id)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error obteniendo centro de datos: {exc}")
 
 @router.put("/{cd_id}", response_model=CentroDatosResponse)
 async def update_centro_datos(cd_id: int, payload: CentroDatosUpdate, db: Session = Depends(get_db)):

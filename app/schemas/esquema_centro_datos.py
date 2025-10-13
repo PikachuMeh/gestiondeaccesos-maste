@@ -84,7 +84,3 @@ class CentroDatosListResponse(BaseModel):
     page: int
     size: int
     pages: int
-
-class CentroDatosWithAreas(CentroDatosResponse):
-    """Esquema para centro de datos con sus áreas incluidas"""
-    areas: list = []  # Se llenará dinámicamente con las áreas

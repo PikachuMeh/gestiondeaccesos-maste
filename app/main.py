@@ -14,7 +14,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.api import api_areas, api_auth, api_centros_datos, api_personas, api_visitas
+from app.api import api_auth, api_centros_datos, api_personas, api_visitas
 from app.config import settings
 from app.database import create_tables
 
@@ -116,7 +116,6 @@ async def health_check():
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_personas.router, prefix="/api/v1")
 app.include_router(api_centros_datos.router, prefix="/api/v1")
-app.include_router(api_areas.router, prefix="/api/v1")
 app.include_router(api_visitas.router, prefix="/api/v1")
 
 # Handlers de error globales

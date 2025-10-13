@@ -14,58 +14,15 @@ class Persona(Base):
     nombre = Column(String(100), nullable=False, index=True)
     apellido = Column(String(100), nullable=False, index=True)
     documento_identidad = Column(String(20), unique=True, nullable=False, index=True)
-    tipo_documento = Column(String(10), nullable=False)
     email = Column(String(255), unique=True, nullable=True, index=True)
-    telefono = Column(String(20), nullable=True)
     empresa = Column(String(200), nullable=True)
     cargo = Column(String(100), nullable=True)
     direccion = Column(Text, nullable=True)
-    unidad= Column(String(100), nullable=True)
     observaciones = Column(Text, nullable=True)
-    activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
+    foto = Column(String(100), nullable= True)
 
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")
-
-# Catálogo de tipos de área
-class TipoArea(Base):
-    __tablename__ = "tipo_area"
-    __table_args__ = {"schema": SCHEMA}
-
-    id_tipo_area = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    tipo_area = Column(String(255), nullable=False, unique=True)
-
-    areas = relationship("Area", back_populates="tipo")
-
-# Área
-class Area(Base):
-    __tablename__ = "area"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(200), nullable=False, index=True)
-    codigo = Column(String(20), nullable=False, index=True)
-    tipo_id = Column(Integer, ForeignKey(f"{SCHEMA}.tipo_area.id_tipo_area"), nullable=False, index=True)
-    centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=False, index=True)
-    piso = Column(String(10), nullable=True)
-    sala = Column(String(50), nullable=True)
-    rack_inicio = Column(String(20), nullable=True)
-    rack_fin = Column(String(20), nullable=True)
-    capacidad_maxima = Column(Integer, nullable=True)
-    capacidad_actual = Column(Integer, default=0, nullable=False)
-    requiere_autorizacion_especial = Column(Boolean, default=False, nullable=False)
-    nivel_seguridad = Column(String(20), default="normal", nullable=False)
-    descripcion = Column(Text, nullable=True)
-    observaciones = Column(Text, nullable=True)
-    activo = Column(Boolean, default=True, nullable=False)
-    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
-
-    tipo = relationship("TipoArea", back_populates="areas")
-    centro_datos = relationship("CentroDatos", back_populates="areas")
-    visitas = relationship("Visita", back_populates="area", cascade="all, delete-orphan")
-
 # Centro de datos
 class CentroDatos(Base):
     __tablename__ = "centro_datos"
@@ -78,18 +35,13 @@ class CentroDatos(Base):
     ciudad = Column(String(100), nullable=False)
     departamento = Column(String(100), nullable=False)
     pais = Column(String(100), default="Colombia", nullable=False)
-    latitud = Column(Float, nullable=True)
-    longitud = Column(Float, nullable=True)
     telefono_contacto = Column(String(20), nullable=True)
     email_contacto = Column(String(255), nullable=True)
-    responsable = Column(String(200), nullable=True)
     descripcion = Column(Text, nullable=True)
     observaciones = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
 
-    areas = relationship("Area", back_populates="centro_datos", cascade="all, delete-orphan")
     visitas = relationship("Visita", back_populates="centro_datos", cascade="all, delete-orphan")
 
 # Roles de usuario
@@ -154,7 +106,6 @@ class Visita(Base):
 
     persona_id = Column(Integer, ForeignKey(f"{SCHEMA}.personas.id"), nullable=False, index=True)
     centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=False, index=True)
-    area_id = Column(Integer, ForeignKey(f"{SCHEMA}.area.id"), nullable=False, index=True)
     estado_id = Column(Integer, ForeignKey(f"{SCHEMA}.estado_visita.id_estado"), nullable=False, index=True)
     tipo_actividad_id = Column(Integer, ForeignKey(f"{SCHEMA}.tipo_actividad.id_tipo_actividad"), nullable=False, index=True)
 
@@ -169,7 +120,6 @@ class Visita(Base):
     nombre_escolta = Column(String(200), nullable=True)
     equipos_ingresados = Column(Text, nullable=True)
     equipos_retirados = Column(Text, nullable=True)
-    observaciones_seguridad = Column(Text, nullable=True)
     observaciones = Column(Text, nullable=True)
     notas_finales = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
@@ -180,4 +130,3 @@ class Visita(Base):
     actividad = relationship("TipoActividad", back_populates="visitas")
     persona = relationship("Persona", back_populates="visitas")
     centro_datos = relationship("CentroDatos", back_populates="visitas")
-    area = relationship("Area", back_populates="visitas")

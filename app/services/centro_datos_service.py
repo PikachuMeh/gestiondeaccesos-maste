@@ -7,7 +7,6 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from app.models.models import CentroDatos
-from app.models.models import Area
 from app.schemas.esquema_centro_datos import CentroDatosCreate, CentroDatosUpdate
 from app.services.base import BaseService
 
@@ -107,42 +106,6 @@ class CentroDatosService(BaseService[CentroDatos, CentroDatosCreate, CentroDatos
                 CentroDatos.activo == True
             )
         ).first()
-    
-    def get_areas_by_centro(self, centro_id: int) -> List[Area]:
-        """
-        Obtiene todas las áreas de un centro de datos.
-        
-        Args:
-            centro_id: ID del centro de datos
-            
-        Returns:
-            Lista de áreas del centro de datos
-        """
-        return self.db.query(Area).filter(
-            and_(
-                Area.centro_datos_id == centro_id,
-                Area.activo == True
-            )
-        ).order_by(Area.tipo, Area.nombre).all()
-    
-    def get_areas_by_tipo(self, centro_id: int, tipo_area: str) -> List[Area]:
-        """
-        Obtiene áreas de un centro de datos por tipo.
-        
-        Args:
-            centro_id: ID del centro de datos
-            tipo_area: Tipo de área (servidores, telecomunicaciones, cross_connect)
-            
-        Returns:
-            Lista de áreas del tipo especificado
-        """
-        return self.db.query(Area).filter(
-            and_(
-                Area.centro_datos_id == centro_id,
-                Area.tipo == tipo_area,
-                Area.activo == True
-            )
-        ).order_by(Area.nombre).all()
     
     def create_centro_datos(self, centro_data: CentroDatosCreate) -> CentroDatos:
         """

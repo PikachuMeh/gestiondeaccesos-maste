@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from app.models.models import Visita, EstadoVisita, TipoActividad
 from app.models.models import Persona
 from app.models.models import CentroDatos
-from app.models.models import Area
 from app.schemas.esquema_visita import VisitaCreate, VisitaUpdate, VisitaIngreso, VisitaSalida
 from app.services.base import BaseService
 
@@ -165,33 +164,6 @@ class VisitaService(BaseService[Visita, VisitaCreate, VisitaUpdate]):
         
         return query.order_by(desc(Visita.fecha_programada)).all()
     
-    def get_visitas_by_area(self, area_id: int, fecha_desde: Optional[datetime] = None, fecha_hasta: Optional[datetime] = None) -> List[Visita]:
-        """
-        Obtiene visitas de un área en un rango de fechas.
-        
-        Args:
-            area_id: ID del área
-            fecha_desde: Fecha de inicio (opcional)
-            fecha_hasta: Fecha de fin (opcional)
-            
-        Returns:
-            Lista de visitas del área
-        """
-        query = self.db.query(Visita).filter(
-            and_(
-                Visita.area_id == area_id,
-                Visita.activo == True
-            )
-        )
-        
-        if fecha_desde:
-            query = query.filter(Visita.fecha_programada >= fecha_desde)
-        
-        if fecha_hasta:
-            query = query.filter(Visita.fecha_programada <= fecha_hasta)
-        
-        return query.order_by(desc(Visita.fecha_programada)).all()
-    
     def create_visita(self, visita_data: VisitaCreate) -> Visita:
         """
         Crea una nueva visita.
@@ -309,32 +281,6 @@ class VisitaService(BaseService[Visita, VisitaCreate, VisitaUpdate]):
         self.db.refresh(visita)
         
         return visita
-    
-    def get_visita_with_details(self, visita_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Obtiene una visita con información detallada de relaciones.
-        
-        Args:
-            visita_id: ID de la visita
-            
-        Returns:
-            Diccionario con información detallada de la visita
-        """
-        visita = self.get(visita_id)
-        if not visita:
-            return None
-        
-        # Obtener información de relaciones
-        persona = self.db.query(Persona).filter(Persona.id == visita.persona_id).first()
-        centro_datos = self.db.query(CentroDatos).filter(CentroDatos.id == visita.centro_datos_id).first()
-        area = self.db.query(Area).filter(Area.id == visita.area_id).first()
-        
-        return {
-            'visita': visita,
-            'persona': persona,
-            'centro_datos': centro_datos,
-            'area': area
-        }
     
     def get_visita_stats(self) -> Dict[str, Any]:
         """

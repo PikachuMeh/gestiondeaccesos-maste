@@ -11,7 +11,6 @@ from datetime import datetime
 class VisitaBase(BaseModel):
     persona_id: int = Field(..., description="ID de la persona que realiza la visita")
     centro_datos_id: int = Field(..., description="ID del centro de datos")
-    area_id: int = Field(..., description="ID del área específica")
     tipo_actividad_id: int = Field(..., description="ID del tipo de actividad a realizar")
     descripcion_actividad: str = Field(..., min_length=10, description="Descripción detallada de la actividad")
     fecha_programada: datetime = Field(..., description="Fecha y hora programada para la visita")
@@ -45,7 +44,6 @@ class VisitaCreate(VisitaBase):
 class VisitaUpdate(BaseModel):
     persona_id: Optional[int] = None
     centro_datos_id: Optional[int] = None
-    area_id: Optional[int] = None
     tipo_actividad_id: Optional[int] = None
     descripcion_actividad: Optional[str] = Field(None, min_length=10)
     fecha_programada: Optional[datetime] = None
@@ -102,7 +100,6 @@ class VisitaListResponse(BaseModel):
 class VisitaWithDetails(VisitaResponse):
     persona: dict = {}
     centro_datos: dict = {}
-    area: dict = {}
     
 
 class VisitaEstadisticas(BaseModel):
