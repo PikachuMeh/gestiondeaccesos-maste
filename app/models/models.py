@@ -19,7 +19,7 @@ class Persona(Base):
     cargo = Column(String(100), nullable=True)
     direccion = Column(Text, nullable=True)
     observaciones = Column(Text, nullable=True)
-    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())    
     foto = Column(String(100), nullable= True)
 
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")
@@ -33,7 +33,6 @@ class CentroDatos(Base):
     codigo = Column(String(20), nullable=False, unique=True, index=True)
     direccion = Column(Text, nullable=False)
     ciudad = Column(String(100), nullable=False)
-    departamento = Column(String(100), nullable=False)
     pais = Column(String(100), default="Colombia", nullable=False)
     telefono_contacto = Column(String(20), nullable=True)
     email_contacto = Column(String(255), nullable=True)

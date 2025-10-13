@@ -2,8 +2,6 @@
 from .models import (
     Persona,
     CentroDatos,
-    Area,
-    TipoArea,
     Visita,
     EstadoVisita,
     TipoActividad,
@@ -14,8 +12,6 @@ from .models import (
 __all__ = [
     "Persona",
     "CentroDatos",
-    "Area",
-    "TipoArea",
     "Visita",
     "EstadoVisita",
     "TipoActividad",

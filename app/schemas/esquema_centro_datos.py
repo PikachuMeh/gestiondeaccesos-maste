@@ -6,7 +6,7 @@ Define la validación y serialización de datos de centros de datos.
 from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional
 from datetime import datetime
-from app.models.models import CentroDatos
+
 
 class CentroDatosBase(BaseModel):
     """Esquema base para CentroDatos con campos comunes"""
