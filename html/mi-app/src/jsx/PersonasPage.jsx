@@ -1,61 +1,91 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../css/personas_panel.css";
 
+const API_BASE = "http://localhost:8000/api/v1/personas";
+const PAGE_SIZE = 10;
+
+// Normaliza cédula (elimina prefijos y separadores, deja solo dígitos)
+const normDoc = (s) => s.replace(/[^0-9]/g, "");
+
 export default function PersonasPage() {
-  const didRun = useRef(false);
+  const didMount = useRef(false);
+
+  // Datos y paginación
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  // Búsquedas
+  const [q, setQ] = useState("");          // nombre/unidad/correo (según tu backend)
+  const [doc, setDoc] = useState("");      // cédula normalizada
+
+  // Estado UI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-  let cedula
+
+  // Debounce para doc y q
+  const [debQ, setDebQ] = useState(q);
+  const [debDoc, setDebDoc] = useState(doc);
+  
   useEffect(() => {
-    if (didRun.current) return;
-    didRun.current = true;
+    const id = setTimeout(() => setDebQ(q), 300);
+    return () => clearTimeout(id);
+  }, [q]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebDoc(doc), 300);
+    return () => clearTimeout(id);
+  }, [doc]);
+
+  // Carga de datos cuando cambian page o los filtros con debounce
+  useEffect(() => {
+    if (!didMount.current) didMount.current = true;
+
     const ctrl = new AbortController();
     setLoading(true);
 
-    fetch("http://localhost:8000/api/v1/personas", { signal: ctrl.signal })
-      .then(r => {
-        if (!r.ok) throw new Error("HTTP " + r.status);
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(PAGE_SIZE),
+      ...(debQ.trim() ? { nombre: debQ.trim() } : {}),
+      ...(debDoc.trim() ? { documento: debDoc.trim() } : {}),
+    });
+
+    fetch(`${API_BASE}?${params.toString()}`, { signal: ctrl.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(json => {
-        const items = Array.isArray(json) ? json : (json.items ?? json.data ?? []);
+      .then((json) => {
+        const items = json.items ?? [];
         setRows(items);
+        setPages(json.pages ?? 1);
+        setTotal(json.total ?? items.length);
         setError(null);
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.name !== "AbortError") setError(err.message || "Error");
       })
       .finally(() => setLoading(false));
 
     return () => ctrl.abort();
-  }, []);
+  }, [page, debQ, debDoc]);
 
-  const filtered = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return rows;
-    
-    return rows.filter(p => {
-      const nombre = (p.nombre || "").toLowerCase();
-      const cedula = String(p.documento_identidad || "").toLowerCase();
-      const correo = (p.correo || "").toLowerCase();
-      const unidad = (p.unidad || "").toLowerCase();
-      return nombre.includes(t) || cedula.includes(t) || correo.includes(t) || unidad.includes(t);
-    });
-  }, [q, rows]);
+  // Navegación
+  const onPrev = () => setPage((p) => Math.max(1, p - 1));
+  const onNext = () => setPage((p) => Math.min(pages, p + 1));
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageSafe = Math.min(page, totalPages);
-  const slice = useMemo(() => {
-    const start = (pageSafe - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, pageSafe]);
-
-  const onPrev = () => setPage(p => Math.max(1, p - 1));
-  const onNext = () => setPage(p => Math.min(totalPages, p + 1));
+  // Handlers de búsqueda
+  const onSearchName = (val) => {
+    setQ(val);
+    setPage(1);
+  };
+  const onSearchDoc = (val) => {
+    const v = normDoc(val);
+    setDoc(v);
+    setPage(1);
+  };
 
   return (
     <div className="pp-screen">
@@ -67,16 +97,29 @@ export default function PersonasPage() {
             <span className="pp-search__icon" aria-hidden>🔍</span>
             <input
               className="pp-search__input"
-              placeholder="Buscar por nombre, cédula, correo o unidad…"
+              placeholder="Buscar por nombre, correo o unidad…"
               value={q}
-              onChange={e => { setQ(e.target.value); setPage(1); }}
+              onChange={(e) => onSearchName(e.target.value)}
             />
           </div>
-          <span className="pp-count">{filtered.length} resultados</span>
+
+          <div className="pp-search">
+            <span className="pp-search__icon" aria-hidden>🪪</span>
+            <input
+              className="pp-search__input"
+              placeholder="Cédula (ej. V-12345678)"
+              value={doc}
+              onChange={(e) => onSearchDoc(e.target.value)}
+            />
+          </div>
+
+          <span className="pp-count">{total} resultados</span>
         </div>
 
         {loading && <div className="pp-state">Cargando…</div>}
-        {error && !loading && <div className="pp-state pp-state--error">Error: {error}</div>}
+        {error && !loading && (
+          <div className="pp-state pp-state--error">Error: {error}</div>
+        )}
 
         {!loading && !error && (
           <>
@@ -91,15 +134,20 @@ export default function PersonasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {slice.map((p, i) => (
-                    <tr key={p.id ?? p.cedula ?? i}>
-                      <td>{p.tipo_documento + p.documento_identidad || "—"}</td>
+                  {rows.map((p, i) => (
+                    <tr key={p.id ?? `${p.documento_identidad}-${i}`}>
+                      <td>
+                        {console.log(p)}
+                        {p.documento_identidad
+                          ? `V-${p.documento_identidad}`
+                          : "—"}
+                      </td>
                       <td>{p.nombre ?? "—"}</td>
-                      <td>{p.unidad ?? "—"}</td>
+                      <td>{p.departamento ?? "—"}</td>
                       <td>{p.empresa ?? "—"}</td>
                     </tr>
                   ))}
-                  {slice.length === 0 && (
+                  {rows.length === 0 && (
                     <tr>
                       <td colSpan={4} className="pp-empty">Sin resultados</td>
                     </tr>
@@ -109,9 +157,19 @@ export default function PersonasPage() {
             </div>
 
             <div className="pp-pagination">
-              <button className="pp-btn" onClick={onPrev} disabled={pageSafe === 1}>Anterior</button>
-              <span className="pp-page">{pageSafe} / {totalPages}</span>
-              <button className="pp-btn" onClick={onNext} disabled={pageSafe === totalPages}>Siguiente</button>
+              <button className="pp-btn" onClick={onPrev} disabled={page === 1}>
+                Anterior  
+              </button>
+              <span className="pp-page">
+                {page} / {pages}
+              </span>
+              <button
+                className="pp-btn"
+                onClick={onNext}
+                disabled={page === pages}
+              >
+                Siguiente
+              </button>
             </div>
           </>
         )}

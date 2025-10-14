@@ -7,7 +7,7 @@ import AccesosPage from "./jsx/AccesosPage.jsx";
 import PersonasPage from "./jsx/PersonasPage.jsx";
 import CrearAccesoPage from "./jsx/registros/registro_acceso.jsx";
 import LoginPage from "./jsx/LoginPage.jsx";  
-
+import CrearVisitante from "./jsx/registros/registro_funcionario.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
 
@@ -18,6 +18,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="accesos" element={<AccesosPage />} />
         <Route path="personas" element={<PersonasPage />} />
         <Route path="accesos/nuevo" element={<CrearAccesoPage />} />
+        <Route path="registro/visitante" element={<CrearVisitante />} />
         <Route path="login" element={<LoginPage />} />
       </Route>
     </Routes>

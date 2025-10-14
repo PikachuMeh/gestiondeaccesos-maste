@@ -29,6 +29,7 @@ export default function Navbar() {
       </div>
 
       <div className="nav__right">
+        <button className="btn btn--success" onClick={() => navigate("/registro/visitante")}>Registro Visitante</button>
         <button className="btn btn--success" onClick={() => navigate("/accesos/nuevo")}>Crear Acceso</button>
         <button className="link link--icon" onClick={() => navigate("/login")}>Iniciar Sesion</button>
         <button className="link link--icon" onClick={() => navigate("/login", { replace:true })}>Desconectar</button>

@@ -12,6 +12,9 @@ class PersonaBase(BaseModel):
     direccion: Optional[str] = None
     observaciones: Optional[str] = None
     foto: Optional[str] = None
+    unidad: Optional[str] = None
+    departamento: Optional[str] = None
+
 class PersonaCreate(PersonaBase):
     pass
 

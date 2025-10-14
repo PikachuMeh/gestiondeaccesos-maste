@@ -1,225 +1,169 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "../../css/registro_acceso.css";
 
-const onlyLetters = (s) => s.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").replace(/\s{2,}/g, " ");
-const onlyDigits = (s) => s.replace(/\D/g, "");
-
 export default function RegistroAcceso() {
-  const [sala, setSala] = useState("TLCM");
-  const [sede, setSede] = useState("MTC");
-  const [preview, setPreview] = useState(null);
-
+  const [personas, setPersonas] = useState([]);
+  const [q, setQ] = useState("");
+  const [filtered, setFiltered] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({
-    cedula: "",          // solo números visuales, se renderiza como V-xxxxxxxx
+    cedula: "",
     nombre: "",
-    correo: "",
+    apellido: "",
+    email: "",
+    empresa: "",
+    cargo: "",
+    direccion: "",
+    observaciones: "",
+    foto: "",
     unidad: "",
-    seccion: "",
-    descripcion: "",
+    fecha_creacion: "",
   });
-  const [errors, setErrors] = useState({});
+  const [newFoto, setNewFoto] = useState(null);
 
+  // Traer datos de personas
+  useEffect(() => {
+    fetch("http://localhost:8000/api/v1/personas")
+      .then(res => res.json())
+      .then(json => {
+        const items = Array.isArray(json) ? json : (json.items ?? json.data ?? []);
+        setPersonas(items);
+      });
+  }, []);
+
+  // Filtro en vivo
+  useEffect(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) setFiltered(personas);
+    else {
+      setFiltered(
+        personas.filter(p =>
+          String(p.documento_identidad || "").toLowerCase().includes(t)
+        )
+      );
+    }
+  }, [q, personas]);
+
+  // Selección de persona conocida
+  const onSelect = (p) => {
+    setSelected(p);
+    setForm({
+      cedula: p.documento_identidad || "",
+      nombre: p.nombre || "",
+      apellido: p.apellido || "",
+      email: p.email || "",
+      empresa: p.empresa || "",
+      cargo: p.cargo || "",
+      direccion: p.direccion || "",
+      observaciones: p.observaciones || "",
+      foto: p.foto || "",
+      unidad: p.empresa === "SENIAT" ? (p.unidad || "") : "",
+      fecha_creacion: p.fecha_creacion || new Date().toISOString()
+    });
+    setQ(p.documento_identidad || "");
+    setNewFoto(null);
+  };
+
+  // El mensaje de registrar
+  const showNoResults = q && filtered.length === 0;
+
+  // Al escribir cédula, limpiar todo para registro nuevo
+  const onCedulaChange = (e) => {
+    setQ(e.target.value.replace(/\D/g, ""));
+    setSelected(null);
+    setForm({
+      cedula: "",
+      nombre: "",
+      apellido: "",
+      email: "",
+      empresa: "",
+      cargo: "",
+      direccion: "",
+      observaciones: "",
+      foto: "",
+      unidad: "",
+      fecha_creacion: new Date().toISOString(),
+    });
+    setNewFoto(null);
+  };
+
+  // Cuando sube imagen nueva
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPreview(URL.createObjectURL(file));
-  };
-
-  // Handlers por campo con sanitización
-  const onCedula = (e) => {
-    const value = onlyDigits(e.target.value);
-    setForm(f => ({ ...f, cedula: value.slice(0, 10) })); // límite razonable
-  };
-
-  const onNombre = (e) => {
-    setForm(f => ({ ...f, nombre: onlyLetters(e.target.value).trimStart() }));
-  };
-
-  const onUnidad = (e) => {
-    setForm(f => ({ ...f, unidad: onlyLetters(e.target.value).trimStart() }));
-  };
-
-  const onSeccion = (e) => {
-    setForm(f => ({ ...f, seccion: onlyLetters(e.target.value).trimStart() }));
-  };
-
-  const onCorreo = (e) => {
-    setForm(f => ({ ...f, correo: e.target.value.trimStart() }));
-  };
-
-  // Validación al enviar
-  const validate = () => {
-    const err = {};
-    if (!form.cedula) err.cedula = "Requerida";
-    // ejemplo: mínimo 6 dígitos
-    if (form.cedula && form.cedula.length < 6) err.cedula = "Mínimo 6 dígitos";
-
-    if (!form.nombre) err.nombre = "Requerido";
-    if (form.nombre && /[\d]/.test(form.nombre)) err.nombre = "Solo letras";
-
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.correo);
-    if (!form.correo) err.correo = "Requerido";
-    else if (!emailOk) err.correo = "Correo inválido";
-
-    if (!form.unidad) err.unidad = "Requerida";
-    if (form.unidad && /[\d]/.test(form.unidad)) err.unidad = "Solo letras";
-
-    if (!form.seccion) err.seccion = "Requerida";
-    if (form.seccion && /[\d]/.test(form.seccion)) err.seccion = "Solo letras";
-
-    setErrors(err);
-    return Object.keys(err).length === 0;
-  };
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    const payload = {
-      cedula: `V-${form.cedula}`,
-      nombre: form.nombre.trim(),
-      correo: form.correo.trim(),
-      unidad: form.unidad.trim(),
-      seccion: form.seccion.trim(),
-      descripcion: form.descripcion.trim(),
-      sala,
-      sede,
-    };
-    console.log("ENVIAR", payload);
-    // TODO: fetch POST al backend con payload
+    setNewFoto(URL.createObjectURL(file));
+    // Aquí puedes guardar el file real para hacer POST luego si es necesario
+    setForm(f => ({ ...f, foto: file }));
   };
 
   return (
     <div className="ra-root">
       <div className="ra-card">
-        <button aria-label="Cerrar" className="ra-close">×</button>
-
-        <form className="ra-grid" onSubmit={onSubmit} noValidate>
+        <form className="ra-grid" autoComplete="off">
           <div className="ra-title">REGISTRO ACCESO</div>
-
           <div className="ra-form">
             <div className="ra-row">
-              <Field
-                label="CEDULA"
-                placeholder="V-00000000"
-                value={form.cedula ? `V-${form.cedula}` : ""}
-                onChange={onCedula}
-                onKeyDown={(e) => {
-                  // permitir borrar y mover, bloquear letras
-                  const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
-                  if (allowed.includes(e.key)) return;
-                  if (!/[0-9]/.test(e.key)) e.preventDefault();
-                }}
-                error={errors.cedula}
-                // para que el cursor no se meta antes del prefijo
-                onClick={(e) => {
-                  const input = e.target;
-                  const pos = input.selectionStart ?? 0;
-                  if (pos < 2) {
-                    // mover después del "V-"
-                    requestAnimationFrame(() => {
-                      input.setSelectionRange(2,2);
-                    });
-                  }
-                }}
-                renderInput={(props) => (
-                  <input
-                    {...props}
-                    className={"ra-input " + (errors.cedula ? "has-error" : "")}
-                    // Mostrar "V-" visualmente pero quitarlo al editar
-                    onFocus={(e) => {
-                      // al enfocar, quitar prefijo para editar dígitos
-                      if (form.cedula) {
-                        e.target.value = form.cedula;
-                        // mover cursor al final
-                        requestAnimationFrame(() => e.target.setSelectionRange(e.target.value.length, e.target.value.length));
-                      }
-                    }}
-                    onBlur={(e) => {
-                      // al salir, volver a poner prefijo visual
-                      const clean = onlyDigits(e.target.value);
-                      setForm(f => ({ ...f, cedula: clean }));
-                      e.target.value = clean ? `V-${clean}` : "";
-                    }}
-                  />
+              <div className="ra-field" style={{ position: "relative" }}>
+                <label className="ra-label">CÉDULA</label>
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={q}
+                  onChange={onCedulaChange}
+                  className="ra-input"
+                  autoFocus
+                />
+                {filtered.length > 0 && !selected && (
+                  <ul className="ra-suggestions">
+                    {filtered.map(p => (
+                      <li key={p.id} onMouseDown={() => onSelect(p)}>
+                        V-{p.documento_identidad} - {p.nombre} {p.apellido}
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              />
-
-              <Field
-                label="NOMBRE"
-                placeholder="Nombre y Apellido"
-                value={form.nombre}
-                onChange={onNombre}
-                error={errors.nombre}
-              />
-            </div>
-
-            <div className="ra-row">
-              <Field
-                label="CORREO"
-                type="email"
-                placeholder="correo@dominio.com"
-                value={form.correo}
-                onChange={onCorreo}
-                error={errors.correo}
-              />
-              <Field
-                label="UNIDAD"
-                placeholder="Nombre de la unidad"
-                value={form.unidad}
-                onChange={onUnidad}
-                error={errors.unidad}
-              />
-            </div>
-
-            <div className="ra-row">
-              <div className="ra-block">
-                <Label text="Sala" />
-                <div className="ra-pills">
-                  <Pill selected={sala === "TLCM"} onClick={() => setSala("TLCM")}>TLCM</Pill>
-                  <Pill selected={sala === "CPD"} onClick={() => setSala("CPD")}>CPD</Pill>
-                </div>
+                {showNoResults && (
+                  <div className="ra-error">Debe registrarse</div>
+                )}
               </div>
-
-              <div className="ra-block">
-                <Label text="Sede" />
-                <div className="ra-pills">
-                  <Pill selected={sede === "MTC"} onClick={() => setSede("MTC")}>MTC</Pill>
-                  <Pill selected={sede === "PLZ"} onClick={() => setSede("PLZ")}>PLZ</Pill>
-                </div>
-              </div>
+              <Field label="Nombre" value={form.nombre} disabled={!!selected} />
+              <Field label="Apellido" value={form.apellido} disabled={!!selected} />
             </div>
-
             <div className="ra-row">
-              <Field
-                label="sección"
-                placeholder="Ej. Redes, Soporte..."
-                value={form.seccion}
-                onChange={onSeccion}
-                error={errors.seccion}
-              />
-              <Field
-                label="Descripcion"
-                placeholder="Motivo del acceso"
-                value={form.descripcion}
-                onChange={(e) => setForm(f => ({ ...f, descripcion: e.target.value }))}
-              />
+              <Field label="Correo" value={form.email} disabled={!!selected} />
+              <Field label="Empresa" value={form.empresa} disabled={!!selected} />
+              <Field label="Cargo" value={form.cargo} disabled={!!selected} />
             </div>
-
-            <div className="ra-actions">
-              <button className="ra-btn" type="submit">Enviar</button>
+            <div className="ra-row">
+              <Field label="Dirección" value={form.direccion} disabled={!!selected} />
+              <Field label="Unidad" value={form.unidad} disabled={form.empresa !== "SENIAT" || !!selected} />
+            </div>
+            <div className="ra-row">
+              <Field label="Observaciones" value={form.observaciones} disabled={!!selected} />
+              <Field
+                label="Fecha creación"
+                value={form.fecha_creacion ? new Date(form.fecha_creacion).toLocaleDateString() : new Date().toLocaleDateString()}
+                disabled
+              />
             </div>
           </div>
 
           <div className="ra-media">
-            <label className="ra-image-drop">
-              {preview ? (
-                <img src={preview} alt="preview" className="ra-image-preview" />
-              ) : (
-                <IconImage />
-              )}
-              <input type="file" accept="image/*" className="ra-file" onChange={onFileChange} />
-            </label>
+            {/* Foto */}
+            {selected && selected.foto && (
+              <img src={selected.foto} alt="foto" className="ra-image-preview" />
+            )}
+            {/* Si es registro nuevo, permite cargar */}
+            {!selected && (
+              <label className="ra-image-drop">
+                {newFoto ? (
+                  <img src={newFoto} alt="preview" className="ra-image-preview" />
+                ) : (
+                  <IconImage />
+                )}
+                <input type="file" accept="image/*" className="ra-file" onChange={onFileChange} />
+              </label>
+            )}
           </div>
         </form>
       </div>
@@ -227,37 +171,17 @@ export default function RegistroAcceso() {
   );
 }
 
-/* Subcomponentes */
-function Field({ label, placeholder, type = "text", value, onChange, error, renderInput, ...rest }) {
+function Field({ label, value, disabled = false }) {
   return (
     <div className="ra-field">
-      <Label text={label} />
-      {renderInput ? (
-        renderInput({ type, placeholder, value, onChange, ...rest })
-      ) : (
-        <input
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          className={"ra-input " + (error ? "has-error" : "")}
-          {...rest}
-        />
-      )}
-      {error && <div className="ra-error">{error}</div>}
+      <label className="ra-label">{label}</label>
+      <input
+        value={value || ""}
+        disabled={disabled}
+        className="ra-input"
+        readOnly={disabled}
+      />
     </div>
-  );
-}
-
-function Label({ text }) {
-  return <span className="ra-label">{text}</span>;
-}
-
-function Pill({ children, selected, onClick }) {
-  return (
-    <button type="button" onClick={onClick} className={`ra-pill ${selected ? "is-selected" : ""}`}>
-      {children}
-    </button>
   );
 }
 
@@ -270,3 +194,4 @@ function IconImage() {
     </svg>
   );
 }
+  

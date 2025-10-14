@@ -11,6 +11,30 @@
   
   *{ box-sizing: border-box; }
   
+  .ra-suggestions {
+    border: 1px solid #ccc;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 0;
+    padding-left: 0;
+    background: white;
+    position: absolute;
+    z-index: 1000;
+    width: 250px;
+    box-sizing: border-box;
+    list-style: none;
+  }
+  
+  .ra-suggestions li {
+    padding: 8px;
+    cursor: pointer;
+  }
+  
+  .ra-suggestions li:hover {
+    background-color: #f0f0f0;
+  }
+  
+
   .ra-root{
     min-height:100vh;
     background:var(--ra-bg);

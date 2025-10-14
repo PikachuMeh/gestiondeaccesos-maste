@@ -14,13 +14,15 @@ class Persona(Base):
     nombre = Column(String(100), nullable=False, index=True)
     apellido = Column(String(100), nullable=False, index=True)
     documento_identidad = Column(String(20), unique=True, nullable=False, index=True)
-    email = Column(String(255), unique=True, nullable=True, index=True)
-    empresa = Column(String(200), nullable=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    empresa = Column(String(200), nullable=False)
     cargo = Column(String(100), nullable=True)
-    direccion = Column(Text, nullable=True)
+    direccion = Column(Text, nullable=False)
     observaciones = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())    
-    foto = Column(String(100), nullable= True)
+    foto = Column(String(250), nullable= False)
+    departamento = Column(String(100),nullable=True)
+    unidad = Column(String(100),nullable=True)
 
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")
 # Centro de datos
@@ -40,6 +42,7 @@ class CentroDatos(Base):
     observaciones = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    unidad = Column(String(100), nullable=False)
 
     visitas = relationship("Visita", back_populates="centro_datos", cascade="all, delete-orphan")
 
