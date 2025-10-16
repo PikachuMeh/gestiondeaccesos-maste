@@ -18,8 +18,29 @@ from app.schemas import (
     VisitaSalida,
 )
 
+import random
+
 router = APIRouter(prefix="/visitas", tags=["visitas"])
 
+# ----------------------------
+# Utilidades
+# ----------------------------
+
+def _codigo_9d() -> str:
+    # 9 dígitos con cero a la izquierda si hace falta
+    return str(random.randint(0, 999_999_999)).zfill(9)
+
+def _generar_codigo_9d_unico(db: Session, max_intentos: int = 10) -> str:
+    for _ in range(max_intentos):
+        cod = _codigo_9d()
+        if not db.query(Visita.id).filter(Visita.codigo_visita == cod).first():
+            return cod
+    # improbable, pero garantiza retorno
+    return _codigo_9d()
+
+# ----------------------------
+# Validaciones de FKs
+# ----------------------------
 
 def _ensure_fk_visita(
     db: Session,
@@ -29,20 +50,20 @@ def _ensure_fk_visita(
     estado_id: Optional[int] = None,
     tipo_actividad_id: Optional[int] = None
 ):
-    # Validaciones contra las PK/columnas reales del modelo
     if persona_id is not None and not db.query(Persona.id).filter(Persona.id == persona_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Persona no encontrada")
     if centro_datos_id is not None and not db.query(CentroDatos.id).filter(CentroDatos.id == centro_datos_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Centro de datos no encontrado")
-    # OJO: en tu modelo actual EstadoVisita usa id_estado; si en tu models.py final usas idestado, cambia aquí a EstadoVisita.idestado
     if estado_id is not None and not db.query(EstadoVisita.id_estado).filter(EstadoVisita.id_estado == estado_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Estado de visita no encontrado")
-    # OJO: en tu modelo actual TipoActividad usa id_tipo_actividad; si en tu models.py final usas idtipoactividad, cambia aquí.
     if tipo_actividad_id is not None and not db.query(TipoActividad.id_tipo_actividad).filter(
         TipoActividad.id_tipo_actividad == tipo_actividad_id
     ).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de actividad no encontrado")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de actividad no encontrada")
 
+# ----------------------------
+# Helpers de obtención
+# ----------------------------
 
 def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
     v = (
@@ -50,6 +71,7 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
         .options(
             joinedload(Visita.persona),
             joinedload(Visita.centro_datos),
+            # Si mantienes estas relaciones en el modelo, déjalas:
             joinedload(Visita.estado),
             joinedload(Visita.actividad),
         )
@@ -60,6 +82,9 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visita no encontrada")
     return v
 
+# ----------------------------
+# Endpoints
+# ----------------------------
 
 @router.post("/", response_model=VisitaResponse, status_code=status.HTTP_201_CREATED)
 async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
@@ -71,7 +96,16 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
         tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
     )
     try:
-        visita = Visita(**payload.dict())
+        data = payload.model_dump(exclude_unset=True)
+
+        # Elimina claves que no existen físicamente en la tabla (si aplica)
+        data.pop("area_id", None)
+
+        # Generar SIEMPRE un código de 9 dígitos si no viene
+        if not data.get("codigo_visita"):
+            data["codigo_visita"] = _generar_codigo_9d_unico(db)
+
+        visita = Visita(**data)
         db.add(visita)
         db.commit()
         db.refresh(visita)
@@ -83,56 +117,44 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
             detail=f"Error creando la visita: {exc}"
         )
 
+@router.post("/", response_model=VisitaResponse, status_code=status.HTTP_201_CREATED)
+async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
+    # Resolver estado por defecto si no viene
+    estado_id_in = getattr(payload, "estado_id", None)
+    if estado_id_in is None:
+        estado_prog = (
+            db.query(EstadoVisita.id_estado)
+              .filter(EstadoVisita.nombre_estado.ilike("PROGRAMADA"))
+              .first()
+        )
+        if not estado_prog:
+            raise HTTPException(status_code=500, detail="No existe el estado 'PROGRAMADA' en estado_visita")
+        estado_id_in = estado_prog.id_estado
 
-@router.get("/", response_model=VisitaListResponse)
-async def list_visitas(
-    page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=100),
-    estado_id: Optional[int] = Query(None),
-    tipo_actividad_id: Optional[int] = Query(None),
-    persona_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db),
-):
-    q = db.query(Visita)
-    # Alinear filtros a los nombres de columnas reales del modelo
-    # Si en tu modelo actual las columnas son estadoid/tipoactividadid/personaid usa esas
-    if estado_id is not None:
-        q = q.filter(Visita.estado_id == estado_id)  # usar el nombre real en la tabla
-    if tipo_actividad_id is not None:
-        q = q.filter(Visita.tipo_actividad_id == tipo_actividad_id)
-    if persona_id is not None:
-        q = q.filter(Visita.persona_id == persona_id)
+    _ensure_fk_visita(
+        db,
+        persona_id=payload.persona_id,
+        centro_datos_id=payload.centro_datos_id,
+        estado_id=estado_id_in,
+        tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
+    )
 
     try:
-        total = q.count()
-        if total == 0:
-            return VisitaListResponse(items=[], total=0, page=page, size=size, pages=0)
+        data = payload.model_dump(exclude_unset=True)
+        data["estado_id"] = estado_id_in
+        data.pop("area_id", None)  # si no existe en la tabla
 
-        items = (
-            q.options(
-                joinedload(Visita.persona),
-                joinedload(Visita.centro_datos),
-                joinedload(Visita.estado),
-                joinedload(Visita.actividad),
-            )
-            # Alinear orden a la columna real (fecha_programada vs fechaprogramada)
-            .order_by(Visita.fecha_programada.desc())
-            .offset((page - 1) * size)
-            .limit(size)
-            .all()
-        )
-        return VisitaListResponse(
-            items=items,
-            total=total,
-            page=page,
-            size=size,
-            pages=(total + size - 1) // size
-        )
+        if not data.get("codigo_visita"):
+            data["codigo_visita"] = _generar_codigo_9d_unico(db)
+
+        visita = Visita(**data)
+        db.add(visita)
+        db.commit()
+        db.refresh(visita)
+        return visita
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error listando visitas: {exc}"
-        )
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creando la visita: {exc}")
 
 
 @router.get("/{visita_id}", response_model=VisitaWithDetails)
@@ -147,7 +169,6 @@ async def get_visita(visita_id: int, db: Session = Depends(get_db)):
             detail=f"Error obteniendo visita: {exc}"
         )
 
-
 @router.put("/{visita_id}", response_model=VisitaResponse)
 async def update_visita(visita_id: int, payload: VisitaUpdate, db: Session = Depends(get_db)):
     visita = _get_visita_or_404(db, visita_id)
@@ -156,12 +177,15 @@ async def update_visita(visita_id: int, payload: VisitaUpdate, db: Session = Dep
         persona_id=payload.persona_id,
         centro_datos_id=payload.centro_datos_id,
         estado_id=getattr(payload, "estado_id", None),
-        tipo_actividad_id=payload.tipo_actividad_id if hasattr(payload, "tipo_actividad_id") else None,
+        tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
     )
     try:
-        data = payload.dict(exclude_unset=True)
+        data = payload.model_dump(exclude_unset=True)
+        data.pop("area_id", None)  # si no existe en BD
+
         for k, v in data.items():
             setattr(visita, k, v)
+
         db.commit()
         db.refresh(visita)
         return visita
@@ -172,12 +196,11 @@ async def update_visita(visita_id: int, payload: VisitaUpdate, db: Session = Dep
             detail=f"Error actualizando visita: {exc}"
         )
 
-
 @router.post("/{visita_id}/ingreso", response_model=VisitaResponse)
 async def registrar_ingreso(visita_id: int, payload: VisitaIngreso, db: Session = Depends(get_db)):
     visita = _get_visita_or_404(db, visita_id)
     try:
-        data = payload.dict(exclude_unset=True)
+        data = payload.model_dump(exclude_unset=True)
         for k, v in data.items():
             setattr(visita, k, v)
         db.commit()
@@ -185,17 +208,14 @@ async def registrar_ingreso(visita_id: int, payload: VisitaIngreso, db: Session 
         return visita
     except Exception as exc:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error registrando ingreso: {exc}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error registrando ingreso: {exc}")
+        
 
 @router.post("/{visita_id}/salida", response_model=VisitaResponse)
 async def registrar_salida(visita_id: int, payload: VisitaSalida, db: Session = Depends(get_db)):
     visita = _get_visita_or_404(db, visita_id)
     try:
-        data = payload.dict(exclude_unset=True)
+        data = payload.model_dump(exclude_unset=True)
         for k, v in data.items():
             setattr(visita, k, v)
         db.commit()
@@ -203,11 +223,7 @@ async def registrar_salida(visita_id: int, payload: VisitaSalida, db: Session = 
         return visita
     except Exception as exc:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error registrando salida: {exc}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error registrando salida: {exc}")
 
 @router.delete("/{visita_id}")
 async def delete_visita(visita_id: int, db: Session = Depends(get_db)):

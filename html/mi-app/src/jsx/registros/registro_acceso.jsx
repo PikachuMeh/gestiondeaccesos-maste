@@ -9,11 +9,11 @@ export default function RegistroAcceso() {
   // Cache de detalles por id para evitar refetch
   const [detalleCache, setDetalleCache] = useState(new Map());
 
-  // Sugerencias (cedulas + nombre/apellido) y texto de búsqueda
-  const [sugerencias, setSugerencias] = useState([]);   // [{id, documento_identidad, nombre, apellido}]
+  // Sugerencias y búsqueda
+  const [sugerencias, setSugerencias] = useState([]); // [{id, documento_identidad, nombre, apellido}]
   const [q, setQ] = useState("");
 
-  // Seleccionado y formulario Persona (solo lectura si viene de BD)
+  // Persona seleccionada y datos de solo lectura
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({
     cedula: "",
@@ -30,21 +30,22 @@ export default function RegistroAcceso() {
   });
   const [newFoto, setNewFoto] = useState(null);
 
-  // Catálogo y detalle de Centro de datos
+  // Centros de datos
   const [centros, setCentros] = useState([]);
-  const [cdSel, setCdSel] = useState("");            // id seleccionado
-  const [cdDetalle, setCdDetalle] = useState(null);  // objeto detalle
+  const [cdSel, setCdSel] = useState("");
+  const [cdDetalle, setCdDetalle] = useState(null);
 
-  // Formulario de Visita (incluye escolta)
+  // Formulario de visita (incluye escolta)
   const [formVisita, setFormVisita] = useState({
     descripcion_actividad: "",
     fecha_programada: "",
     requiere_escolta: false,
-    nombre_escolta: "",            // NUEVO
+    nombre_escolta: "",
     autorizado_por: "",
     motivo_autorizacion: "",
     equipos_ingresados: "",
     observaciones: "",
+    id_estado: "1",
   });
 
   const [loading, setLoading] = useState(false);
@@ -55,21 +56,19 @@ export default function RegistroAcceso() {
   const API_VISITAS = "http://localhost:8000/api/v1/visitas";
   const API_CENTROS = "http://localhost:8000/api/v1/centros-datos";
 
-  // ---- Helpers API Personas ----
+  // Personas
   async function fetchCedulas() {
     const r = await fetch(`${API_PERSONAS}/cedulas`);
     if (!r.ok) throw new Error("Error listando cédulas");
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
-
   async function searchCedulas(prefix) {
     const r = await fetch(`${API_PERSONAS}/search?q=${encodeURIComponent(prefix)}`);
     if (!r.ok) throw new Error("Error buscando cédulas");
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
-
   async function fetchPersonaById(id) {
     if (detalleCache.has(id)) return detalleCache.get(id);
     const r = await fetch(`${API_PERSONAS}/${id}`);
@@ -79,7 +78,7 @@ export default function RegistroAcceso() {
     return p;
   }
 
-  // ---- Helpers API Centros ----
+  // Centros
   async function loadCentros() {
     setLoading(true);
     try {
@@ -91,7 +90,6 @@ export default function RegistroAcceso() {
       setLoading(false);
     }
   }
-
   async function loadCentroDetalle(id) {
     if (!id) return setCdDetalle(null);
     const r = await fetch(`${API_CENTROS}/${id}`);
@@ -100,13 +98,13 @@ export default function RegistroAcceso() {
     setCdDetalle(obj);
   }
 
-  // ---- Carga inicial ----
+  // Carga inicial
   useEffect(() => {
     loadCentros();
     fetchCedulas().then(setSugerencias).catch(console.error);
   }, []);
 
-  // ---- Input de cédula con debounce ----
+  // Búsqueda con debounce
   const onCedulaChange = (e) => {
     const raw = e.target.value;
     const s = raw.replace(/\D/g, "");
@@ -130,15 +128,14 @@ export default function RegistroAcceso() {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        if (!s) setSugerencias(await fetchCedulas());
-        else setSugerencias(await searchCedulas(s));
+        setSugerencias(s ? await searchCedulas(s) : await fetchCedulas());
       } catch (err) {
         console.error(err);
       }
     }, 200);
   };
 
-  // ---- Selección de sugerencia ----
+  // Selección persona
   const onSelectById = async (id) => {
     try {
       const p = await fetchPersonaById(id);
@@ -163,7 +160,7 @@ export default function RegistroAcceso() {
     }
   };
 
-  // ---- Imagen (solo cuando no hay persona seleccionada) ----
+  // Imagen
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -171,26 +168,46 @@ export default function RegistroAcceso() {
     setForm(f => ({ ...f, foto: file }));
   };
 
-  // ---- Centro select ----
+  // Centro select
   const onCentroChange = async (e) => {
     const id = e.target.value;
     setCdSel(id);
     await loadCentroDetalle(id);
   };
 
-  // ---- Form visita handlers ----
+  // Form visita
   function onChangeVisita(e) {
     const { name, value, type, checked } = e.target;
     setFormVisita(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
-  // ---- Crear visita ----
+  // Validadores de cliente
+  function validarDescripcion(desc) {
+    return typeof desc === "string" && desc.trim().length >= 3;
+  }
+  function validarFechaFuturaLocal(localStr) {
+    if (!localStr) return false;
+    const localDate = new Date(localStr);
+    if (Number.isNaN(localDate.getTime())) return false;
+    const now = Date.now();
+    const margenMs = 2 * 60 * 1000; // 2 minutos de tolerancia
+    return localDate.getTime() >= (now + margenMs);
+  }
+
+  // Crear visita
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
     if (!formVisita.fecha_programada) return alert("Seleccione fecha programada");
 
-    // Validación condicionada por escolta
+    // Validación de cliente para evitar 422
+    if (!validarDescripcion(formVisita.descripcion_actividad)) {
+      return alert("Ingrese una descripción de al menos 3 caracteres");
+    }
+    if (!validarFechaFuturaLocal(formVisita.fecha_programada)) {
+      return alert("Seleccione una fecha/hora futura (>= 2 min desde ahora)");
+    }
+
     if (formVisita.requiere_escolta) {
       if (!formVisita.nombre_escolta?.trim()) return alert("Indique el nombre de la escolta");
       if (!formVisita.descripcion_actividad?.trim()) return alert("Describa la actividad a retirar");
@@ -198,17 +215,21 @@ export default function RegistroAcceso() {
 
     setPosting(true);
     try {
+      // Convertir local a ISO UTC
+      const localDate = new Date(formVisita.fecha_programada);
+      const fechaISO = localDate.toISOString();
       const body = {
         persona_id: selected.id,
         centro_datos_id: Number(cdSel),
-        descripcion_actividad: formVisita.descripcion_actividad || "",
-        fecha_programada: new Date(formVisita.fecha_programada).toISOString(),
+        descripcion_actividad: formVisita.descripcion_actividad.trim(),
+        fecha_programada: fechaISO,
         requiere_escolta: !!formVisita.requiere_escolta,
-        nombre_escolta: formVisita.requiere_escolta ? formVisita.nombre_escolta : null,
-        autorizado_por: formVisita.autorizado_por || null,
-        motivo_autorizacion: formVisita.motivo_autorizacion || null,
-        equipos_ingresados: formVisita.equipos_ingresados || null,
-        observaciones: formVisita.observaciones || null,
+        nombre_escolta: formVisita.requiere_escolta ? formVisita.nombre_escolta.trim() : null,
+        autorizado_por: formVisita.autorizado_por?.trim() || null,
+        motivo_autorizacion: formVisita.motivo_autorizacion?.trim() || null,
+        equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
+        observaciones: formVisita.observaciones?.trim() || null,
+        estado_id: Number(formVisita.estado_id ?? 1), // <-- correcto
       };
 
       const res = await fetch(API_VISITAS, {
@@ -233,217 +254,217 @@ export default function RegistroAcceso() {
   return (
     <div className="ra-root">
       <div className="ra-card">
-      <form className="ra-grid" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
-        <div className="ra-title">REGISTRO ACCESO</div>
+        <form className="ra-grid" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
+          <div className="ra-title">REGISTRO ACCESO</div>
 
-        {/* Buscador de cédula SIEMPRE visible */}
-        <div className="ra-form">
-          <div className="ra-row">
-            <div className="ra-field" style={{ position: "relative" }}>
-              <label className="ra-label">CÉDULA</label>
-              <input
-                type="text"
-                placeholder="Buscar..."
-                value={q}
-                onChange={onCedulaChange}
-                className="ra-input"
-                autoFocus
-              />
+          {/* Buscador de cédula SIEMPRE visible */}
+          <div className="ra-form">
+            <div className="ra-row">
+              <div className="ra-field" style={{ position: "relative" }}>
+                <label className="ra-label">CÉDULA</label>
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={q}
+                  onChange={onCedulaChange}
+                  className="ra-input"
+                  autoFocus
+                />
 
-              {!selected && sugerencias.length > 0 && (
-                <ul className="ra-suggestions">
-                  {sugerencias.slice(0, 100).map(p => (
-                    <li key={p.id} onMouseDown={() => onSelectById(p.id)}>
-                      V-{p.documento_identidad} - {p.nombre} {p.apellido}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                {!selected && sugerencias.length > 0 && (
+                  <ul className="ra-suggestions">
+                    {sugerencias.slice(0, 100).map(p => (
+                      <li key={p.id} onMouseDown={() => onSelectById(p.id)}>
+                        V-{p.documento_identidad} - {p.nombre} {p.apellido}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-              {showNoResults && (
-                <div className="ra-empty">
-                  <div className="ra-error" style={{ marginBottom: 8 }}>
-                    No se encontró la cédula. Puede registrar al visitante.
+                {showNoResults && (
+                  <div className="ra-empty">
+                    <div className="ra-error" style={{ marginBottom: 8 }}>
+                      No se encontró la cédula. Puede registrar al visitante.
+                    </div>
+                    <button
+                      type="button"
+                      className="ra-button-primary"
+                      onMouseDown={goRegistrarVisitante}
+                    >
+                      Registrar visitante
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="ra-button-primary"
-                    onMouseDown={goRegistrarVisitante}
-                  >
-                    Registrar visitante
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* RESTO DEL FORMULARIO solo si hay persona seleccionada */}
-        {selected && (
-          <>
-            {/* Datos Persona */}
-            <div className="ra-form">
-              <div className="ra-row">
-                <Field label="Nombre" value={form.nombre} disabled />
-                <Field label="Apellido" value={form.apellido} disabled />
-              </div>
+          {/* Resto del formulario solo si hay persona seleccionada */}
+          {selected && (
+            <>
+              {/* Datos Persona */}
+              <div className="ra-form">
+                <div className="ra-row">
+                  <Field label="Nombre" value={form.nombre} disabled />
+                  <Field label="Apellido" value={form.apellido} disabled />
+                </div>
 
-              <div className="ra-row">
-                <Field label="Correo" value={form.email} disabled />
-                <Field label="Empresa" value={form.empresa} disabled />
-                <Field label="Cargo" value={form.cargo} disabled />
-              </div>
+                <div className="ra-row">
+                  <Field label="Correo" value={form.email} disabled />
+                  <Field label="Empresa" value={form.empresa} disabled />
+                  <Field label="Cargo" value={form.cargo} disabled />
+                </div>
 
-              <div className="ra-row">
-                <Field label="Dirección" value={form.direccion} disabled />
-                <Field label="Unidad" value={form.unidad} disabled />
-              </div>
+                <div className="ra-row">
+                  <Field label="Dirección" value={form.direccion} disabled />
+                  <Field label="Unidad" value={form.unidad} disabled />
+                </div>
 
-              <div className="ra-row">
-                <Field label="Observaciones" value={form.observaciones} disabled />
-                <Field
-                  label="Fecha de Registro"
-                  value={form.fecha_creacion ? new Date(form.fecha_creacion).toLocaleDateString() : new Date().toLocaleDateString()}
-                  disabled
-                />
-              </div>
-            </div>
-
-            {/* Media */}
-            <div className="ra-media">
-              {selected?.foto && (
-                <img src={selected.foto} alt="foto" className="ra-image-preview" />
-              )}
-            </div>
-
-            {/* Datos de visita */}
-            <div className="ra-subtitle">Datos de visita</div>
-
-            <div className="ra-row">
-              <div className="ra-field">
-                <label className="ra-label">Centro de datos</label>
-                <select className="ra-input" value={cdSel} onChange={onCentroChange}>
-                  <option value="">Seleccione...</option>
-                  {centros.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="ra-field">
-                <label className="ra-label">Fecha programada</label>
-                <input
-                  type="datetime-local"
-                  name="fecha_programada"
-                  className="ra-input"
-                  value={formVisita.fecha_programada}
-                  onChange={onChangeVisita}
-                  required
-                />
-              </div>
-            </div>
-
-            {cdDetalle && (
-              <div className="ra-panel">
-                <div className="ra-panel-title">Centro seleccionado</div>
-                <div className="ra-panel-grid">
-                  <Info label="Código" value={cdDetalle.codigo} />
-                  <Info label="Ciudad" value={cdDetalle.ciudad} />
-                  <Info label="País" value={cdDetalle.pais} />
-                  <Info label="Unidad" value={cdDetalle.unidad} />
-                  <Info label="Teléfono" value={cdDetalle.telefono_contacto || "—"} />
-                  <Info label="Correo" value={cdDetalle.email_contacto || "—"} />
-                  <Info label="Dirección" value={cdDetalle.direccion} full />
-                  {cdDetalle.observaciones && <Info label="Observaciones" value={cdDetalle.observaciones} full />}
+                <div className="ra-row">
+                  <Field label="Observaciones" value={form.observaciones} disabled />
+                  <Field
+                    label="Fecha de Registro"
+                    value={form.fecha_creacion ? new Date(form.fecha_creacion).toLocaleDateString() : new Date().toLocaleDateString()}
+                    disabled
+                  />
                 </div>
               </div>
-            )}
 
-            <div className="ra-row">
-              <FieldEditable
-                label="Descripción"
-                name="descripcion_actividad"
-                value={formVisita.descripcion_actividad}
-                onChange={onChangeVisita}
-              />
-              <div className="ra-field">
-                <label className="ra-label">Requiere escolta</label>
-                <input
-                  type="checkbox"
-                  name="requiere_escolta"
-                  checked={!!formVisita.requiere_escolta}
-                  onChange={onChangeVisita}
-                  style={{ width: 22, height: 22, marginTop: 8 }}
-                />
+              {/* Media */}
+              <div className="ra-media">
+                {selected?.foto && (
+                  <img src={selected.foto} alt="foto" className="ra-image-preview" />
+                )}
               </div>
-            </div>
 
-            {formVisita.requiere_escolta && (
+              {/* Datos de visita */}
+              <div className="ra-subtitle">Datos de visita</div>
+
+              <div className="ra-row">
+                <div className="ra-field">
+                  <label className="ra-label">Centro de datos</label>
+                  <select className="ra-input" value={cdSel} onChange={onCentroChange}>
+                    <option value="">Seleccione...</option>
+                    {centros.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="ra-field">
+                  <label className="ra-label">Fecha programada</label>
+                  <input
+                    type="datetime-local"
+                    name="fecha_programada"
+                    className="ra-input"
+                    value={formVisita.fecha_programada}
+                    onChange={onChangeVisita}
+                    required
+                  />
+                </div>
+              </div>
+
+              {cdDetalle && (
+                <div className="ra-panel">
+                  <div className="ra-panel-title">Centro seleccionado</div>
+                  <div className="ra-panel-grid">
+                    <Info label="Código" value={cdDetalle.codigo} />
+                    <Info label="Ciudad" value={cdDetalle.ciudad} />
+                    <Info label="País" value={cdDetalle.pais} />
+                    <Info label="Unidad" value={cdDetalle.unidad} />
+                    <Info label="Teléfono" value={cdDetalle.telefono_contacto || "—"} />
+                    <Info label="Correo" value={cdDetalle.email_contacto || "—"} />
+                    <Info label="Dirección" value={cdDetalle.direccion} full />
+                    {cdDetalle.observaciones && <Info label="Observaciones" value={cdDetalle.observaciones} full />}
+                  </div>
+                </div>
+              )}
+
               <div className="ra-row">
                 <FieldEditable
-                  label="Nombre de la escolta"
-                  name="nombre_escolta"
-                  value={formVisita.nombre_escolta}
-                  onChange={onChangeVisita}
-                />
-                <FieldEditable
-                  label="Actividad a retirar"
+                  label="Descripción"
                   name="descripcion_actividad"
                   value={formVisita.descripcion_actividad}
                   onChange={onChangeVisita}
                 />
+                <div className="ra-field">
+                  <label className="ra-label">Requiere escolta</label>
+                  <input
+                    type="checkbox"
+                    name="requiere_escolta"
+                    checked={!!formVisita.requiere_escolta}
+                    onChange={onChangeVisita}
+                    style={{ width: 22, height: 22, marginTop: 8 }}
+                  />
+                </div>
               </div>
-            )}
 
-            <div className="ra-row">
-              <FieldEditable
-                label="Autorizado por"
-                name="autorizado_por"
-                value={formVisita.autorizado_por}
-                onChange={onChangeVisita}
-              />
-              <FieldEditable
-                label="Motivo"
-                name="motivo_autorizacion"
-                value={formVisita.motivo_autorizacion}
-                onChange={onChangeVisita}
-              />
-            </div>
+              {formVisita.requiere_escolta && (
+                <div className="ra-row">
+                  <FieldEditable
+                    label="Nombre de la escolta"
+                    name="nombre_escolta"
+                    value={formVisita.nombre_escolta}
+                    onChange={onChangeVisita}
+                  />
+                  <FieldEditable
+                    label="Actividad a retirar"
+                    name="descripcion_actividad"
+                    value={formVisita.descripcion_actividad}
+                    onChange={onChangeVisita}
+                  />
+                </div>
+              )}
 
-            <div className="ra-row">
-              <FieldEditable
-                label="Equipos"
-                name="equipos_ingresados"
-                value={formVisita.equipos_ingresados}
-                onChange={onChangeVisita}
-              />
-              <FieldEditable
-                label="Observaciones"
-                name="observaciones"
-                value={formVisita.observaciones}
-                onChange={onChangeVisita}
-              />
-            </div>
+              <div className="ra-row">
+                <FieldEditable
+                  label="Autorizado por"
+                  name="autorizado_por"
+                  value={formVisita.autorizado_por}
+                  onChange={onChangeVisita}
+                />
+                <FieldEditable
+                  label="Motivo"
+                  name="motivo_autorizacion"
+                  value={formVisita.motivo_autorizacion}
+                  onChange={onChangeVisita}
+                />
+              </div>
 
-            <div className="ra-actions">
-              <button
-                type="button"
-                className="ra-button-primary"
-                onClick={onRegistrarAcceso}
-                disabled={posting || loading || !selected}
-              >
-                {posting ? "Registrando..." : "Registrar acceso"}
-              </button>
-            </div>
-          </>
-        )}
-      </form>
+              <div className="ra-row">
+                <FieldEditable
+                  label="Equipos"
+                  name="equipos_ingresados"
+                  value={formVisita.equipos_ingresados}
+                  onChange={onChangeVisita}
+                />
+                <FieldEditable
+                  label="Observaciones"
+                  name="observaciones"
+                  value={formVisita.observaciones}
+                  onChange={onChangeVisita}
+                />
+              </div>
+
+              <div className="ra-actions">
+                <button
+                  type="button"
+                  className="ra-button-primary"
+                  onClick={onRegistrarAcceso}
+                  disabled={posting || loading || !selected}
+                >
+                  {posting ? "Registrando..." : "Registrar acceso"}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
       </div>
     </div>
   );
 }
 
-// ---- Subcomponentes ----
+// Subcomponentes
 function Field({ label, value, disabled = false }) {
   return (
     <div className="ra-field">
@@ -457,7 +478,6 @@ function Field({ label, value, disabled = false }) {
     </div>
   );
 }
-
 function FieldEditable({ label, name, value, onChange }) {
   return (
     <div className="ra-field">
@@ -471,7 +491,6 @@ function FieldEditable({ label, name, value, onChange }) {
     </div>
   );
 }
-
 function Info({ label, value, full=false }) {
   return (
     <div className={`ra-info${full ? " ra-info-full" : ""}`}>
@@ -480,7 +499,6 @@ function Info({ label, value, full=false }) {
     </div>
   );
 }
-
 function IconImage() {
   return (
     <svg width="88" height="88" viewBox="0 0 24 24" fill="none" className="ra-icon">
