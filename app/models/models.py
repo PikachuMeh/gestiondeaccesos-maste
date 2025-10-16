@@ -1,9 +1,23 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
 SCHEMA = "sistema_gestiones"
+
+# Area
+class Area(Base):
+    __tablename__ = "area"
+    __table_args__ = {"schema": SCHEMA}
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, nullable=False)
+    # Si las áreas pertenecen a un centro de datos específico, añade FK:
+    centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=True, index=True)
+
+    # Relaciones
+    visitas = relationship("Visita", back_populates="area", cascade="all, delete-orphan")
+    centro_datos = relationship("CentroDatos", back_populates="areas")
 
 # Persona
 class Persona(Base):
@@ -19,12 +33,14 @@ class Persona(Base):
     cargo = Column(String(100), nullable=True)
     direccion = Column(Text, nullable=False)
     observaciones = Column(Text, nullable=True)
-    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())    
-    foto = Column(String(250), nullable= False)
-    departamento = Column(String(100),nullable=True)
-    unidad = Column(String(100),nullable=True)
+    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    foto = Column(String(250), nullable=False)
+    departamento = Column(String(100), nullable=True)
+    unidad = Column(String(100), nullable=True)
 
+    # Relaciones
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")
+
 # Centro de datos
 class CentroDatos(Base):
     __tablename__ = "centro_datos"
@@ -42,9 +58,10 @@ class CentroDatos(Base):
     observaciones = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    unidad = Column(String(100), nullable=False)
 
+    # Relaciones
     visitas = relationship("Visita", back_populates="centro_datos", cascade="all, delete-orphan")
+    areas = relationship("Area", back_populates="centro_datos", cascade="all, delete-orphan")
 
 # Roles de usuario
 class RolUsuario(Base):
@@ -110,6 +127,8 @@ class Visita(Base):
     centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=False, index=True)
     estado_id = Column(Integer, ForeignKey(f"{SCHEMA}.estado_visita.id_estado"), nullable=False, index=True)
     tipo_actividad_id = Column(Integer, ForeignKey(f"{SCHEMA}.tipo_actividad.id_tipo_actividad"), nullable=False, index=True)
+    # Si una visita pertenece a un área específica, se agrega:
+    area_id = Column(Integer, ForeignKey(f"{SCHEMA}.area.id"), nullable=True, index=True)
 
     descripcion_actividad = Column(Text, nullable=False)
     fecha_programada = Column(DateTime(timezone=True), nullable=False, index=True)
@@ -132,3 +151,4 @@ class Visita(Base):
     actividad = relationship("TipoActividad", back_populates="visitas")
     persona = relationship("Persona", back_populates="visitas")
     centro_datos = relationship("CentroDatos", back_populates="visitas")
+    area = relationship("Area", back_populates="visitas")

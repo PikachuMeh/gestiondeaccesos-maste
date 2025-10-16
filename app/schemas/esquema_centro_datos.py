@@ -14,16 +14,9 @@ class CentroDatosBase(BaseModel):
     codigo: str = Field(..., min_length=2, max_length=20, description="Código único del centro de datos")
     direccion: str = Field(..., min_length=10, description="Dirección física del centro de datos")
     ciudad: str = Field(..., min_length=2, max_length=100, description="Ciudad donde se ubica")
-    departamento: str = Field(..., min_length=2, max_length=100, description="Departamento donde se ubica")
     pais: str = Field(default="Colombia", max_length=100, description="País donde se ubica")
-    latitud: Optional[float] = Field(None, ge=-90, le=90, description="Latitud geográfica")
-    longitud: Optional[float] = Field(None, ge=-180, le=180, description="Longitud geográfica")
     telefono_contacto: Optional[str] = Field(None, max_length=20, description="Teléfono de contacto")
     email_contacto: Optional[EmailStr] = Field(None, description="Email de contacto")
-    responsable: Optional[str] = Field(None, max_length=200, description="Responsable del centro de datos")
-    capacidad_servidores: Optional[int] = Field(None, ge=0, description="Capacidad máxima de servidores")
-    capacidad_telecomunicaciones: Optional[int] = Field(None, ge=0, description="Capacidad máxima de telecomunicaciones")
-    capacidad_cross_connect: Optional[int] = Field(None, ge=0, description="Capacidad máxima de cross connect")
     descripcion: Optional[str] = Field(None, description="Descripción del centro de datos")
     observaciones: Optional[str] = Field(None, description="Observaciones adicionales")
     
@@ -53,19 +46,13 @@ class CentroDatosUpdate(BaseModel):
     codigo: Optional[str] = Field(None, min_length=2, max_length=20)
     direccion: Optional[str] = Field(None, min_length=10)
     ciudad: Optional[str] = Field(None, min_length=2, max_length=100)
-    departamento: Optional[str] = Field(None, min_length=2, max_length=100)
     pais: Optional[str] = Field(None, max_length=100)
-    latitud: Optional[float] = Field(None, ge=-90, le=90)
-    longitud: Optional[float] = Field(None, ge=-180, le=180)
     telefono_contacto: Optional[str] = Field(None, max_length=20)
     email_contacto: Optional[EmailStr] = None
-    responsable: Optional[str] = Field(None, max_length=200)
-    capacidad_servidores: Optional[int] = Field(None, ge=0)
-    capacidad_telecomunicaciones: Optional[int] = Field(None, ge=0)
-    capacidad_cross_connect: Optional[int] = Field(None, ge=0)
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
     activo: Optional[bool] = None
+    fecha: Optional[str] = None
 
 class CentroDatosResponse(CentroDatosBase):
     """Esquema para respuesta de centro de datos"""

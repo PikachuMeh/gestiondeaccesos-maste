@@ -62,6 +62,57 @@ async def list_personas(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Error listando personas: {exc}")
 
+# app/api/personas.py
+
+@router.get("/cedulas")
+async def listar_cedulas(
+    db: Session = Depends(get_db),
+    limit: int = Query(5000, ge=1, le=50000)
+):
+    rows = (
+        db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido)
+          .order_by(Persona.documento_identidad)
+          .limit(limit)
+          .all()
+    )
+    # FastAPI serializa tuplas; si prefieres dicts:
+    return [
+        {
+            "id": r.id,
+            "documento_identidad": r.documento_identidad,
+            "nombre": r.nombre,
+            "apellido": r.apellido,
+        } for r in rows
+    ]
+
+@router.get("/search")
+async def buscar_personas_por_cedula(
+    q: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    size: int = Query(50, ge=1, le=100)
+):
+    # Solo prefijo numérico; sanitiza a dígitos
+    q_digits = "".join(ch for ch in q if ch.isdigit())
+    if not q_digits:
+        return []
+
+    rows = (
+        db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido)
+          .filter(Persona.documento_identidad.ilike(f"{q_digits}%"))
+          .order_by(Persona.documento_identidad)
+          .limit(size)
+          .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "documento_identidad": r.documento_identidad,
+            "nombre": r.nombre,
+            "apellido": r.apellido,
+        } for r in rows
+    ]
+
+
 @router.get("/{persona_id}", response_model=PersonaResponse)
 async def get_persona(persona_id: int, db: Session = Depends(get_db)):
     try: 
