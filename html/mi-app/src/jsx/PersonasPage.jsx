@@ -128,7 +128,7 @@ export default function PersonasPage() {
                 <thead>
                   <tr>
                     <th>Cédula</th>
-                    <th>Nombre</th>
+                    <th>Nombre y Apellido</th>
                     <th>Unidad</th>
                     <th>Empresa</th>
                   </tr>
@@ -137,12 +137,11 @@ export default function PersonasPage() {
                   {rows.map((p, i) => (
                     <tr key={p.id ?? `${p.documento_identidad}-${i}`}>
                       <td>
-                        {console.log(p)}
                         {p.documento_identidad
                           ? `V-${p.documento_identidad}`
                           : "—"}
                       </td>
-                      <td>{p.nombre ?? "—"}</td>
+                      <td>{p.nombre ?? "—"} {p.apellido}</td>
                       <td>{p.departamento ?? "—"}</td>
                       <td>{p.empresa ?? "—"}</td>
                     </tr>

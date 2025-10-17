@@ -34,6 +34,15 @@ export default function RegistroAcceso() {
   const [centros, setCentros] = useState([]);
   const [cdSel, setCdSel] = useState("");
   const [cdDetalle, setCdDetalle] = useState(null);
+  
+  //Tipo de Actividad
+  const [tiposActividad, setTiposActividad] = useState([]); // NUEVO: array de tipos
+  const [idTipo_act, setidTipo_act] = useState(""); // ID seleccionado
+
+  //Areas
+  // NUEVO: Estados para áreas
+  const [areas, setAreas] = useState([]);
+  const [areaSel, setAreaSel] = useState("");
 
   // Formulario de visita (incluye escolta)
   const [formVisita, setFormVisita] = useState({
@@ -97,10 +106,50 @@ export default function RegistroAcceso() {
     const obj = await r.json();
     setCdDetalle(obj);
   }
+  //Tipos de actividad
+  async function loadTipoActividad() {
+    setLoading(true); // true en minúsculas
+    try {
+      const r = await fetch(`${API_VISITAS}/tipo_actividad`);
+      const json = await r.json();
+      setTiposActividad(json); // Guarda el resultado en el estado
+    } catch (error) {
+      console.error("Error cargando tipos de actividad:", error);
+      setTiposActividad([]);
+    } finally {
+      setLoading(false); // false en minúsculas
+    }
+  }
 
+  //Area 
+  async function loadAreasPorCentro(centro_id) {
+    if (!centro_id) {
+      setAreas([]);
+      setAreaSel("");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const r = await fetch(`${API_VISITAS}/areas/${centro_id}`);
+      if (!r.ok) {
+        console.error("Error cargando áreas");
+        setAreas([]);
+        return;
+      }
+      const json = await r.json();
+      setAreas(json);
+    } catch (error) {
+      console.error("Error cargando áreas:", error);
+      setAreas([]);
+    } finally {
+      setLoading(false);
+    }
+  } 
   // Carga inicial
   useEffect(() => {
     loadCentros();
+    loadTipoActividad();
     fetchCedulas().then(setSugerencias).catch(console.error);
   }, []);
 
@@ -172,9 +221,22 @@ export default function RegistroAcceso() {
   const onCentroChange = async (e) => {
     const id = e.target.value;
     setCdSel(id);
+    setAreaSel(""); // Resetear área seleccionada
     await loadCentroDetalle(id);
+    await loadAreasPorCentro(id); // Cargar áreas del centro seleccionado
   };
 
+  const onAreaChange = (e) => {
+    const id = e.target.value;
+    console.log("Área seleccionada:", id); // DEBUG
+    setAreaSel(id);
+  };
+  // Seleccion de tipo de actividad
+  const onActividadChange = (e) => {
+    const id = e.target.value;
+    console.log("Tipo actividad seleccionado:", id); // DEBUG
+    setidTipo_act(id);
+  };
   // Form visita
   function onChangeVisita(e) {
     const { name, value, type, checked } = e.target;
@@ -199,7 +261,11 @@ export default function RegistroAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
     if (!formVisita.fecha_programada) return alert("Seleccione fecha programada");
-
+    if (!idTipo_act || idTipo_act === "") {
+      console.error("idTipo_act está vacío:", idTipo_act);
+      return alert("Tiene que seleccionar una actividad");
+    }
+  
     // Validación de cliente para evitar 422
     if (!validarDescripcion(formVisita.descripcion_actividad)) {
       return alert("Ingrese una descripción de al menos 3 caracteres");
@@ -207,46 +273,63 @@ export default function RegistroAcceso() {
     if (!validarFechaFuturaLocal(formVisita.fecha_programada)) {
       return alert("Seleccione una fecha/hora futura (>= 2 min desde ahora)");
     }
-
+  
     if (formVisita.requiere_escolta) {
       if (!formVisita.nombre_escolta?.trim()) return alert("Indique el nombre de la escolta");
       if (!formVisita.descripcion_actividad?.trim()) return alert("Describa la actividad a retirar");
     }
 
     setPosting(true);
-    try {
-      // Convertir local a ISO UTC
-      const localDate = new Date(formVisita.fecha_programada);
-      const fechaISO = localDate.toISOString();
-      const body = {
-        persona_id: selected.id,
-        centro_datos_id: Number(cdSel),
-        descripcion_actividad: formVisita.descripcion_actividad.trim(),
-        fecha_programada: fechaISO,
-        requiere_escolta: !!formVisita.requiere_escolta,
-        nombre_escolta: formVisita.requiere_escolta ? formVisita.nombre_escolta.trim() : null,
-        autorizado_por: formVisita.autorizado_por?.trim() || null,
-        motivo_autorizacion: formVisita.motivo_autorizacion?.trim() || null,
-        equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
-        observaciones: formVisita.observaciones?.trim() || null,
-        estado_id: Number(formVisita.estado_id ?? 1), // <-- correcto
-      };
-
-      const res = await fetch(API_VISITAS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const created = await res.json();
-      navigate(`/visitas/${created.id}`);
-    } catch (e) {
-      console.error(e);
-      alert(`Error al registrar visita: ${e.message}`);
-    } finally {
-      setPosting(false);
+  try {
+    const localDate = new Date(formVisita.fecha_programada);
+    const fechaISO = localDate.toISOString();
+    
+    const tipoActividadId = parseInt(idTipo_act, 10);
+    
+    if (isNaN(tipoActividadId)) {
+      throw new Error("ID de tipo de actividad inválido");
     }
+    
+    const body = {
+      persona_id: selected.id,
+      centro_datos_id: Number(cdSel),
+      tipo_actividad_id: tipoActividadId,
+      area_id: areaSel ? Number(areaSel) : null, // NUEVO: incluir area_id
+      descripcion_actividad: formVisita.descripcion_actividad.trim(),
+      fecha_programada: fechaISO,
+      requiere_escolta: !!formVisita.requiere_escolta,
+      nombre_escolta: formVisita.requiere_escolta ? formVisita.nombre_escolta.trim() : null,
+      autorizado_por: formVisita.autorizado_por?.trim() || null,
+      motivo_autorizacion: formVisita.motivo_autorizacion?.trim() || null,
+      equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
+      observaciones: formVisita.observaciones?.trim() || null,
+      estado_id: Number(formVisita.id_estado ?? 1),
+    };
+
+    console.log("Body enviado:", body);
+    console.log("tipo_actividad_id:", body.tipo_actividad_id, typeof body.tipo_actividad_id);
+    console.log("area_id:", body.area_id, typeof body.area_id);
+
+    const res = await fetch(API_VISITAS, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+    
+    const created = await res.json();
+    navigate(`/visitas/${created.id}`);
+  } catch (e) {
+    console.error(e);
+    alert(`Error al registrar visita: ${e.message}`);
+  } finally {
+    setPosting(false);
   }
+}
 
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
   const showNoResults = q && !selected && sugerencias.length === 0;
@@ -343,10 +426,43 @@ export default function RegistroAcceso() {
               <div className="ra-row">
                 <div className="ra-field">
                   <label className="ra-label">Centro de datos</label>
-                  <select className="ra-input" value={cdSel} onChange={onCentroChange}>
+                  <select className="ra-input" value={cdSel} onChange={onCentroChange} required>
                     <option value="">Seleccione...</option>
                     {centros.map(c => (
                       <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* NUEVO: Select de Área */}
+                <div className="ra-field">
+                  <label className="ra-label">Área</label>
+                  <select 
+                    className="ra-input" 
+                    value={areaSel} 
+                    onChange={onAreaChange}
+                    disabled={!cdSel || areas.length === 0}
+                  >
+                    <option value="">Seleccione...</option>
+                    {areas.map(a => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="ra-field">
+                  <label className="ra-label">Tipo de actividad</label>
+                  <select 
+                    className="ra-input" 
+                    value={idTipo_act} 
+                    onChange={onActividadChange}
+                    required
+                  >
+                    <option value="">Seleccione...</option>
+                    {tiposActividad.map(t => (
+                      <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
+                        {t.nombre_actividad}
+                      </option>
                     ))}
                   </select>
                 </div>

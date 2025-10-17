@@ -6,7 +6,8 @@ from .models import (
     EstadoVisita,
     TipoActividad,
     Usuario,
-    RolUsuario
+    RolUsuario,
+    Area
 )
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "EstadoVisita",
     "TipoActividad",
     "Usuario",
-    "RolUsuario"
+    "RolUsuario",
+    "Area"
 ]

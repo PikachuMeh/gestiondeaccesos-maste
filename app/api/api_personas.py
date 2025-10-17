@@ -42,12 +42,15 @@ async def list_personas(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     nombre: Optional[str] = Query(None),
+    apellido: Optional[str] = Query(None),
     documento: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     q = db.query(Persona)
     if nombre:
         q = q.filter(Persona.nombre.ilike(f"%{nombre}%"))
+    if apellido:
+        q = q.filter(Persona.apellido.ilike(f"%{apellido}%"))
     if documento:
         q = q.filter(Persona.documento_identidad.ilike(f"%{documento}%"))
     try:

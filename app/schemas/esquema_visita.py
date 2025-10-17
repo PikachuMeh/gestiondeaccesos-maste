@@ -184,3 +184,7 @@ class VisitaEstadisticas(BaseModel):
     promedio_duracion: Optional[float] = None
     visitas_por_tipo_actividad: dict
     visitas_por_centro_datos: dict
+
+class VisitaTipoActividad(BaseModel):
+    id_tipo_actividad: int
+    nombre_actividad: str

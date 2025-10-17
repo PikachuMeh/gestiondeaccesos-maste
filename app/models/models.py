@@ -5,7 +5,6 @@ from app.database import Base
 
 SCHEMA = "sistema_gestiones"
 
-# Area
 class Area(Base):
     __tablename__ = "area"
     __table_args__ = {"schema": SCHEMA}
@@ -13,7 +12,7 @@ class Area(Base):
     id = Column(Integer, primary_key=True)
     nombre = Column(String, nullable=False)
     # Si las áreas pertenecen a un centro de datos específico, añade FK:
-    centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=True, index=True)
+    id_centro_datos = Column(Integer, ForeignKey("sistema_gestiones.centro_datos.id"), nullable=False)  # CORRECTO
 
     # Relaciones
     visitas = relationship("Visita", back_populates="area", cascade="all, delete-orphan")

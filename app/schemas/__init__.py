@@ -4,7 +4,7 @@ from .esquema_persona import PersonaBase, PersonaCreate, PersonaUpdate, PersonaR
 from .esquema_centro_datos import CentroDatosBase, CentroDatosCreate, CentroDatosUpdate, CentroDatosResponse, CentroDatosListResponse
 from .esquema_visita import (
     VisitaBase, VisitaCreate, VisitaUpdate, VisitaResponse, VisitaListResponse, 
-    VisitaWithDetails, VisitaIngreso, VisitaSalida, VisitaEstadisticas
+    VisitaWithDetails, VisitaIngreso, VisitaSalida, VisitaEstadisticas,VisitaTipoActividad
 )
 from .esquema_usuario import (
     UsuarioBase, UsuarioCreate, UsuarioUpdate, UsuarioResponse, UsuarioListResponse,
@@ -19,7 +19,7 @@ __all__ = [
     "CentroDatosListResponse",
     #Visita
     "VisitaBase", "VisitaCreate", "VisitaUpdate", "VisitaResponse", "VisitaListResponse",
-    "VisitaWithDetails", "VisitaIngreso", "VisitaSalida", "VisitaEstadisticas",
+    "VisitaWithDetails", "VisitaIngreso", "VisitaSalida", "VisitaEstadisticas","VisitaTipoActividad"
     # Usuario
     "UsuarioBase", "UsuarioCreate", "UsuarioUpdate", "UsuarioResponse", "UsuarioListResponse",
     "UsuarioChangePassword", "UsuarioLogin", "Token", "TokenData"
