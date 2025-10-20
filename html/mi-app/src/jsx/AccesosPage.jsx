@@ -180,6 +180,7 @@ export default function VisitasPage() {
                 </thead>
                 <tbody>
                   {filtered.map((v, i) => {
+                    console.log(v)
                     const persona = v.persona || {};
                     const estado = v.estado || {};
                     const actividad = v.actividad || {};

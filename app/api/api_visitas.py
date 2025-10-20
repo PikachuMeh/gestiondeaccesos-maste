@@ -197,6 +197,9 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
         data["estado_id"] = estado_id_in
         data.pop("area_id", None)  # si no existe en la tabla
 
+        if "activo" not in data:
+            data["activo"] = True  # o False según tu lógica
+
         if not data.get("codigo_visita"):
             data["codigo_visita"] = _generar_codigo_9d_unico(db)
 

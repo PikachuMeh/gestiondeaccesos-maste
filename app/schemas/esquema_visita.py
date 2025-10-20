@@ -14,7 +14,7 @@ class VisitaBase(BaseModel):
     persona_id: int = Field(..., description="ID de la persona que realiza la visita")
     centro_datos_id: int = Field(..., description="ID del centro de datos")
     tipo_actividad_id: int = Field(..., description="ID del tipo de actividad a realizar")
-    descripcion_actividad: str = Field(..., min_length=10, description="Descripción detallada de la actividad")
+    descripcion_actividad: str = Field(..., min_length=5, description="Descripción detallada de la actividad")
     fecha_programada: datetime = Field(..., description="Fecha y hora programada para la visita")
     duracion_estimada: Optional[int] = Field(None, ge=15, le=480, description="Duración estimada en minutos (15-480)")
     autorizado_por: Optional[str] = Field(None, max_length=200, description="Persona que autoriza la visita")
@@ -28,7 +28,7 @@ class VisitaBase(BaseModel):
     
     @validator('fecha_programada')
     def validate_fecha_programada(cls, v):
-        if v <= datetime.now():
+        if v <= datetime.now(timezone.utc):
             raise ValueError('La fecha programada debe ser futura')
         return v
     
@@ -118,7 +118,7 @@ class VisitaUpdate(BaseModel):
     persona_id: Optional[int] = None
     centro_datos_id: Optional[int] = None
     tipo_actividad_id: Optional[int] = None
-    descripcion_actividad: Optional[str] = Field(None, min_length=10)
+    descripcion_actividad: Optional[str] = Field(None, min_length=5)
     fecha_programada: Optional[datetime] = None
     duracion_estimada: Optional[int] = Field(None, ge=15, le=480)
     autorizado_por: Optional[str] = Field(None, max_length=200)
@@ -153,10 +153,9 @@ class VisitaResponse(VisitaBase):
     fecha_salida: Optional[datetime] = None
     duracion_real: Optional[int] = None
     notas_finales: Optional[str] = None
-    activo: bool
+    activo: Optional[bool] = None
     fecha_creacion: datetime
     fecha_actualizacion: Optional[datetime] = None
-    esta_activa: bool
     
     class Config:
         from_attributes = True
