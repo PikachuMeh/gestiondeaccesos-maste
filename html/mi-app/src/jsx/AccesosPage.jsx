@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "../css/lista_acceso.css";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "http://localhost:8000/api/v1/visitas";
 const PAGE_SIZE = 10;
 
 export default function VisitasPage() {
   const didMount = useRef(false);
-
+  const navigate = useNavigate();
   // Datos
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
@@ -109,7 +110,8 @@ export default function VisitasPage() {
 
   const goToDetail = (id) => {
     // Ajusta a tu router si tienes vista de detalle
-    window.open(`/visitas/${id}`, "_self");
+      navigate(`/accesos/${id}`);
+    
   };
 
   return (
@@ -180,7 +182,7 @@ export default function VisitasPage() {
                 </thead>
                 <tbody>
                   {filtered.map((v, i) => {
-                    console.log(v)
+                    console.log(v.actividad)
                     const persona = v.persona || {};
                     const estado = v.estado || {};
                     const actividad = v.actividad || {};
@@ -191,8 +193,8 @@ export default function VisitasPage() {
                         <td>{persona.nombre ?? "—"}</td>
                         <td>{persona.documento_identidad ?? "—"}</td>
                         <td>{persona.empresa ?? "—"}</td>
-                        <td>{actividad.nombre ?? actividad.tipo ?? "—"}</td>
-                        <td>{estado.nombre ?? estado.estado ?? "—"}</td>
+                        <td>{actividad.nombre_actividad ?? actividad.id_tipo_actividad ?? "—"}</td>
+                        <td>{estado.nombre_estado ?? estado.id_estado ?? "—"}</td>
                         <td>{cd.nombre ?? "—"}</td>
                         <td>
                           <button className="vp-btn" onClick={() => goToDetail(v.id)}>Ver</button>

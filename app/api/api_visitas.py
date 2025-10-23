@@ -52,7 +52,8 @@ def _ensure_fk_visita(
     persona_id: Optional[int],
     centro_datos_id: Optional[int],
     estado_id: Optional[int] = None,
-    tipo_actividad_id: Optional[int] = None
+    tipo_actividad_id: Optional[int] = None,
+    area_id: Optional[int] = None,  # ← AGREGAR ESTE PARÁMETRO
 ):
     if persona_id is not None and not db.query(Persona.id).filter(Persona.id == persona_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Persona no encontrada")
@@ -64,6 +65,10 @@ def _ensure_fk_visita(
         TipoActividad.id_tipo_actividad == tipo_actividad_id
     ).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de actividad no encontrada")
+    # ← AGREGAR VALIDACIÓN DE AREA
+    if area_id is not None and not db.query(Area.id).filter(Area.id == area_id).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Área no encontrada")
+
 
 # ----------------------------
 # Helpers de obtención
@@ -78,6 +83,7 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
             # Si mantienes estas relaciones en el modelo, déjalas:
             joinedload(Visita.estado),
             joinedload(Visita.actividad),
+            joinedload(Visita.area)
         )
         .filter(Visita.id == visita_id)
         .first()
@@ -144,6 +150,38 @@ async def list_visitas(
             size=limit,
             pages=pages
         )
+#Obtener lista de visitas por persona
+
+@router.get("/persona/{persona_id}/historial", response_model=list[VisitaResponse])
+async def get_historial_persona(persona_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene todas las visitas realizadas por una persona específica.
+    """
+    # Validar que la persona existe
+    persona = db.query(Persona.id).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Persona no encontrada"
+        )
+    
+    # Obtener todas las visitas de esta persona ordenadas por fecha
+    visitas = (
+        db.query(Visita)
+        .options(
+            joinedload(Visita.persona),
+            joinedload(Visita.centro_datos),
+            joinedload(Visita.estado),
+            joinedload(Visita.actividad),
+            joinedload(Visita.area),
+        )
+        .filter(Visita.persona_id == persona_id)
+        .order_by(Visita.fecha_programada.desc())
+        .all()
+    )
+    
+    return visitas
+
 @router.get("/areas/{centro_datos_id}", response_model=list[dict])
 async def obtener_areas_por_centro(centro_datos_id: int, db: Session = Depends(get_db)):
     """
@@ -172,7 +210,7 @@ async def obtener_areas_por_centro(centro_datos_id: int, db: Session = Depends(g
 
 @router.post("/", response_model=VisitaResponse, status_code=status.HTTP_201_CREATED)
 async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
-    # Resolver estado por defecto si no viene
+    # Resolver estado por defecto
     estado_id_in = getattr(payload, "estado_id", None)
     if estado_id_in is None:
         estado_prog = (
@@ -184,21 +222,22 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
             raise HTTPException(status_code=500, detail="No existe el estado 'PROGRAMADA' en estado_visita")
         estado_id_in = estado_prog.id_estado
 
+    # Validar todas las FKs incluyendo area_id
     _ensure_fk_visita(
         db,
         persona_id=payload.persona_id,
         centro_datos_id=payload.centro_datos_id,
         estado_id=estado_id_in,
         tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
+        area_id=getattr(payload, "area_id", None),  # ← Agregar esta línea
     )
 
     try:
         data = payload.model_dump(exclude_unset=True)
         data["estado_id"] = estado_id_in
-        data.pop("area_id", None)  # si no existe en la tabla
 
         if "activo" not in data:
-            data["activo"] = True  # o False según tu lógica
+            data["activo"] = True
 
         if not data.get("codigo_visita"):
             data["codigo_visita"] = _generar_codigo_9d_unico(db)
@@ -211,6 +250,7 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creando la visita: {exc}")
+
 
 @router.get("/tipo_actividad")
 async def obtener_tipo(db: Session = Depends(get_db)):

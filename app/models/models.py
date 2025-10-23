@@ -126,7 +126,6 @@ class Visita(Base):
     centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=False, index=True)
     estado_id = Column(Integer, ForeignKey(f"{SCHEMA}.estado_visita.id_estado"), nullable=False, index=True)
     tipo_actividad_id = Column(Integer, ForeignKey(f"{SCHEMA}.tipo_actividad.id_tipo_actividad"), nullable=False, index=True)
-    # Si una visita pertenece a un área específica, se agrega:
     area_id = Column(Integer, ForeignKey(f"{SCHEMA}.area.id"), nullable=True, index=True)
 
     descripcion_actividad = Column(Text, nullable=False)
@@ -143,8 +142,10 @@ class Visita(Base):
     observaciones = Column(Text, nullable=True)
     notas_finales = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
-    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # ← FECHAS CORREGIDAS
+    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     estado = relationship("EstadoVisita", back_populates="visitas")
     actividad = relationship("TipoActividad", back_populates="visitas")
