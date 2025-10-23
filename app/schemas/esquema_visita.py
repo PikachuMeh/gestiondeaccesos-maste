@@ -79,8 +79,6 @@ class VisitaBase(BaseModel):
     duracion_estimada: Optional[int] = Field(None, ge=15, le=480, description="Duración estimada en minutos (15-480)")
     autorizado_por: Optional[str] = Field(None, max_length=200, description="Persona que autoriza la visita")
     motivo_autorizacion: Optional[str] = Field(None, description="Motivo de la autorización")
-    requiere_escolta: bool = Field(False, description="Si requiere escolta de seguridad")
-    nombre_escolta: Optional[str] = Field(None, max_length=200, description="Nombre de la escolta asignada")
     equipos_ingresados: Optional[str] = Field(None, description="Lista de equipos que ingresarán")
     equipos_retirados: Optional[str] = Field(None, description="Lista de equipos que se retirarán")
     observaciones: Optional[str] = Field(None, description="Observaciones generales")
@@ -102,8 +100,6 @@ class VisitaCreate(BaseModel):
     # Detalles operativos
     descripcion_actividad: str = Field(..., min_length=1, description="Descripción o actividad a realizar/retirar")
     fecha_programada: datetime = Field(..., description="Fecha/hora programada en ISO; se normaliza a UTC")
-    requiere_escolta: bool = Field(default=False, description="Si requiere escolta dentro del centro")
-    nombre_escolta: Optional[str] = Field(None, max_length=200, description="Nombre de la escolta")
     autorizado_por: Optional[str] = Field(None, max_length=200, description="Nombre de quien autoriza")
     motivo_autorizacion: Optional[str] = Field(None, description="Motivo de la autorización")
     equipos_ingresados: Optional[str] = Field(None, description="Listado/desc de equipos a ingresar")
@@ -123,16 +119,6 @@ class VisitaCreate(BaseModel):
         if len(v2) < 1:
             raise ValueError("La descripción debe tener al menos 1 caracter")
         return v2
-
-    @field_validator("nombre_escolta")
-    @classmethod
-    def escolta_required_if_flag(cls, v: Optional[str], info):
-        requiere = info.data.get("requiere_escolta", False)
-        if requiere:
-            if not v or not v.strip():
-                raise ValueError("Debe indicar el nombre de la escolta")
-            return v.strip()
-        return v.strip() if isinstance(v, str) and v.strip() else None
 
     @field_validator("fecha_programada")
     @classmethod
@@ -167,8 +153,6 @@ class VisitaUpdate(BaseModel):
     duracion_estimada: Optional[int] = Field(None, ge=15, le=480)
     autorizado_por: Optional[str] = Field(None, max_length=200)
     motivo_autorizacion: Optional[str] = None
-    requiere_escolta: Optional[bool] = None
-    nombre_escolta: Optional[str] = Field(None, max_length=200)
     equipos_ingresados: Optional[str] = None
     equipos_retirados: Optional[str] = None
     observaciones: Optional[str] = None
@@ -219,8 +203,6 @@ class VisitaResponse(BaseModel):
     duracion_estimada: Optional[int] = None
     autorizado_por: Optional[str] = None
     motivo_autorizacion: Optional[str] = None
-    requiere_escolta: bool
-    nombre_escolta: Optional[str] = None
     equipos_ingresados: Optional[str] = None
     equipos_retirados: Optional[str] = None
     observaciones: Optional[str] = None

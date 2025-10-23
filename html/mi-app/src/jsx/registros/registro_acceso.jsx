@@ -44,14 +44,11 @@ export default function RegistroAcceso() {
   const [areas, setAreas] = useState([]);
   const [areaSel, setAreaSel] = useState("");
 
-  // Formulario de visita (incluye escolta)
+  // Formulario de visita
   const [formVisita, setFormVisita] = useState({
     descripcion_actividad: "",
     fecha_programada: "",
-    requiere_escolta: false,
-    nombre_escolta: "",
     autorizado_por: "",
-    motivo_autorizacion: "",
     equipos_ingresados: "",
     observaciones: "",
     id_estado: "1",
@@ -273,11 +270,6 @@ export default function RegistroAcceso() {
     if (!validarFechaFuturaLocal(formVisita.fecha_programada)) {
       return alert("Seleccione una fecha/hora futura (>= 2 min desde ahora)");
     }
-  
-    if (formVisita.requiere_escolta) {
-      if (!formVisita.nombre_escolta?.trim()) return alert("Indique el nombre de la escolta");
-      if (!formVisita.descripcion_actividad?.trim()) return alert("Describa la actividad a retirar");
-    }
 
     setPosting(true);
   try {
@@ -297,10 +289,7 @@ export default function RegistroAcceso() {
       area_id: areaSel ? Number(areaSel) : null, // NUEVO: incluir area_id
       descripcion_actividad: formVisita.descripcion_actividad.trim(),
       fecha_programada: fechaISO,
-      requiere_escolta: !!formVisita.requiere_escolta,
-      nombre_escolta: formVisita.requiere_escolta ? formVisita.nombre_escolta.trim() : null,
       autorizado_por: formVisita.autorizado_por?.trim() || null,
-      motivo_autorizacion: formVisita.motivo_autorizacion?.trim() || null,
       equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
       observaciones: formVisita.observaciones?.trim() || null,
       estado_id: Number(formVisita.id_estado ?? 1),
@@ -503,46 +492,13 @@ export default function RegistroAcceso() {
                   value={formVisita.descripcion_actividad}
                   onChange={onChangeVisita}
                 />
-                <div className="ra-field">
-                  <label className="ra-label">Requiere escolta</label>
-                  <input
-                    type="checkbox"
-                    name="requiere_escolta"
-                    checked={!!formVisita.requiere_escolta}
-                    onChange={onChangeVisita}
-                    style={{ width: 22, height: 22, marginTop: 8 }}
-                  />
-                </div>
               </div>
-
-              {formVisita.requiere_escolta && (
-                <div className="ra-row">
-                  <FieldEditable
-                    label="Nombre de la escolta"
-                    name="nombre_escolta"
-                    value={formVisita.nombre_escolta}
-                    onChange={onChangeVisita}
-                  />
-                  <FieldEditable
-                    label="Actividad a retirar"
-                    name="descripcion_actividad"
-                    value={formVisita.descripcion_actividad}
-                    onChange={onChangeVisita}
-                  />
-                </div>
-              )}
 
               <div className="ra-row">
                 <FieldEditable
                   label="Autorizado por"
                   name="autorizado_por"
                   value={formVisita.autorizado_por}
-                  onChange={onChangeVisita}
-                />
-                <FieldEditable
-                  label="Motivo"
-                  name="motivo_autorizacion"
-                  value={formVisita.motivo_autorizacion}
                   onChange={onChangeVisita}
                 />
               </div>

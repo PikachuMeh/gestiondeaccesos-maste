@@ -137,8 +137,6 @@ class Visita(Base):
     duracion_estimada = Column(Integer, nullable=True)
     autorizado_por = Column(String(200), nullable=True)
     motivo_autorizacion = Column(Text, nullable=True)
-    requiere_escolta = Column(Boolean, default=False, nullable=False)
-    nombre_escolta = Column(String(200), nullable=True)
     equipos_ingresados = Column(Text, nullable=True)
     equipos_retirados = Column(Text, nullable=True)
     observaciones = Column(Text, nullable=True)

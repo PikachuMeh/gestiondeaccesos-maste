@@ -17,7 +17,7 @@ from app.schemas import (
     PersonaListResponse,
 )
 from sqlalchemy.exc import IntegrityError
-
+from sqlalchemy.sql import asc
 router = APIRouter(prefix="/personas", tags=["personas"])
 
 # Ruta donde se guardarán las fotos
@@ -182,17 +182,11 @@ async def list_personas(
 @router.get("/cedulas")
 async def listar_cedulas(
     db: Session = Depends(get_db),
-    limit: int = Query(5000, ge=1, le=50000)
+    limit: int = Query(5000, ge=1, le=5000000)
 ):
     rows = (
         db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido)
-          .order_by(
-              # Convertir a BIGINT quitando el prefijo "V-"
-              cast(
-                  func.replace(Persona.documento_identidad, 'V-', ''),
-                  Integer
-              ).asc()
-          )
+          .order_by(Persona.documento_identidad).asc()
           .limit(limit)
           .all()
     )
