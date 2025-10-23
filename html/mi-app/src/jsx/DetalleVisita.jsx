@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../css/detalle_visita.css";
 
+
 const API_BASE = "http://localhost:8000/api/v1/visitas";
+
 
 export default function DetalleVisitaPage() {
   const { id } = useParams();
@@ -12,9 +14,11 @@ export default function DetalleVisitaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
+
 
     // Cargar la visita específica
     fetch(`${API_BASE}/${id}`, { signal: ctrl.signal })
@@ -43,15 +47,19 @@ export default function DetalleVisitaPage() {
       })
       .finally(() => setLoading(false));
 
+
     return () => ctrl.abort();
   }, [id]);
+
 
   if (loading) return <div className="dv-loading">Cargando...</div>;
   if (error) return <div className="dv-error">Error: {error}</div>;
   if (!visita) return <div className="dv-error">Visita no encontrada</div>;
 
+
   const persona = visita.persona || {};
   const cd = visita.centro_datos || {};
+
 
   return (
     <div className="dv-container">
@@ -65,6 +73,7 @@ export default function DetalleVisitaPage() {
           </button>
         </div>
 
+
         <div className="dv-content">
           <div className="dv-section">
             <div className="dv-field">
@@ -72,15 +81,18 @@ export default function DetalleVisitaPage() {
               <div className="dv-value">{persona.documento_identidad || "—"}</div>
             </div>
 
+
             <div className="dv-field">
               <label className="dv-label">Correo</label>
               <div className="dv-value">{persona.email || "—"}</div>
             </div>
 
+
             <div className="dv-field">
               <label className="dv-label">Unidad</label>
               <div className="dv-value">{persona.unidad || "—"}</div>
             </div>
+
 
             <div className="dv-field">
               <label className="dv-label">Centro de Datos</label>
@@ -88,15 +100,24 @@ export default function DetalleVisitaPage() {
             </div>
           </div>
 
+
           <div className="dv-photo">
-            <div className="dv-photo-placeholder">
-              <span className="dv-photo-icon">🖼️</span>
-            </div>
-            <div className="dv-photo-actions">
-              <button className="dv-icon-btn">✏️</button>
-            </div>
+            {console.log(visita)}
+            {persona.foto ? (
+              <img 
+                src={persona.foto} 
+                alt={`${persona.nombre} ${persona.apellido}`}
+                className="dv-photo-img"
+              />
+            ) : (
+              <div className="dv-photo-placeholder">
+                <span className="dv-photo-icon">🖼️</span>
+                <span className="dv-photo-text">Sin foto</span>
+              </div>
+            )}
           </div>
         </div>
+
 
         <div className="dv-table-section">
           <h2 className="dv-subtitle">Historial de Accesos ({historial.length} visitas)</h2>
@@ -107,6 +128,7 @@ export default function DetalleVisitaPage() {
                 <th>Hora</th>
                 <th>Lugar</th>
                 <th>Área</th>
+                <th>Actvidad</th>
                 <th>Descripción</th>
               </tr>
             </thead>
@@ -116,14 +138,16 @@ export default function DetalleVisitaPage() {
                   const centro = v.centro_datos || {};
                   const actividad = v.actividad || {};
                   const area = v.area || {};
-                  
+
                   return (
                     <tr key={v.id || idx}>
                       <td>{fmtFecha(v.fecha_programada)}</td>
                       <td>{fmtHora(v.fecha_programada)}</td>
                       <td>{centro.nombre || "—"}</td>
                       <td>{area.nombre || "—"}</td>
-                      <td>{actividad.nombre_actividad || v.descripcion_actividad || "—"}</td>
+                      <td>{actividad.nombre_actividad || v.descripcion_actividad ||"—"}</td>
+                      <td>{visita.descripcion_actividad || v.descripcion_actividad || "—"}</td>
+                      {console.log(actividad)}
                     </tr>
                   );
                 })
@@ -142,6 +166,7 @@ export default function DetalleVisitaPage() {
   );
 }
 
+
 function fmtFecha(s) {
   if (!s) return "—";
   const d = new Date(s);
@@ -151,6 +176,7 @@ function fmtFecha(s) {
   const day = String(d.getDate()).padStart(2, "0");
   return `${day}/${m}/${y}`;
 }
+
 
 function fmtHora(s) {
   if (!s) return "—";

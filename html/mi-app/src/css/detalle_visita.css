@@ -164,4 +164,9 @@
       max-width: 280px;
     }
   }
+
+  img{
+    max-width: 200x;
+    max-height: 400px;
+  }
   

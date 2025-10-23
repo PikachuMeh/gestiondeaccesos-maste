@@ -9,7 +9,7 @@ from app.services.visita_service import VisitaService
 from app.services.persona_service import PersonaService
 from app.database import get_db
 from app.models import Visita, EstadoVisita, TipoActividad, Persona, CentroDatos, Area
-
+from sqlalchemy.sql import func
 from app.schemas import (
     VisitaCreate,
     VisitaUpdate,
@@ -229,7 +229,7 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
         centro_datos_id=payload.centro_datos_id,
         estado_id=estado_id_in,
         tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
-        area_id=getattr(payload, "area_id", None),  # ← Agregar esta línea
+        area_id=getattr(payload, "area_id", None),
     )
 
     try:
@@ -244,6 +244,12 @@ async def create_visita(payload: VisitaCreate, db: Session = Depends(get_db)):
 
         visita = Visita(**data)
         db.add(visita)
+        
+        # ← ACTUALIZAR fecha_actualizacion DE LA PERSONA
+        persona = db.query(Persona).filter(Persona.id == payload.persona_id).first()
+        if persona:
+            persona.fecha_actualizacion = func.now()
+        
         db.commit()
         db.refresh(visita)
         return visita

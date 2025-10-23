@@ -10,6 +10,62 @@
   
   *{ box-sizing:border-box; }
   
+    /* Contenedor de acciones */
+  .pp-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Botones de acción */
+  .pp-action-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Botón Ver */
+  .pp-action-btn--view {
+    background-color: #3b82f6;
+    color: white;
+  }
+
+  .pp-action-btn--view:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  /* Botón Editar */
+  .pp-action-btn--edit {
+    background-color: #10b981;
+    color: white;
+  }
+
+  .pp-action-btn--edit:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+  }
+
+  .pp-action-btn:active {
+    transform: translateY(0);
+  }
+
+  /* Ajuste del ancho de la columna de acciones */
+  .pp-table th:last-child,
+  .pp-table td:last-child {
+    width: 180px;
+    text-align: center;
+  }
+
+
   .pp-screen{
     min-height:calc(100vh - 72px); /* dejando espacio por el navbar si es fijo */
     background:var(--pp-bg);

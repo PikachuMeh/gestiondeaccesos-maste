@@ -25,6 +25,7 @@ class PersonaBase(BaseModel):
     cargo: Optional[str] = None
     departamento: Optional[str] = None
     unidad: Optional[str] = None
+    foto: Optional[str] = None
 
 
 class CentroDatosBase(BaseModel):

@@ -33,9 +33,11 @@ class Persona(Base):
     direccion = Column(Text, nullable=False)
     observaciones = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    fecha_actualizacion = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())  # ← NUEVO
     foto = Column(String(250), nullable=False)
     departamento = Column(String(100), nullable=True)
     unidad = Column(String(100), nullable=True)
+
 
     # Relaciones
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")

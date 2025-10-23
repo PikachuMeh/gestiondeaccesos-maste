@@ -322,7 +322,7 @@ export default function RegistroAcceso() {
     }
     
     const created = await res.json();
-    navigate(`/visitas/${created.id}`);
+    navigate(`/accesos/${created.id}`);
   } catch (e) {
     console.error(e);
     alert(`Error al registrar visita: ${e.message}`);
