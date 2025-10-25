@@ -172,3 +172,4 @@ ssl/
 tmp/
 temp/
 *.tmp
+app/config.py
