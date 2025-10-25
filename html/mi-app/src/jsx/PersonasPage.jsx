@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../css/personas_panel.css";
+
 
 const API_BASE = "http://localhost:8000/api/v1/personas";
 const PAGE_SIZE = 10;
 
+
 // Normaliza cédula (elimina prefijos y separadores, deja solo dígitos)
 const normDoc = (s) => s.replace(/[^0-9]/g, "");
 
+
 export default function PersonasPage() {
+  const navigate = useNavigate();
   const didMount = useRef(false);
+
 
   // Datos y paginación
   const [rows, setRows] = useState([]);
@@ -16,13 +22,16 @@ export default function PersonasPage() {
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+
   // Búsquedas
   const [q, setQ] = useState("");          // nombre/unidad/correo (según tu backend)
   const [doc, setDoc] = useState("");      // cédula normalizada
 
+
   // Estado UI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
 
   // Debounce para doc y q
   const [debQ, setDebQ] = useState(q);
@@ -33,17 +42,21 @@ export default function PersonasPage() {
     return () => clearTimeout(id);
   }, [q]);
 
+
   useEffect(() => {
     const id = setTimeout(() => setDebDoc(doc), 300);
     return () => clearTimeout(id);
   }, [doc]);
 
+
   // Carga de datos cuando cambian page o los filtros con debounce
   useEffect(() => {
     if (!didMount.current) didMount.current = true;
 
+
     const ctrl = new AbortController();
     setLoading(true);
+
 
     const params = new URLSearchParams({
       page: String(page),
@@ -51,6 +64,7 @@ export default function PersonasPage() {
       ...(debQ.trim() ? { nombre: debQ.trim() } : {}),
       ...(debDoc.trim() ? { documento: debDoc.trim() } : {}),
     });
+
 
     fetch(`${API_BASE}?${params.toString()}`, { signal: ctrl.signal })
       .then((r) => {
@@ -69,12 +83,15 @@ export default function PersonasPage() {
       })
       .finally(() => setLoading(false));
 
+
     return () => ctrl.abort();
   }, [page, debQ, debDoc]);
+
 
   // Navegación
   const onPrev = () => setPage((p) => Math.max(1, p - 1));
   const onNext = () => setPage((p) => Math.min(pages, p + 1));
+
 
   // Handlers de búsqueda
   const onSearchName = (val) => {
@@ -87,10 +104,23 @@ export default function PersonasPage() {
     setPage(1);
   };
 
+
+  // Navegación a detalles
+  const onVerPersona = (id) => {
+    navigate(`/personas/${id}`);
+  };
+
+
+  const onEditarPersona = (id) => {
+    navigate(`/personas/${id}/editar`);
+  };
+
+
   return (
     <div className="pp-screen">
       <div className="pp-card">
         <h1 className="pp-title">Personas</h1>
+
 
         <div className="pp-toolbar">
           <div className="pp-search">
@@ -103,6 +133,7 @@ export default function PersonasPage() {
             />
           </div>
 
+
           <div className="pp-search">
             <span className="pp-search__icon" aria-hidden>🪪</span>
             <input
@@ -113,13 +144,16 @@ export default function PersonasPage() {
             />
           </div>
 
+
           <span className="pp-count">{total} resultados</span>
         </div>
+
 
         {loading && <div className="pp-state">Cargando…</div>}
         {error && !loading && (
           <div className="pp-state pp-state--error">Error: {error}</div>
         )}
+
 
         {!loading && !error && (
           <>
@@ -131,6 +165,7 @@ export default function PersonasPage() {
                     <th>Nombre y Apellido</th>
                     <th>Unidad</th>
                     <th>Empresa</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -142,18 +177,37 @@ export default function PersonasPage() {
                           : "—"}
                       </td>
                       <td>{p.nombre ?? "—"} {p.apellido}</td>
-                      <td>{p.departamento ?? "—"}</td>
+                      <td>{p.unidad ?? "—"}</td>
                       <td>{p.empresa ?? "—"}</td>
+                      <td>
+                        <div className="pp-actions">
+                          <button
+                            className="pp-action-btn pp-action-btn--view"
+                            onClick={() => onVerPersona(p.id)}
+                            title="Ver detalles"
+                          >
+                            👁️ Ver
+                          </button>
+                          <button
+                            className="pp-action-btn pp-action-btn--edit"
+                            onClick={() => onEditarPersona(p.id)}
+                            title="Editar persona"
+                          >
+                            ✏️ Editar
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="pp-empty">Sin resultados</td>
+                      <td colSpan={5} className="pp-empty">Sin resultados</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+
 
             <div className="pp-pagination">
               <button className="pp-btn" onClick={onPrev} disabled={page === 1}>

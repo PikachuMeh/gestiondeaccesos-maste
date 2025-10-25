@@ -14,9 +14,9 @@ export default function RegistroPersona() {
     cargo: "",
     direccion: "",
     observaciones: "",
-    foto: "", // solo para referencia
     unidad: "",
   });
+  const [fotoArchivo, setFotoArchivo] = useState(null);  // Guardar archivo real
   const [preview, setPreview] = useState(null);
   const [errors, setErrors] = useState({});
   const [showModal, setShowModal] = useState(false);
@@ -25,9 +25,13 @@ export default function RegistroPersona() {
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Guardar el archivo para enviarlo
+    setFotoArchivo(file);
+    
+    // Crear preview
     const url = URL.createObjectURL(file);
     setPreview(url);
-    setForm((f) => ({ ...f, foto: url })); // Guarda la URL, no el archivo
   };
 
   const onCedula = (e) => {
@@ -67,47 +71,57 @@ export default function RegistroPersona() {
       cargo: "",
       direccion: "",
       observaciones: "",
-      foto: "",
       unidad: "",
     });
+    setFotoArchivo(null);
     setPreview(null);
   };
 
   const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
+  e.preventDefault();
+  if (!validate()) return;
 
-    const payload = {
-      nombre: form.nombre.trim(),
-      apellido: form.apellido.trim(),
-      documento_identidad: form.cedula ? `V-${form.cedula}` : "",
-      email: form.email.trim(),
-      empresa: form.empresa.trim(),
-      cargo: form.cargo.trim(),
-      direccion: form.direccion.trim(),
-      observaciones: form.observaciones.trim(),
-      foto: preview || "", // Usa la URL de preview como string
-    };
+  const formData = new FormData();
+  formData.append("nombre", form.nombre.trim());
+  formData.append("apellido", form.apellido.trim());
+  formData.append("documento_identidad", form.cedula);
+  formData.append("email", form.email.trim());
+  formData.append("empresa", form.empresa.trim());
+  formData.append("cargo", form.cargo.trim() || "");
+  formData.append("direccion", form.direccion.trim());
+  formData.append("observaciones", form.observaciones.trim() || "");
+  formData.append("unidad", form.unidad.trim() || "");
+  
+  if (fotoArchivo) {
+    formData.append("foto", fotoArchivo);
+  }
 
-    try {
-      const res = await fetch("http://localhost:8000/api/v1/personas/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+  try {
+    const res = await fetch("http://localhost:8000/api/v1/personas/", {
+      method: "POST",
+      body: formData
+    });
 
-      if (res.ok) {
-        setModalMsg("Persona registrada correctamente.");
+    if (res.ok) {
+      setModalMsg("Persona registrada correctamente.");
+      setShowModal(true);
+    } else {
+      const data = await res.json();
+      
+      // Manejar error de cédula duplicada
+      if (res.status === 409) {
+        setModalMsg(data.detail || "Cédula o correo ya registrado");
       } else {
-        const data = await res.json();
         setModalMsg("Error: " + (data.detail || "No se pudo registrar"));
       }
       setShowModal(true);
-    } catch (err) {
-      setModalMsg("Error de conexión: " + err.message);
-      setShowModal(true);
     }
-  };
+  } catch (err) {
+    setModalMsg("Error de conexión: " + err.message);
+    setShowModal(true);
+  }
+};
+
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -166,7 +180,6 @@ export default function RegistroPersona() {
         </div>
       </div>
 
-      {/* Modal dentro del return */}
       {showModal && (
         <div className="modal-backdrop">
           <div className="modal-content">

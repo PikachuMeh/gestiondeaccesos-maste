@@ -33,9 +33,11 @@ class Persona(Base):
     direccion = Column(Text, nullable=False)
     observaciones = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    fecha_actualizacion = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())  # ← NUEVO
     foto = Column(String(250), nullable=False)
     departamento = Column(String(100), nullable=True)
     unidad = Column(String(100), nullable=True)
+
 
     # Relaciones
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")
@@ -126,7 +128,6 @@ class Visita(Base):
     centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=False, index=True)
     estado_id = Column(Integer, ForeignKey(f"{SCHEMA}.estado_visita.id_estado"), nullable=False, index=True)
     tipo_actividad_id = Column(Integer, ForeignKey(f"{SCHEMA}.tipo_actividad.id_tipo_actividad"), nullable=False, index=True)
-    # Si una visita pertenece a un área específica, se agrega:
     area_id = Column(Integer, ForeignKey(f"{SCHEMA}.area.id"), nullable=True, index=True)
 
     descripcion_actividad = Column(Text, nullable=False)
@@ -136,15 +137,15 @@ class Visita(Base):
     duracion_estimada = Column(Integer, nullable=True)
     autorizado_por = Column(String(200), nullable=True)
     motivo_autorizacion = Column(Text, nullable=True)
-    requiere_escolta = Column(Boolean, default=False, nullable=False)
-    nombre_escolta = Column(String(200), nullable=True)
     equipos_ingresados = Column(Text, nullable=True)
     equipos_retirados = Column(Text, nullable=True)
     observaciones = Column(Text, nullable=True)
     notas_finales = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
-    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # ← FECHAS CORREGIDAS
+    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     estado = relationship("EstadoVisita", back_populates="visitas")
     actividad = relationship("TipoActividad", back_populates="visitas")

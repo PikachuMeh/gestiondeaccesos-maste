@@ -1,0 +1,3 @@
+INSERT INTO sistema_gestiones.centro_datos (nombre,codigo,direccion,ciudad,pais,telefono_contacto,email_contacto,descripcion,observaciones,activo,fecha_creacion) VALUES
+	 ('Chacao','0105','La sede del SENIAT en Chacao está en Av. Blandín, Centro Comercial Mata de Coco, Torre SENIAT, urbanización La Castellana, municipio Chacao, Caracas 1060','Caracas','Venezuela','04165185925','div.oper@seniat.gob.ve','','',true,'2025-10-16 09:32:06.308-04'),
+	 ('Plaza Venezuela','0215','Avenida Quito, Torre SENIAT Plaza Venezuela, Caracas','Caracas','Venezuela','04165185925','div.oper@seniat.gob.ve','','',true,'2025-10-16 09:33:03.007-04');
