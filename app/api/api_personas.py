@@ -240,19 +240,80 @@ async def get_persona(persona_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{persona_id}", response_model=PersonaResponse)
-async def update_persona(persona_id: int, payload: PersonaUpdate, db: Session = Depends(get_db)):
+async def update_persona(
+    persona_id: int,
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    documento_identidad: str = Form(...),
+    email: str = Form(...),
+    empresa: str = Form(...),
+    cargo: str = Form(None),
+    direccion: str = Form(...),
+    observaciones: str = Form(None),
+    unidad: str = Form(None),
+    foto: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Actualiza una persona existente. Permite cambiar la foto.
+    """
     persona = _get_persona_or_404(db, persona_id)
+    
     try:
-        data = payload.dict(exclude_unset=True)
-        for k, v in data.items():
-            setattr(persona, k, v)
+        # Validar si el email cambió y ya existe
+        if email != persona.email:
+            email_existente = db.query(Persona).filter(
+                Persona.email == email,
+                Persona.id != persona_id
+            ).first()
+            
+            if email_existente:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El correo {email} ya está registrado"
+                )
+        
+        # Actualizar campos
+        persona.nombre = nombre
+        persona.apellido = apellido
+        persona.email = email
+        persona.empresa = empresa
+        persona.cargo = cargo
+        persona.direccion = direccion
+        persona.observaciones = observaciones
+        persona.unidad = unidad
+        
+        # Manejar foto si se envió una nueva
+        if foto and foto.filename:
+            # Eliminar foto anterior si existe
+            if persona.foto:
+                foto_anterior = FOTO_DIR / os.path.basename(persona.foto)
+                if os.path.exists(foto_anterior):
+                    os.remove(foto_anterior)
+            
+            # Guardar nueva foto
+            doc_limpio = documento_identidad.replace(" ", "_")
+            file_extension = os.path.splitext(foto.filename)[1]
+            file_name = f"{doc_limpio}{file_extension}"
+            file_path = FOTO_DIR / file_name
+            
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(foto.file, buffer)
+            
+            persona.foto = f"/src/img/personas/{file_name}"
+        
         db.commit()
         db.refresh(persona)
         return persona
+        
+    except HTTPException:
+        raise
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error actualizando persona: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error actualizando persona: {exc}"
+        )
 
 
 @router.delete("/{persona_id}")

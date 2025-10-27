@@ -10,6 +10,8 @@ import CrearVisitante from "./jsx/registros/registro_funcionario.jsx";
 import DetalleVisitaPage from "./jsx/DetalleVisita.jsx";
 import DetallePersonaPage from "./jsx/DetallePersona.jsx";
 import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx"
+
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <Routes>
