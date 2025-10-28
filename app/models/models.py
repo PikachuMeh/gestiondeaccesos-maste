@@ -121,7 +121,7 @@ class Visita(Base):
     __tablename__ = "visitas"
     __table_args__ = {"schema": SCHEMA}
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True,autoincrement=True)
     codigo_visita = Column(String(20), unique=True, nullable=False, index=True)
 
     persona_id = Column(Integer, ForeignKey(f"{SCHEMA}.personas.id"), nullable=False, index=True)

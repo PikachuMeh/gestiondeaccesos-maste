@@ -48,10 +48,9 @@ async def create_persona(
 ):
     """
     Crea una nueva persona. Valida que la cédula no esté duplicada.
-    La foto se guarda en html/mi-app/src/img/personas/
     """
     
-    # VALIDACIÓN: Verificar si la cédula ya existe
+    # Validaciones de duplicado
     persona_existente = db.query(Persona).filter(
         Persona.documento_identidad == documento_identidad
     ).first()
@@ -62,7 +61,6 @@ async def create_persona(
             detail=f"La cédula {documento_identidad} ya está registrada"
         )
     
-    # VALIDACIÓN: Verificar si el email ya existe
     email_existente = db.query(Persona).filter(
         Persona.email == email
     ).first()
@@ -73,28 +71,20 @@ async def create_persona(
             detail=f"El correo {email} ya está registrado"
         )
     
+    foto_path = None
+    file_name = None
+    
     try:
-        foto_path = None
-        file_name = None
-        
-        # Si hay una foto, guardarla
+        # Guardar foto si existe
         if foto and foto.filename:
-            # Limpiar el documento para usarlo como nombre de archivo
             doc_limpio = documento_identidad.replace(" ", "_")
-            
             file_extension = os.path.splitext(foto.filename)[1]
-            
-            # Nombre del archivo: 12345678.jpg
             file_name = f"{doc_limpio}{file_extension}"
-            
-            # Ruta completa donde se guardará
             file_path = FOTO_DIR / file_name
             
-            # Guardar el archivo en el sistema
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(foto.file, buffer)
             
-            # Guardar solo la ruta relativa en la BD para que React pueda usarla
             foto_path = f"/src/img/personas/{file_name}"
         
         # Crear objeto Persona
@@ -104,47 +94,56 @@ async def create_persona(
             documento_identidad=documento_identidad,
             email=email,
             empresa=empresa,
-            cargo=cargo,
+            cargo=cargo or "",  # Si es None, usar string vacío
             direccion=direccion,
-            observaciones=observaciones,
-            unidad=unidad,
-            foto=foto_path or ""  # Si no hay foto, guardar string vacío
+            observaciones=observaciones or "",
+            unidad=unidad or "",
+            departamento=None,
+            foto=foto_path or ""  # String vacío si no hay foto
         )
         
         db.add(persona)
         db.commit()
-        db.refresh(persona)
+        db.refresh(persona)  # CRÍTICO: obtener id y fecha_creacion
+        
         return persona
-    
+        
     except IntegrityError as exc:
         db.rollback()
-        # Si es error de secuencia, intentar resetearla
-        if "duplicate key value violates unique constraint" in str(exc) and "_pkey" in str(exc):
-            # Resetear secuencia
-            db.execute("""
-                SELECT setval(
-                    pg_get_serial_sequence('sistema_gestiones.personas', 'id'),
-                    COALESCE((SELECT MAX(id) FROM sistema_gestiones.personas), 0) + 1,
-                    false
-                );
-            """)
-            db.commit()
+        # Limpiar foto si se guardó
+        if file_name:
+            foto_file = FOTO_DIR / file_name
+            if os.path.exists(foto_file):
+                os.remove(foto_file)
+        
+        error_str = str(exc)
+        if "duplicate key" in error_str and "documento_identidad" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La cédula ya está registrada"
+            )
+        elif "duplicate key" in error_str and "email" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El correo ya está registrado"
+            )
+        else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Secuencia desincronizada. Por favor intente nuevamente."
+                detail=f"Error de integridad en la base de datos: {error_str}"
             )
-        
-    except HTTPException:
-        # Si es una excepción HTTP (validación), re-lanzarla
-        raise
+    
     except Exception as exc:
         db.rollback()
-        # Si hubo error y se guardó el archivo, eliminarlo
-        if file_name and os.path.exists(FOTO_DIR / file_name):
-            os.remove(FOTO_DIR / file_name)
+        # Limpiar foto si se guardó
+        if file_name:
+            foto_file = FOTO_DIR / file_name
+            if os.path.exists(foto_file):
+                os.remove(foto_file)
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creando persona: {exc}"
+            detail=f"Error creando persona: {str(exc)}"
         )
 
 

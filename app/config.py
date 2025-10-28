@@ -2,7 +2,6 @@
 Configuración del sistema de gestión de accesos.
 Maneja todas las variables de entorno y configuraciones del sistema.
 """
-
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
@@ -17,7 +16,8 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Configuración de la base de datos
-    database_url: str = "postgresql://admin01:123456@localhost/gestion_accesos"
+    
+    database_url: str = "postgresql+psycopg://postgres:juanes321@localhost:5432/sistema_gestiones"
     database_echo: bool = False
     
     # Configuración de autenticación JWT

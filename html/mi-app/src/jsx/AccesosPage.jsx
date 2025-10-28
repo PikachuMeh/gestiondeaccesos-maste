@@ -191,7 +191,7 @@ export default function VisitasPage() {
                       <tr key={v.id ?? i}>
                         <td>{fmtFecha(v.fecha_programada || v.fecha)}</td>
                         <td>{persona.nombre ?? "—"}</td>
-                        <td>{persona.documento_identidad ?? "—"}</td>
+                        <td>{"V-"+persona.documento_identidad ?? "—"}</td>
                         <td>{persona.empresa ?? "—"}</td>
                         <td>{actividad.nombre_actividad ?? actividad.id_tipo_actividad ?? "—"}</td>
                         <td>{estado.nombre_estado ?? estado.id_estado ?? "—"}</td>

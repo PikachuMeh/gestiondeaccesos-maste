@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 
 SCHEMA = "sistema_gestiones"
-DATABASE_URL = "postgresql://admin01:123456@localhost/gestion_accesos"
+DATABASE_URL = "postgresql://postgres:123456@localhost/sistema_gestiones"
 
 # Crear engine sin pool
 engine = create_engine(
@@ -33,7 +33,7 @@ try:
         
         # Verificar permisos en el schema
         result = conn.execute(text("""
-            SELECT has_schema_privilege('admin01', 'sistema_gestiones', 'CREATE');
+            SELECT has_schema_privilege('postgres', 'sistema_gestiones', 'CREATE');
         """))
         has_perm = result.fetchone()
         print(f"✓ Tiene permiso CREATE: {has_perm[0]}")

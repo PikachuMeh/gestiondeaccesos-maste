@@ -6,10 +6,10 @@ class PersonaBase(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=100)
     apellido: str = Field(..., min_length=2, max_length=100)
     documento_identidad: str = Field(..., min_length=3, max_length=20)
-    email: Optional[EmailStr] = None
-    empresa: Optional[str] = None
+    email: EmailStr  # Requerido, no Optional
+    empresa: str = Field(...)  # Requerido
+    direccion: str = Field(...)  # Requerido
     cargo: Optional[str] = None
-    direccion: Optional[str] = None
     observaciones: Optional[str] = None
     foto: Optional[str] = None
     unidad: Optional[str] = None
@@ -31,8 +31,9 @@ class PersonaUpdate(BaseModel):
 
 class PersonaResponse(PersonaBase):
     id: int
-    fecha_creacion: Optional[datetime] = None
+    fecha_creacion: datetime  # No opcional, siempre se genera en BD
     fecha_actualizacion: Optional[datetime] = None
+    
     class Config:
         from_attributes = True
 
