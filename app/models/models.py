@@ -74,12 +74,12 @@ class RolUsuario(Base):
 
     usuarios = relationship("Usuario", back_populates="rol")
 
-# Usuario
 class Usuario(Base):
     __tablename__ = "usuario"
     __table_args__ = {"schema": SCHEMA}
 
-    cedula = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    cedula = Column(Integer, unique=True, nullable=False, index=True)  # ← Cedula como campo único
     username = Column(String(255), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     nombre = Column(String(200), nullable=False)
@@ -89,12 +89,13 @@ class Usuario(Base):
     telefono = Column(String(20), nullable=True)
     departamento = Column(String(100), nullable=True)
     observaciones = Column(Text, nullable=True)
-    activo = Column(Boolean, default=True, nullable=False)
+    activo = Column(Boolean, default=True, nullable=False)  # ← AGREGAR este campo
     ultimo_acceso = Column(DateTime(timezone=True), nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
+    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     rol = relationship("RolUsuario", back_populates="usuarios")
+
 
 # Estado de visita
 class EstadoVisita(Base):

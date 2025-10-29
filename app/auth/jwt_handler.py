@@ -81,25 +81,15 @@ class JWTHandler:
             return None
     
     def create_token_for_user(self, user_id: int, username: str, rol: RolUsuario) -> str:
-        """
-        Crea un token de acceso para un usuario específico.
-        
-        Args:
-            user_id: ID del usuario
-            username: Nombre de usuario
-            rol: Rol del usuario
-            
-        Returns:
-            Token JWT codificado
-        """
+        """Crea un token de acceso para un usuario específico."""
         data = {
             "sub": username,
             "user_id": user_id,
-            "rol": rol.value
+            "rol_id": rol.id_rol if hasattr(rol, 'id_rol') else rol  # ← Manejar ambos casos
         }
         
         return self.create_access_token(data)
-    
+
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """
         Verifica una contraseña contra su hash.

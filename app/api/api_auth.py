@@ -7,7 +7,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-
+from datetime import datetime
 from app.database import get_db
 from app.auth import jwt_handler, get_current_active_user
 from app.services.usuario_service import UsuarioService
@@ -49,20 +49,25 @@ async def login(
 
     # Buscar usuario por username
     user = usuario_service.get_by_username(form_data.username)
+    # ← ELIMINAR: return user
     if not user:
         _raise_404_user_not_found()
 
     # Validar credenciales y estado
-    if not usuario_service.verify_password(form_data.password, user.password_hash):
+    if not usuario_service.verify_password(form_data.password, user.hashed_password):
         _raise_401_bad_credentials()
     if hasattr(user, "activo") and user.activo is False:
         _raise_401_bad_credentials()
+
+    # Actualizar último acceso
+    user.ultimo_acceso = datetime.now()
+    db.commit()
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = jwt_handler.create_token_for_user(
         user_id=user.id,
         username=user.username,
-        rol=getattr(user, "rol", None)
+        rol=user.rol if hasattr(user, "rol") else None
     )
 
     return {
@@ -77,30 +82,36 @@ async def login_json(
     login_data: UsuarioLogin,
     db: Session = Depends(get_db)
 ):
-    """
-    Inicia sesión con JSON.
-    - 404 si el usuario no existe.
-    - 401 si la contraseña es incorrecta o el usuario está inactivo.
-    """
+    """Inicia sesión con JSON."""
     if not login_data.username or not login_data.password:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario y contraseña son requeridos")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Usuario y contraseña son requeridos"
+        )
 
     usuario_service = UsuarioService(db)
 
     user = usuario_service.get_by_username(login_data.username)
+    # ← ELIMINAR: return {"coso" : user}
     if not user:
         _raise_404_user_not_found()
 
-    if not usuario_service.verify_password(login_data.password, user.password_hash):
+    # Verificar contraseña y estado
+    if not usuario_service.verify_password(login_data.password, user.hashed_password):
         _raise_401_bad_credentials()
-    if hasattr(user, "activo") and user.activo is False:
+    
+    if not user.activo:
         _raise_401_bad_credentials()
+
+    # Actualizar último acceso
+    user.ultimo_acceso = datetime.now()
+    db.commit()
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = jwt_handler.create_token_for_user(
         user_id=user.id,
         username=user.username,
-        rol=getattr(user, "rol", None)
+        rol=user.rol
     )
 
     return {

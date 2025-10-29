@@ -214,7 +214,7 @@ def get_optional_current_user(
         token_data = jwt_handler.verify_token(credentials.credentials)
         if token_data is None:
             return None
-        
+            
         usuario_service = UsuarioService(db)
         user = usuario_service.get(token_data.user_id)
         
@@ -225,9 +225,8 @@ def get_optional_current_user(
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "nombre_completo": user.nombre_completo,
+            "nombre_completo": user.nombre +" "+ user.apellidos,
             "rol": user.rol,
-            "activo": user.activo
         }
         
     except Exception:

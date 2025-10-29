@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import BaseModel, EmailStr, validator, Field, computed_field
 from typing import Optional
 from datetime import datetime
+
 
 # Esquema Pydantic para RolUsuario
 class RolUsuarioSchema(BaseModel):
@@ -11,13 +12,13 @@ class RolUsuarioSchema(BaseModel):
 
 
 class UsuarioBase(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Nombre de usuario único")
-    email: EmailStr = Field(..., description="Correo electrónico del usuario")
-    nombre_completo: str = Field(..., min_length=5, max_length=200, description="Nombre completo del usuario")
-    rol: RolUsuarioSchema = Field(..., description="Rol del usuario en el sistema")
-    telefono: Optional[str] = Field(None, max_length=20, description="Número de teléfono")
-    departamento: Optional[str] = Field(None, max_length=100, description="Departamento donde trabaja")
-    observaciones: Optional[str] = Field(None, description="Observaciones adicionales")
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+    nombre: str = Field(..., min_length=1, max_length=200)  # ← Separado
+    apellidos: str = Field(..., min_length=1, max_length=200)  # ← Separado
+    telefono: Optional[str] = Field(None, max_length=20)
+    departamento: Optional[str] = Field(None, max_length=100)
+    observaciones: Optional[str] = None
 
     @validator('username')
     def validate_username(cls, v):
@@ -37,7 +38,9 @@ class UsuarioBase(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    password: str = Field(..., min_length=8, description="Contraseña del usuario")
+    cedula: int = Field(..., description="Cédula de identidad")
+    password: str = Field(..., min_length=8)
+    rol_id: int = Field(default=1, description="ID del rol")  # ← Solo el ID
 
     @validator('password')
     def validate_password(cls, v):
@@ -55,8 +58,9 @@ class UsuarioCreate(UsuarioBase):
 class UsuarioUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
-    nombre_completo: Optional[str] = Field(None, min_length=5, max_length=200)
-    rol: Optional[RolUsuarioSchema] = None
+    nombre: Optional[str] = Field(None, min_length=1, max_length=200)
+    apellidos: Optional[str] = Field(None, min_length=1, max_length=200)
+    rol_id: Optional[int] = None  # ← Solo el ID
     telefono: Optional[str] = Field(None, max_length=20)
     departamento: Optional[str] = Field(None, max_length=100)
     observaciones: Optional[str] = None
@@ -73,38 +77,39 @@ class UsuarioUpdate(BaseModel):
         return v
 
 
-class UsuarioChangePassword(BaseModel):
-    current_password: str = Field(..., description="Contraseña actual")
-    new_password: str = Field(..., min_length=8, description="Nueva contraseña")
-    confirm_password: str = Field(..., description="Confirmación de nueva contraseña")
-
-    @validator('new_password')
-    def validate_new_password(cls, v):
-        if len(v) < 8:
-            raise ValueError('La contraseña debe tener al menos 8 caracteres')
-        if not any(c.isupper() for c in v):
-            raise ValueError('La contraseña debe contener al menos una letra mayúscula')
-        if not any(c.islower() for c in v):
-            raise ValueError('La contraseña debe contener al menos una letra minúscula')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('La contraseña debe contener al menos un número')
-        return v
-
-    @validator('confirm_password')
-    def validate_confirm_password(cls, v, values):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('La confirmación de contraseña no coincide')
-        return v
-
-
-class UsuarioResponse(UsuarioBase):
+class UsuarioResponse(BaseModel):
     id: int
+    cedula: int  # ← AGREGAR cedula
+    username: str
+    email: EmailStr
+    nombre: str  # ← Separado
+    apellidos: str  # ← Separado
+    rol: RolUsuarioSchema  # ← Relación completa para respuesta
+    telefono: Optional[str] = None
+    departamento: Optional[str] = None
+    observaciones: Optional[str] = None
     activo: bool
     ultimo_acceso: Optional[datetime] = None
     fecha_creacion: datetime
     fecha_actualizacion: Optional[datetime] = None
 
+    @computed_field  # ← Campo computado para compatibilidad
+    @property
+    def nombre_completo(self) -> str:
+        return f"{self.nombre} {self.apellidos}"
+
     model_config = {"from_attributes": True}
+
+
+class UsuarioLogin(BaseModel):
+    username: str
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
 
 
 class UsuarioListResponse(BaseModel):
@@ -115,18 +120,8 @@ class UsuarioListResponse(BaseModel):
     pages: int
 
 
-class UsuarioLogin(BaseModel):
-    username: str = Field(..., description="Nombre de usuario")
-    password: str = Field(..., description="Contraseña")
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
 
 class TokenData(BaseModel):
     username: Optional[str] = None
     user_id: Optional[int] = None
-    rol: Optional[RolUsuarioSchema] = None
+    rol_id: Optional[int] = None  # ← Cambiar de rol a rol_id

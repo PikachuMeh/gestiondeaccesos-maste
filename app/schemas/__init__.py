@@ -8,7 +8,7 @@ from .esquema_visita import (
 )
 from .esquema_usuario import (
     UsuarioBase, UsuarioCreate, UsuarioUpdate, UsuarioResponse, UsuarioListResponse,
-    UsuarioChangePassword, UsuarioLogin, Token, TokenData
+    UsuarioLogin, Token, TokenData
 )
 
 __all__ = [
@@ -22,5 +22,5 @@ __all__ = [
     "VisitaWithDetails", "VisitaIngreso", "VisitaSalida", "VisitaEstadisticas","VisitaTipoActividad"
     # Usuario
     "UsuarioBase", "UsuarioCreate", "UsuarioUpdate", "UsuarioResponse", "UsuarioListResponse",
-    "UsuarioChangePassword", "UsuarioLogin", "Token", "TokenData"
+    "UsuarioLogin", "Token", "TokenData"
 ]

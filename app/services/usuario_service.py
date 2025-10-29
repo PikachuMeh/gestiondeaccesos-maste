@@ -9,7 +9,7 @@ from sqlalchemy import and_, or_
 from passlib.context import CryptContext
 from datetime import datetime
 from app.models.models import Usuario, RolUsuario
-from app.schemas.esquema_usuario import UsuarioCreate, UsuarioUpdate, UsuarioChangePassword
+from app.schemas.esquema_usuario import UsuarioCreate, UsuarioUpdate
 from app.services.base import BaseService
 
 # Contexto para hashing de contraseñas
@@ -41,7 +41,8 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
                 Usuario.username == username.lower(),
                 Usuario.activo == True
             )
-        ).first()
+        ).first()  # ← Usar .first() en lugar de .all()
+
     
     def get_by_email(self, email: str) -> Optional[Usuario]:
         """
@@ -75,7 +76,7 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
                 Usuario.rol == rol,
                 Usuario.activo == True
             )
-        ).order_by(Usuario.nombre_completo).all()
+        ).order_by(Usuario.nombre).all()
     
     def get_usuarios_activos(self, skip: int = 0, limit: int = 100) -> List[Usuario]:
         """
@@ -146,15 +147,7 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         return user
     
     def create_user(self, user_data: UsuarioCreate) -> Usuario:
-        """
-        Crea un nuevo usuario.
-        
-        Args:
-            user_data: Datos del usuario
-            
-        Returns:
-            Usuario creado
-        """
+        """Crea un nuevo usuario."""
         # Verificar que el username no exista
         if self.get_by_username(user_data.username):
             raise ValueError("El nombre de usuario ya existe")
@@ -163,10 +156,14 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         if self.get_by_email(user_data.email):
             raise ValueError("El email ya está registrado")
         
+        # Verificar que la cédula no exista
+        existing_user = self.db.query(Usuario).filter(Usuario.cedula == user_data.cedula).first()
+        if existing_user:
+            raise ValueError("La cédula ya está registrada")
+        
         # Crear el usuario
-        user_dict = user_data.dict()
+        user_dict = user_data.model_dump(exclude={'password'})
         user_dict['hashed_password'] = self.get_password_hash(user_data.password)
-        del user_dict['password']  # Remover la contraseña en texto plano
         user_dict['username'] = user_data.username.lower()
         user_dict['email'] = user_data.email.lower()
         
@@ -176,7 +173,7 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         self.db.refresh(db_user)
         
         return db_user
-    
+
     def update_user(self, user_id: int, user_data: UsuarioUpdate) -> Optional[Usuario]:
         """
         Actualiza un usuario existente.
@@ -206,8 +203,8 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         
         return self.update(user, user_data)
     
-    def change_password(self, user_id: int, password_data: UsuarioChangePassword) -> Optional[Usuario]:
-        """
+    """def change_password(self, user_id: int, password_data: UsuarioChangePassword) -> Optional[Usuario]:
+
         Cambia la contraseña de un usuario.
         
         Args:
@@ -216,7 +213,7 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
             
         Returns:
             Usuario actualizado o None si no existe
-        """
+
         user = self.get(user_id)
         if not user:
             return None
@@ -230,7 +227,7 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         self.db.commit()
         self.db.refresh(user)
         
-        return user
+        return user"""
     
     def reset_password(self, user_id: int, new_password: str) -> Optional[Usuario]:
         """
