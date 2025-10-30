@@ -8,7 +8,7 @@ from typing import Optional
 import shutil
 import os
 from pathlib import Path
-from sqlalchemy import func, cast, Integer
+from sqlalchemy import func, cast, Integer,asc
 from app.database import get_db
 from app.models import Persona
 from app.schemas import (
@@ -184,12 +184,12 @@ async def listar_cedulas(
     db: Session = Depends(get_db),
     limit: int = Query(5000, ge=1, le=5000000)
 ):
+    rows = []
     rows = (
         db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido)
-          .order_by(Persona.documento_identidad).asc()
-          .limit(limit)
-          .all()
+          .order_by(Persona.documento_identidad).all()
     )
+
     return [
         {
             "id": r.id,

@@ -11,7 +11,7 @@ import LoginPage from "./jsx/LoginPage.jsx";
 import CrearVisitante from "./jsx/registros/registro_funcionario.jsx";
 import DetalleVisitaPage from "./jsx/DetalleVisita.jsx";
 import DetallePersonaPage from "./jsx/DetallePersona.jsx";
-import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx"
+import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -21,11 +21,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/login" element={<LoginPage />} />
 
         {/* Rutas protegidas */}
-        <Route path="/" element={
-          <ProtectedRoute>
-            <App />
-          </ProtectedRoute>
-        }>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <App />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="/accesos" replace />} />
           <Route path="accesos" element={<AccesosPage />} />
           <Route path="accesos/:id" element={<DetalleVisitaPage />} />
@@ -35,6 +38,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="personas/:id/editar" element={<EditarPersonaPage />} />
           <Route path="registro/visitante" element={<CrearVisitante />} />
         </Route>
+
+        {/* Ruta catch-all: cualquier ruta no definida */}
+        <Route
+          path="*"
+          element={
+            <ProtectedRoute>
+              <Navigate to="/accesos" replace />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </AuthProvider>
   </BrowserRouter>
