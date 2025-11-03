@@ -4,16 +4,11 @@ Proporciona funciones para crear, verificar y decodificar tokens JWT.
 """
 
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from app.config import settings
 from app.schemas.esquema_usuario import TokenData
-from app.models.models import RolUsuario
-
-# Contexto para hashing de contraseñas
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+from app.models.models import RolUsuario  # Import para tipo chequeo
 
 class JWTHandler:
     """
@@ -62,17 +57,18 @@ class JWTHandler:
         """
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            
             username: str = payload.get("sub")
             user_id: int = payload.get("user_id")
-            rol: str = payload.get("rol")
-            
+            rol_id: Optional[int] = payload.get("rol_id")
+
             if username is None or user_id is None:
                 return None
             
             token_data = TokenData(
                 username=username,
                 user_id=user_id,
-                rol=RolUsuario(rol) if rol else None
+                rol_id=rol_id
             )
             
             return token_data
@@ -80,41 +76,27 @@ class JWTHandler:
         except JWTError:
             return None
     
-    def create_token_for_user(self, user_id: int, username: str, rol: RolUsuario) -> str:
-        """Crea un token de acceso para un usuario específico."""
+    def create_token_for_user(self, user_id: int, username: str, rol: Union[RolUsuario, int]) -> str:
+        """
+        Crea un token de acceso para un usuario específico.
+        Compatible con login original: rol puede ser objeto RolUsuario o int (id_rol).
+        """
+        # Extrae id_rol flexiblemente (para no romper login existente)
+        if isinstance(rol, RolUsuario):
+            rol_id = rol.id_rol
+        elif isinstance(rol, int):
+            rol_id = rol
+        else:
+            raise ValueError("rol debe ser objeto RolUsuario o int (id_rol)")
+        
         data = {
             "sub": username,
             "user_id": user_id,
-            "rol_id": rol.id_rol if hasattr(rol, 'id_rol') else rol  # ← Manejar ambos casos
+            "rol_id": rol_id  # Siempre int del modelo
         }
         
         return self.create_access_token(data)
 
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """
-        Verifica una contraseña contra su hash.
-        
-        Args:
-            plain_password: Contraseña en texto plano
-            hashed_password: Hash de la contraseña
-            
-        Returns:
-            True si la contraseña es correcta, False en caso contrario
-        """
-        return pwd_context.verify(plain_password, hashed_password)
-    
-    def get_password_hash(self, password: str) -> str:
-        """
-        Genera el hash de una contraseña.
-        
-        Args:
-            password: Contraseña en texto plano
-            
-        Returns:
-            Hash de la contraseña
-        """
-        return pwd_context.hash(password)
-    
     def get_token_expiration_time(self) -> datetime:
         """
         Obtiene el tiempo de expiración por defecto para los tokens.
@@ -123,7 +105,6 @@ class JWTHandler:
             Fecha y hora de expiración
         """
         return datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
-
 
 # Instancia global del manejador JWT
 jwt_handler = JWTHandler()

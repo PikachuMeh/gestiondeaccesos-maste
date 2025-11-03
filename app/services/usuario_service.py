@@ -4,7 +4,7 @@ Proporciona operaciones CRUD y lógica de negocio para usuarios.
 """
 
 from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
 from passlib.context import CryptContext
 from datetime import datetime
@@ -15,17 +15,48 @@ from app.services.base import BaseService
 # Contexto para hashing de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
 class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
-    """
-    Servicio para gestión de usuarios del sistema.
-    
-    Extiende BaseService con funcionalidad específica para usuarios.
-    """
     
     def __init__(self, db: Session):
         super().__init__(Usuario, db)
     
+    def get(self, id: Any) -> Optional[Usuario]:
+        """
+        Obtiene un usuario por su ID, cargando eagermente el rol.
+        """
+        return self.db.query(self.model) \
+            .options(joinedload(self.model.rol)) \
+            .filter(self.model.id == id) \
+            .first()
+
+    def to_dict(self, user: Usuario) -> Dict[str, Any]:
+        """
+        Convierte un usuario a diccionario serializable, compatible con Pydantic.
+        """
+        rol_dict = {
+            "id_rol": user.rol.id_rol,
+            "nombre_rol": user.rol.nombre_rol
+        } if user.rol else None
+        
+        return {
+            "id": user.id,
+            "cedula": user.cedula,
+            "username": user.username,
+            "email": user.email,
+            "nombre": user.nombre,
+            "apellidos": user.apellidos,
+            "nombre_completo": f"{user.nombre} {user.apellidos}",
+            "rol": rol_dict,
+            "rol_id": user.rol.id_rol if user.rol else None,
+            "telefono": user.telefono,
+            "departamento": user.departamento,
+            "observaciones": user.observaciones,
+            "activo": user.activo,
+            "ultimo_acceso": user.ultimo_acceso,
+            "fecha_creacion": user.fecha_creacion,
+            "fecha_actualizacion": user.fecha_actualizacion,
+        }
+
     def get_by_username(self, username: str) -> Optional[Usuario]:
         """
         Obtiene un usuario por su nombre de usuario.
@@ -41,8 +72,13 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
                 Usuario.username == username.lower(),
                 Usuario.activo == True
             )
-        ).first()  # ← Usar .first() en lugar de .all()
+        ).first()
 
+    def get_by_id(self, id: str) -> Optional[Usuario]:
+        "Obtiene el usuario por su id"
+        return self.db.query(Usuario).filter(and_(
+            Usuario.id == id
+        )).first()
     
     def get_by_email(self, email: str) -> Optional[Usuario]:
         """
@@ -61,19 +97,19 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
             )
         ).first()
     
-    def get_usuarios_by_rol(self, rol: RolUsuario) -> List[Usuario]:
+    def get_usuarios_by_rol(self, rol: str) -> List[Usuario]:  # str para nombre_rol
         """
-        Obtiene usuarios por rol.
+        Obtiene usuarios por rol (nombre del modelo RolUsuario).
         
         Args:
-            rol: Rol de usuario
+            rol: Nombre del rol como string (ej. "Administrador")
             
         Returns:
             Lista de usuarios con el rol especificado
         """
-        return self.db.query(Usuario).filter(
+        return self.db.query(Usuario).join(Usuario.rol).filter(
             and_(
-                Usuario.rol == rol,
+                RolUsuario.nombre_rol == rol,
                 Usuario.activo == True
             )
         ).order_by(Usuario.nombre).all()
@@ -172,6 +208,10 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         self.db.commit()
         self.db.refresh(db_user)
         
+        # Opcional: Crear o linkear Persona aquí si coincide cédula
+        # persona_service = PersonaService(self.db)
+        # persona_service.create_or_update_by_cedula(db_user.cedula, {...})
+        
         return db_user
 
     def update_user(self, user_id: int, user_data: UsuarioUpdate) -> Optional[Usuario]:
@@ -202,32 +242,6 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
             user_data.email = user_data.email.lower()
         
         return self.update(user, user_data)
-    
-    """def change_password(self, user_id: int, password_data: UsuarioChangePassword) -> Optional[Usuario]:
-
-        Cambia la contraseña de un usuario.
-        
-        Args:
-            user_id: ID del usuario
-            password_data: Datos del cambio de contraseña
-            
-        Returns:
-            Usuario actualizado o None si no existe
-
-        user = self.get(user_id)
-        if not user:
-            return None
-        
-        # Verificar contraseña actual
-        if not self.verify_password(password_data.current_password, user.hashed_password):
-            raise ValueError("La contraseña actual es incorrecta")
-        
-        # Actualizar contraseña
-        user.hashed_password = self.get_password_hash(password_data.new_password)
-        self.db.commit()
-        self.db.refresh(user)
-        
-        return user"""
     
     def reset_password(self, user_id: int, new_password: str) -> Optional[Usuario]:
         """
@@ -280,22 +294,20 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
         usuarios_activos = self.count({'activo': True})
         usuarios_inactivos = total_usuarios - usuarios_activos
         
-        # Contar por rol
-        roles = self.db.query(Usuario.rol).filter(
-            Usuario.activo == True
-        ).distinct().all()
-        
-        usuarios_por_rol = {}
-        for rol in roles:
-            rol_value = rol[0]
-            count = self.count({'rol': rol_value, 'activo': True})
-            usuarios_por_rol[rol_value.value] = count
+        # Contar por rol usando nombre_rol (strings)
+        roles_stats = {}
+        for rol_obj in self.db.query(RolUsuario).all():
+            rol_name = rol_obj.nombre_rol
+            count = self.db.query(Usuario).join(Usuario.rol).filter(
+                and_(RolUsuario.nombre_rol == rol_name, Usuario.activo == True)
+            ).count()
+            roles_stats[rol_name] = count
         
         return {
             'total_usuarios': total_usuarios,
             'usuarios_activos': usuarios_activos,
             'usuarios_inactivos': usuarios_inactivos,
-            'usuarios_por_rol': usuarios_por_rol
+            'usuarios_por_rol': roles_stats
         }
     
     def search_usuarios(self, search_term: str) -> List[Usuario]:
@@ -325,4 +337,4 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
                 Usuario.departamento.ilike(f"%{departamento}%"),
                 Usuario.activo == True
             )
-        ).order_by(Usuario.nombre_completo).all()
+        ).all()

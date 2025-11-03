@@ -33,8 +33,7 @@ class PersonaService(BaseService[Persona, PersonaCreate, PersonaUpdate]):
         """
         return self.db.query(Persona).filter(
             and_(
-                Persona.documento_identidad == documento,
-                Persona.activo == True
+                Persona.documento_identidad == documento
             )
         ).first()
     

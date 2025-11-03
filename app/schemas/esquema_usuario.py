@@ -2,20 +2,18 @@ from pydantic import BaseModel, EmailStr, validator, Field, computed_field
 from typing import Optional
 from datetime import datetime
 
-
-# Esquema Pydantic para RolUsuario
+# Esquema Pydantic para RolUsuario (del modelo)
 class RolUsuarioSchema(BaseModel):
     id_rol: int
     nombre_rol: str
 
     model_config = {"from_attributes": True}
 
-
 class UsuarioBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
-    nombre: str = Field(..., min_length=1, max_length=200)  # ← Separado
-    apellidos: str = Field(..., min_length=1, max_length=200)  # ← Separado
+    nombre: str = Field(..., min_length=1, max_length=200)
+    apellidos: str = Field(..., min_length=1, max_length=200)
     telefono: Optional[str] = Field(None, max_length=20)
     departamento: Optional[str] = Field(None, max_length=100)
     observaciones: Optional[str] = None
@@ -36,11 +34,10 @@ class UsuarioBase(BaseModel):
                 raise ValueError('El teléfono debe tener entre 7 y 15 dígitos')
         return v
 
-
 class UsuarioCreate(UsuarioBase):
     cedula: int = Field(..., description="Cédula de identidad")
     password: str = Field(..., min_length=8)
-    rol_id: int = Field(default=1, description="ID del rol")  # ← Solo el ID
+    rol_id: int = Field(default=1, description="ID del rol del modelo RolUsuario")
 
     @validator('password')
     def validate_password(cls, v):
@@ -54,13 +51,12 @@ class UsuarioCreate(UsuarioBase):
             raise ValueError('La contraseña debe contener al menos un número')
         return v
 
-
 class UsuarioUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
     nombre: Optional[str] = Field(None, min_length=1, max_length=200)
     apellidos: Optional[str] = Field(None, min_length=1, max_length=200)
-    rol_id: Optional[int] = None  # ← Solo el ID
+    rol_id: Optional[int] = None  # ID del modelo
     telefono: Optional[str] = Field(None, max_length=20)
     departamento: Optional[str] = Field(None, max_length=100)
     observaciones: Optional[str] = None
@@ -78,12 +74,12 @@ class UsuarioUpdate(BaseModel):
 
 class UsuarioResponse(BaseModel):
     id: int
-    cedula: int  # ← AGREGAR cedula
+    cedula: int
     username: str
     email: EmailStr
-    nombre: str  # ← Separado
-    apellidos: str  # ← Separado
-    rol: RolUsuarioSchema  # ← Relación completa para respuesta
+    nombre: str
+    apellidos: str
+    rol: RolUsuarioSchema  # Del modelo
     telefono: Optional[str] = None
     departamento: Optional[str] = None
     observaciones: Optional[str] = None
@@ -92,47 +88,32 @@ class UsuarioResponse(BaseModel):
     fecha_creacion: datetime
     fecha_actualizacion: Optional[datetime] = None
 
-    @computed_field  # ← Campo computado para compatibilidad
+    @computed_field
     @property
     def nombre_completo(self) -> str:
         return f"{self.nombre} {self.apellidos}"
 
     model_config = {"from_attributes": True}
 
-
-# Este esquema hereda de UsuarioResponse y añade los campos de Persona 
-# que no están en Usuario y son necesarios para el perfil.
+# Perfil con campos de Persona opcionales para defaults
 class PerfilResponse(UsuarioResponse):
-    # Campos que vienen directamente de la tabla Persona (se asume que coinciden por cédula)
-    # Nota: Algunos campos como 'nombre', 'apellido/apellidos', 'email' se superponen o son consistentes
-    
-    documento_identidad: str # De la tabla Persona
-    empresa: str
+    documento_identidad: str
+    empresa: Optional[str] = "N/A"
     cargo: Optional[str] = None
-    direccion: str
-    foto: str
+    direccion: Optional[str] = "N/A"
+    foto: Optional[str] = "/src/img/default-profile.png"
     unidad: Optional[str] = None
-    
-    # Se sobrescriben los campos que podrían ser de Persona y no de Usuario
-    # Ejemplo: Si Persona.apellido es diferente a Usuario.apellidos
-    # apellido: str 
-    
-    # Nota: Si tu lógica de servicio lo requiere, puedes anidar la respuesta de Persona y Usuario.
-    # Pero para simplificar el frontend, combinar los campos es lo más práctico.
-    
-    class Config:
-        from_attributes = True
+
+    model_config = {"from_attributes": True}
 
 class UsuarioLogin(BaseModel):
     username: str
     password: str
 
-
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
-
 
 class UsuarioListResponse(BaseModel):
     items: list[UsuarioResponse]
@@ -141,18 +122,13 @@ class UsuarioListResponse(BaseModel):
     size: int
     pages: int
 
-
-
 class TokenData(BaseModel):
     username: Optional[str] = None
     user_id: Optional[int] = None
-    rol_id: Optional[int] = None  # ← Cambiar de rol a rol_id
+    rol_id: Optional[int] = None  # Del modelo RolUsuario.id_rol
 
-# --- Esquemas existentes (solo referencias) ---
 class RolResponse(BaseModel):
     id_rol: int
     nombre_rol: str
 
-    class Config:
-        from_attributes = True
-
+    model_config = {"from_attributes": True}

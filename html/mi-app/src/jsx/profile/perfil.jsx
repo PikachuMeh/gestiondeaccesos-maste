@@ -13,7 +13,6 @@ export default function Perfil_persona() {
         // Asume que tu AuthContext guarda y expone la forma de obtener el token actual
         // Esto es un ejemplo, ajústalo a tu implementación real de AuthContext
         const token = localStorage.getItem('access_token'); 
-        console.log(token)
         return token;
     };
 
@@ -34,7 +33,7 @@ export default function Perfil_persona() {
 
             try {
                 // Endpoint que creamos/modificamos en FastApi
-                const response = await fetch("http://localhost:8000/api/v1/auth/me", {
+                const response = await fetch("http://localhost:8000/api/v1/auth/perfil  ", {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -45,7 +44,7 @@ export default function Perfil_persona() {
                 if (!response.ok) {
                     throw new Error(`Error ${response.status}: No se pudo cargar el perfil.`);
                 }
-
+                
                 const data = await response.json();
                 setPerfilData(data); // Asumiendo que 'data' contiene la info combinada
             } catch (err) {

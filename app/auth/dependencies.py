@@ -11,11 +11,9 @@ from app.database import get_db
 from app.auth.jwt_handler import jwt_handler
 from app.schemas.esquema_usuario import TokenData
 from app.services.usuario_service import UsuarioService
-from app.models.models import RolUsuario
 
 # Esquema de seguridad HTTP Bearer
 security = HTTPBearer()
-
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -46,25 +44,29 @@ def get_current_user(
         if token_data is None:
             raise credentials_exception
         
-        # Obtener el usuario de la base de datos
+        # Obtener el usuario de la base de datos (con rol cargado)
         usuario_service = UsuarioService(db)
         user = usuario_service.get(token_data.user_id)
-        
+
         if user is None or not user.activo:
             raise credentials_exception
-        
+
+        # Rol como string (nombre_rol del modelo) y ID (id_rol)
+        rol_value = user.rol.nombre_rol if user.rol else 'N/A'
+        rol_id = user.rol.id_rol if user.rol else None
+
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "nombre_completo": user.nombre_completo,
-            "rol": user.rol,
+            "nombre_completo": f"{user.nombre} {user.apellidos}",  # Separados en modelo
+            "rol": rol_value,  # String para comparaciones
+            "rol_id": rol_id,  # Int para refresh
             "activo": user.activo
         }
-        
+
     except Exception:
         raise credentials_exception
-
 
 def get_current_active_user(current_user: dict = Depends(get_current_user)) -> dict:
     """
@@ -86,74 +88,35 @@ def get_current_active_user(current_user: dict = Depends(get_current_user)) -> d
         )
     return current_user
 
-
-def require_role(required_role: RolUsuario):
+def require_role(required_role: str):
     """
     Decorador de dependencia para requerir un rol específico.
     
     Args:
-        required_role: Rol requerido para acceder al endpoint
+        required_role: Rol requerido como string (nombre_rol del modelo, ej. "Administrador")
         
     Returns:
         Función de dependencia que verifica el rol
     """
     def role_checker(current_user: dict = Depends(get_current_active_user)) -> dict:
-        """
-        Verifica que el usuario tenga el rol requerido.
-        
-        Args:
-            current_user: Usuario actual
-            
-        Returns:
-            Datos del usuario si tiene el rol requerido
-            
-        Raises:
-            HTTPException: Si el usuario no tiene el rol requerido
-        """
         user_role = current_user.get("rol")
         
-        if user_role != required_role.value:
+        if user_role != required_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Se requiere rol {required_role.value}"
+                detail=f"Se requiere rol {required_role}"
             )
         
         return current_user
     
     return role_checker
 
-
 def require_admin(current_user: dict = Depends(get_current_active_user)) -> dict:
-    """
-    Dependencia para requerir rol de administrador.
-    
-    Args:
-        current_user: Usuario actual
-        
-    Returns:
-        Datos del usuario si es administrador
-        
-    Raises:
-        HTTPException: Si el usuario no es administrador
-    """
-    return require_role(RolUsuario.ADMINISTRADOR)(current_user)
-
+    return require_role("Administrador")(current_user)
 
 def require_supervisor_or_admin(current_user: dict = Depends(get_current_active_user)) -> dict:
-    """
-    Dependencia para requerir rol de supervisor o administrador.
-    
-    Args:
-        current_user: Usuario actual
-        
-    Returns:
-        Datos del usuario si es supervisor o administrador
-        
-    Raises:
-        HTTPException: Si el usuario no tiene los permisos requeridos
-    """
     user_role = current_user.get("rol")
-    allowed_roles = [RolUsuario.SUPERVISOR.value, RolUsuario.ADMINISTRADOR.value]
+    allowed_roles = ["Supervisor", "Administrador"]  # Del modelo
     
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -163,26 +126,9 @@ def require_supervisor_or_admin(current_user: dict = Depends(get_current_active_
     
     return current_user
 
-
 def require_operator_or_above(current_user: dict = Depends(get_current_active_user)) -> dict:
-    """
-    Dependencia para requerir rol de operador o superior.
-    
-    Args:
-        current_user: Usuario actual
-        
-    Returns:
-        Datos del usuario si tiene permisos de operador o superior
-        
-    Raises:
-        HTTPException: Si el usuario no tiene los permisos requeridos
-    """
     user_role = current_user.get("rol")
-    allowed_roles = [
-        RolUsuario.OPERADOR.value, 
-        RolUsuario.SUPERVISOR.value, 
-        RolUsuario.ADMINISTRADOR.value
-    ]
+    allowed_roles = ["Operador", "Supervisor", "Administrador"]  # Del modelo
     
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -191,7 +137,6 @@ def require_operator_or_above(current_user: dict = Depends(get_current_active_us
         )
     
     return current_user
-
 
 def get_optional_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -221,12 +166,14 @@ def get_optional_current_user(
         if user is None or not user.activo:
             return None
         
+        rol_value = user.rol.nombre_rol if user.rol else 'N/A'
+        
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "nombre_completo": user.nombre +" "+ user.apellidos,
-            "rol": user.rol,
+            "nombre_completo": f"{user.nombre} {user.apellidos}",
+            "rol": rol_value,  # String del modelo
         }
         
     except Exception:
