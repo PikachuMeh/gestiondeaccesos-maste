@@ -244,20 +244,11 @@ export default function RegistroAcceso() {
   function validarDescripcion(desc) {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
-  function validarFechaFuturaLocal(localStr) {
-    if (!localStr) return false;
-    const localDate = new Date(localStr);
-    if (Number.isNaN(localDate.getTime())) return false;
-    const now = Date.now();
-    const margenMs = 2 * 60 * 1000; // 2 minutos de tolerancia
-    return localDate.getTime() >= (now + margenMs);
-  }
 
   // Crear visita
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
-    if (!formVisita.fecha_programada) return alert("Seleccione fecha programada");
     if (!idTipo_act || idTipo_act === "") {
       console.error("idTipo_act está vacío:", idTipo_act);
       return alert("Tiene que seleccionar una actividad");
@@ -267,15 +258,10 @@ export default function RegistroAcceso() {
     if (!validarDescripcion(formVisita.descripcion_actividad)) {
       return alert("Ingrese una descripción de al menos 3 caracteres");
     }
-    if (!validarFechaFuturaLocal(formVisita.fecha_programada)) {
-      return alert("Seleccione una fecha/hora futura (>= 2 min desde ahora)");
-    }
 
     setPosting(true);
   try {
-    const localDate = new Date(formVisita.fecha_programada);
-    const fechaISO = localDate.toISOString();
-    
+    const localDate = new Date()
     const tipoActividadId = parseInt(idTipo_act, 10);
     
     if (isNaN(tipoActividadId)) {
@@ -283,12 +269,13 @@ export default function RegistroAcceso() {
     }
     
     const body = {
+
       persona_id: selected.id,
       centro_datos_id: Number(cdSel),
       tipo_actividad_id: tipoActividadId,
       area_id: areaSel ? Number(areaSel) : null, // NUEVO: incluir area_id
       descripcion_actividad: formVisita.descripcion_actividad.trim(),
-      fecha_programada: fechaISO,
+      fecha_programada: new Date().toISOString(),
       autorizado_por: formVisita.autorizado_por?.trim() || null,
       equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
       observaciones: formVisita.observaciones?.trim() || null,
@@ -454,18 +441,6 @@ export default function RegistroAcceso() {
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div className="ra-field">
-                  <label className="ra-label">Fecha programada</label>
-                  <input
-                    type="datetime-local"
-                    name="fecha_programada"
-                    className="ra-input"
-                    value={formVisita.fecha_programada}
-                    onChange={onChangeVisita}
-                    required
-                  />
                 </div>
               </div>
 

@@ -12,6 +12,7 @@ import CrearVisitante from "./jsx/registros/registro_funcionario.jsx";
 import DetalleVisitaPage from "./jsx/DetalleVisita.jsx";
 import DetallePersonaPage from "./jsx/DetallePersona.jsx";
 import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx";
+import Perfil_persona from "./jsx/profile/perfil.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         >
           <Route index element={<Navigate to="/accesos" replace />} />
+          <Route path="perfil" element ={< Perfil_persona/>}/>
           <Route path="accesos" element={<AccesosPage />} />
           <Route path="accesos/:id" element={<DetalleVisitaPage />} />
           <Route path="accesos/nuevo" element={<CrearAccesoPage />} />

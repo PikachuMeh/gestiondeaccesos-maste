@@ -76,7 +76,6 @@ class UsuarioUpdate(BaseModel):
             return v.lower()
         return v
 
-
 class UsuarioResponse(BaseModel):
     id: int
     cedula: int  # ← AGREGAR cedula
@@ -100,6 +99,29 @@ class UsuarioResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+# Este esquema hereda de UsuarioResponse y añade los campos de Persona 
+# que no están en Usuario y son necesarios para el perfil.
+class PerfilResponse(UsuarioResponse):
+    # Campos que vienen directamente de la tabla Persona (se asume que coinciden por cédula)
+    # Nota: Algunos campos como 'nombre', 'apellido/apellidos', 'email' se superponen o son consistentes
+    
+    documento_identidad: str # De la tabla Persona
+    empresa: str
+    cargo: Optional[str] = None
+    direccion: str
+    foto: str
+    unidad: Optional[str] = None
+    
+    # Se sobrescriben los campos que podrían ser de Persona y no de Usuario
+    # Ejemplo: Si Persona.apellido es diferente a Usuario.apellidos
+    # apellido: str 
+    
+    # Nota: Si tu lógica de servicio lo requiere, puedes anidar la respuesta de Persona y Usuario.
+    # Pero para simplificar el frontend, combinar los campos es lo más práctico.
+    
+    class Config:
+        from_attributes = True
 
 class UsuarioLogin(BaseModel):
     username: str
@@ -125,3 +147,12 @@ class TokenData(BaseModel):
     username: Optional[str] = None
     user_id: Optional[int] = None
     rol_id: Optional[int] = None  # ← Cambiar de rol a rol_id
+
+# --- Esquemas existentes (solo referencias) ---
+class RolResponse(BaseModel):
+    id_rol: int
+    nombre_rol: str
+
+    class Config:
+        from_attributes = True
+

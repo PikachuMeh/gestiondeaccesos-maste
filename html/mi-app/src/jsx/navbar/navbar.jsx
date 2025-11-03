@@ -41,7 +41,15 @@ export default function Navbar() {
       <div className="nav__right">
         {isAuthenticated() ? (
           <>
-            <span className="user-info">👤 {user?.username}</span>
+            <span className="user-info">
+              <button>
+                <NavLink to="/perfil" className={({isActive}) => `tab ${isActive ? "is-active" : ""}`}>
+                  Perfil
+                </NavLink>
+                👤 {user?.username}
+              </button>
+            </span>
+              
             <button 
               className="btn btn--success" 
               onClick={() => navigate("/registro/visitante")}

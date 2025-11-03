@@ -120,18 +120,6 @@ class VisitaCreate(BaseModel):
             raise ValueError("La descripción debe tener al menos 1 caracter")
         return v2
 
-    @field_validator("fecha_programada")
-    @classmethod
-    def fecha_utc_future(cls, v: datetime) -> datetime:
-        if v.tzinfo is None:
-            v = v.replace(tzinfo=timezone.utc)
-        else:
-            v = v.astimezone(timezone.utc)
-        now_utc = datetime.now(timezone.utc)
-        if v <= now_utc:
-            raise ValueError("La fecha programada debe ser futura")
-        return v
-
     @field_validator("autorizado_por", "motivo_autorizacion", "equipos_ingresados", "equipos_retirados", "observaciones")
     @classmethod
     def optional_str_strip(cls, v: Optional[str]) -> Optional[str]:
