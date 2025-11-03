@@ -1,0 +1,216 @@
+/* Variables globales para consistencia con lista_acceso.css */
+:root {
+  --vp-color-primary: #007bff; /* Azul principal */
+  --vp-color-secondary: #6c757d; /* Gris secundario */
+  --vp-color-success: #28a745;
+  --vp-color-danger: #dc3545;
+  --vp-color-bg: #f8f9fa; /* Fondo claro */
+  --vp-color-card: #ffffff;
+  --vp-color-border: #dee2e6;
+  --vp-color-text: #212529;
+  --vp-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --vp-spacing-sm: 0.5rem;
+  --vp-spacing-md: 1rem;
+  --vp-spacing-lg: 1.5rem;
+  --vp-border-radius: 0.375rem;
+  --vp-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --vp-shadow-hover: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Contenedor principal (full screen como vp-screen en visitas) */
+.vp-screen {
+  min-height: 100vh;
+  background-color: var(--vp-color-bg);
+  padding: var(--vp-spacing-lg);
+  font-family: var(--vp-font-family);
+  color: var(--vp-color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tarjeta principal (como vp-card) */
+.vp-card {
+  background: var(--vp-color-card);
+  border-radius: var(--vp-border-radius);
+  box-shadow: var(--vp-shadow);
+  padding: var(--vp-spacing-lg);
+  max-width: 800px;
+  width: 100%;
+  transition: box-shadow 0.2s ease;
+}
+
+.vp-card:hover {
+  box-shadow: var(--vp-shadow-hover);
+}
+
+.vp-profile-card {
+  max-width: 600px; /* Más estrecho para perfil */
+}
+
+/* Título (como vp-title) */
+.vp-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: var(--vp-spacing-lg);
+  color: var(--vp-color-primary);
+  border-bottom: 2px solid var(--vp-color-primary);
+  padding-bottom: var(--vp-spacing-sm);
+}
+
+/* Header del perfil (foto + info) */
+.vp-profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-spacing-md);
+  margin-bottom: var(--vp-spacing-lg);
+  padding-bottom: var(--vp-spacing-md);
+  border-bottom: 1px solid var(--vp-color-border);
+}
+
+.vp-profile-foto {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--vp-color-primary);
+}
+
+.vp-profile-info {
+  flex: 1;
+}
+
+.vp-profile-name {
+  margin: 0 0 var(--vp-spacing-sm) 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.vp-profile-rol {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--vp-color-secondary);
+  font-style: italic;
+}
+
+/* Secciones de details (como vp-section implícito) */
+.vp-section {
+  margin-bottom: var(--vp-spacing-lg);
+}
+
+.vp-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--vp-spacing-md);
+  color: var(--vp-color-text);
+  border-left: 4px solid var(--vp-color-primary);
+  padding-left: var(--vp-spacing-sm);
+}
+
+/* Grid para details (2-col responsivo) */
+.vp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--vp-spacing-md);
+}
+
+.vp-grid p {
+  margin: var(--vp-spacing-sm) 0;
+  font-size: 1rem;
+}
+
+.vp-grid strong {
+  color: var(--vp-color-primary);
+}
+
+/* Toolbar de acciones (como vp-toolbar en visitas) */
+.vp-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--vp-spacing-md);
+  padding-top: var(--vp-spacing-md);
+  border-top: 1px solid var(--vp-color-border);
+}
+
+.vp-profile-actions {
+  justify-content: space-between; /* Botones a los lados */
+}
+
+.vp-btn {
+  padding: var(--vp-spacing-sm) var(--vp-spacing-md);
+  border: 1px solid var(--vp-color-primary);
+  border-radius: var(--vp-border-radius);
+  background: white;
+  color: var(--vp-color-primary);
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.vp-btn:hover {
+  background: var(--vp-color-primary);
+  color: white;
+  box-shadow: var(--vp-shadow);
+}
+
+.vp-btn--primary {
+  background: var(--vp-color-primary);
+  color: white;
+  border-color: var(--vp-color-primary);
+}
+
+.vp-btn--primary:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+
+.vp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Estados (loading/error, como vp-state en visitas) */
+.vp-state {
+  text-align: center;
+  padding: var(--vp-spacing-lg);
+  font-size: 1.1rem;
+  color: var(--vp-color-secondary);
+}
+
+.vp-state--err {
+  color: var(--vp-color-danger);
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: var(--vp-border-radius);
+  padding: var(--vp-spacing-md);
+}
+
+/* Responsivo (mobile-first, como en visitas) */
+@media (max-width: 768px) {
+  .vp-screen {
+    padding: var(--vp-spacing-sm);
+  }
+  
+  .vp-profile-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .vp-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .vp-toolbar {
+    flex-direction: column;
+  }
+}
+
+/* Empty state (si no data) */
+.vp-empty {
+  text-align: center;
+  color: var(--vp-color-secondary);
+  font-style: italic;
+  padding: var(--vp-spacing-lg);
+}
