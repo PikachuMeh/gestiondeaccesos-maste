@@ -27,15 +27,7 @@ export default function Navbar() {
       </div>
 
       <div className="nav__center">
-        <div className="search">
-          <span className="search__icon" aria-hidden>🔍</span>
-          <input
-            className="search__input"
-            type="search"
-            placeholder="Buscar..."
-            aria-label="Buscar"
-          />
-        </div>
+
       </div>
 
       <div className="nav__right">

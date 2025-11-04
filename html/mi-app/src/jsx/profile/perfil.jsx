@@ -85,11 +85,6 @@ export default function Perfil_persona() {
                 <h1 className="vp-title">Mi Perfil</h1>
 
                 <div className="vp-profile-header">
-                    <img 
-                        className="vp-profile-foto" 
-                        src={displayData.foto || "/src/img/default-profile.png"} 
-                        alt={`Foto de perfil de ${displayData.nombre_completo || `${displayData.nombre} ${displayData.apellidos}`}`} 
-                    />
                     <div className="vp-profile-info">
                         <h2 className="vp-profile-name">{displayData.nombre} {displayData.apellidos}</h2>
                         <p className="vp-profile-rol">Rol: {displayData.rol?.nombre_rol || 'No Asignado'}</p>
