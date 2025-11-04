@@ -138,7 +138,7 @@ export default function DetalleVisitaPage() {
                   const centro = v.centro_datos || {};
                   const actividad = v.actividad || {};
                   const area = v.area || {};
-
+                  const descripcion = v.descripcion_actividad || {};
                   return (
                     <tr key={v.id || idx}>
                       <td>{fmtFecha(v.fecha_programada)}</td>
@@ -146,8 +146,7 @@ export default function DetalleVisitaPage() {
                       <td>{centro.nombre || "—"}</td>
                       <td>{area.nombre || "—"}</td>
                       <td>{actividad.nombre_actividad || v.descripcion_actividad ||"—"}</td>
-                      <td>{visita.descripcion_actividad || v.descripcion_actividad || "—"}</td>
-                      {console.log(actividad)}
+                      <td>{descripcion || v.descripcion_actividad || "—"}</td>
                     </tr>
                   );
                 })

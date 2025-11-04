@@ -1,6 +1,5 @@
 :root {
     --vp-bg: #f5f7fb;
-    --vp-card: #ffffff;
     --vp-text: #1f2937;
     --vp-muted: #6b7280;
     --vp-border: #e5e7eb;
@@ -11,7 +10,7 @@
   }
   
   .vp-screen {
-    min-height: 100vh;
+    min-height: 200vh;
     background: var(--vp-bg);
     padding: 32px;
     box-sizing: border-box;
@@ -118,7 +117,7 @@
   
   .vp-tablewrap {
     overflow: auto;
-    border: 1px solid var(--vp-border);
+    border: 2px solid var(--vp-border);
     border-radius: 12px;
   }
   

@@ -175,16 +175,15 @@ export default function VisitasPage() {
                     <th>Cédula</th>
                     <th>Empresa</th>
                     <th>Actividad</th>
-                    <th>Estado</th>
+                    <th>Area</th>
                     <th>Centro de Datos</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((v, i) => {
-                    console.log(v.actividad)
                     const persona = v.persona || {};
-                    const estado = v.estado || {};
+                    const area = v.area || {};
                     const actividad = v.actividad || {};
                     const cd = v.centro_datos || {};
                     return (
@@ -194,7 +193,7 @@ export default function VisitasPage() {
                         <td>{persona.documento_identidad ?? "—"}</td>
                         <td>{persona.empresa ?? "—"}</td>
                         <td>{actividad.nombre_actividad ?? actividad.id_tipo_actividad ?? "—"}</td>
-                        <td>{estado.nombre_estado ?? estado.id_estado ?? "—"}</td>
+                        <td>{area.nombre ?? area.id ?? "—"}</td>
                         <td>{cd.nombre ?? "—"}</td>
                         <td>
                           <button className="vp-btn" onClick={() => goToDetail(v.id)}>Ver</button>
