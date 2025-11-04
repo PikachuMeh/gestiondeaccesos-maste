@@ -173,3 +173,6 @@ tmp/
 temp/
 *.tmp
 app/config.py
+.jpg
+.jpeg
+.png

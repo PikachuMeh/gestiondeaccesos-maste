@@ -35,11 +35,11 @@ export default function RegistroAcceso() {
   const [cdSel, setCdSel] = useState("");
   const [cdDetalle, setCdDetalle] = useState(null);
   
-  //Tipo de Actividad
+  // Tipo de Actividad
   const [tiposActividad, setTiposActividad] = useState([]); // NUEVO: array de tipos
   const [idTipo_act, setidTipo_act] = useState(""); // ID seleccionado
 
-  //Areas
+  // Áreas
   // NUEVO: Estados para áreas
   const [areas, setAreas] = useState([]);
   const [areaSel, setAreaSel] = useState("");
@@ -54,6 +54,10 @@ export default function RegistroAcceso() {
     id_estado: "1",
   });
 
+  // NUEVO: Estado para el perfil del usuario autenticado
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const debounceRef = useRef();
@@ -61,6 +65,52 @@ export default function RegistroAcceso() {
   const API_PERSONAS = "http://localhost:8000/api/v1/personas";
   const API_VISITAS = "http://localhost:8000/api/v1/visitas";
   const API_CENTROS = "http://localhost:8000/api/v1/centros-datos";
+  // NUEVO: API base para auth
+  const API_AUTH = "http://localhost:8000/api/v1/auth";
+
+  // NUEVO: Función para obtener el perfil del usuario actual
+  async function fetchCurrentUser() {
+    const token = localStorage.getItem('access_token');  // Obtén el token de localStorage
+    if (!token) {
+      setUserLoading(false);
+      navigate('/login');  // Redirige si no hay token
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_AUTH}/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');  // Limpia token inválido
+          navigate('/login');
+          return;
+        }
+        throw new Error('Error al obtener perfil del usuario');
+      }
+
+      const userData = await response.json();
+      setCurrentUser(userData);
+      
+      // NUEVO: Actualiza formVisita con el nombre del usuario autenticado
+      setFormVisita(prev => ({
+        ...prev,
+        autorizado_por: `${userData.nombre} ${userData.apellidos}`.trim(),  // Nombre completo
+      }));
+
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      // Opcional: mostrar alerta o redirigir
+    } finally {
+      setUserLoading(false);
+    }
+  }
 
   // Personas
   async function fetchCedulas() {
@@ -103,7 +153,7 @@ export default function RegistroAcceso() {
     const obj = await r.json();
     setCdDetalle(obj);
   }
-  //Tipos de actividad
+  // Tipos de actividad
   async function loadTipoActividad() {
     setLoading(true); // true en minúsculas
     try {
@@ -118,7 +168,7 @@ export default function RegistroAcceso() {
     }
   }
 
-  //Area 
+  // Área 
   async function loadAreasPorCentro(centro_id) {
     if (!centro_id) {
       setAreas([]);
@@ -143,11 +193,13 @@ export default function RegistroAcceso() {
       setLoading(false);
     }
   } 
-  // Carga inicial
+
+  // Carga inicial (modificada)
   useEffect(() => {
     loadCentros();
     loadTipoActividad();
     fetchCedulas().then(setSugerencias).catch(console.error);
+    fetchCurrentUser();  // NUEVO: Carga el usuario autenticado
   }, []);
 
   // Búsqueda con debounce
@@ -228,15 +280,19 @@ export default function RegistroAcceso() {
     console.log("Área seleccionada:", id); // DEBUG
     setAreaSel(id);
   };
-  // Seleccion de tipo de actividad
+  // Selección de tipo de actividad
   const onActividadChange = (e) => {
     const id = e.target.value;
     console.log("Tipo actividad seleccionado:", id); // DEBUG
     setidTipo_act(id);
   };
-  // Form visita
+  // Form visita (modificado para prevenir edición de autorizado_por)
   function onChangeVisita(e) {
     const { name, value, type, checked } = e.target;
+    // NUEVO: Prevenir cambios en autorizado_por si ya está poblado
+    if (name === 'autorizado_por' && currentUser) {
+      return;  // No permite editar
+    }
     setFormVisita(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
@@ -260,55 +316,59 @@ export default function RegistroAcceso() {
     }
 
     setPosting(true);
-  try {
-    const localDate = new Date()
-    const tipoActividadId = parseInt(idTipo_act, 10);
-    
-    if (isNaN(tipoActividadId)) {
-      throw new Error("ID de tipo de actividad inválido");
+    try {
+      const localDate = new Date();
+      const tipoActividadId = parseInt(idTipo_act, 10);
+      
+      if (isNaN(tipoActividadId)) {
+        throw new Error("ID de tipo de actividad inválido");
+      }
+      
+      const body = {
+        persona_id: selected.id,
+        centro_datos_id: Number(cdSel),
+        tipo_actividad_id: tipoActividadId,
+        area_id: areaSel ? Number(areaSel) : null, // NUEVO: incluir area_id
+        descripcion_actividad: formVisita.descripcion_actividad.trim(),
+        fecha_programada: new Date().toISOString(),
+        autorizado_por: formVisita.autorizado_por?.trim() || null,  // Ya poblado con el usuario
+        equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
+        observaciones: formVisita.observaciones?.trim() || null,
+        estado_id: Number(formVisita.id_estado ?? 1),
+      };
+
+      console.log("Body enviado:", body);
+      console.log("tipo_actividad_id:", body.tipo_actividad_id, typeof body.tipo_actividad_id);
+      console.log("area_id:", body.area_id, typeof body.area_id);
+
+      const res = await fetch(API_VISITAS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText);
+      }
+      
+      const created = await res.json();
+      navigate(`/accesos/${created.id}`);
+    } catch (e) {
+      console.error(e);
+      alert(`Error al registrar visita: ${e.message}`);
+    } finally {
+      setPosting(false);
     }
-    
-    const body = {
-
-      persona_id: selected.id,
-      centro_datos_id: Number(cdSel),
-      tipo_actividad_id: tipoActividadId,
-      area_id: areaSel ? Number(areaSel) : null, // NUEVO: incluir area_id
-      descripcion_actividad: formVisita.descripcion_actividad.trim(),
-      fecha_programada: new Date().toISOString(),
-      autorizado_por: formVisita.autorizado_por?.trim() || null,
-      equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
-      observaciones: formVisita.observaciones?.trim() || null,
-      estado_id: Number(formVisita.id_estado ?? 1),
-    };
-
-    console.log("Body enviado:", body);
-    console.log("tipo_actividad_id:", body.tipo_actividad_id, typeof body.tipo_actividad_id);
-    console.log("area_id:", body.area_id, typeof body.area_id);
-
-    const res = await fetch(API_VISITAS, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText);
-    }
-    
-    const created = await res.json();
-    navigate(`/accesos/${created.id}`);
-  } catch (e) {
-    console.error(e);
-    alert(`Error al registrar visita: ${e.message}`);
-  } finally {
-    setPosting(false);
   }
-}
 
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
   const showNoResults = q && !selected && sugerencias.length === 0;
+
+  // NUEVO: Manejo de loading para usuario
+  if (userLoading) {
+    return <div className="ra-loading">Cargando usuario...</div>;  // O un spinner personalizado
+  }
 
   return (
     <div className="ra-root">
@@ -470,11 +530,13 @@ export default function RegistroAcceso() {
               </div>
 
               <div className="ra-row">
+                {/* NUEVO: Campo deshabilitado para Autorizado por */}
                 <FieldEditable
                   label="Autorizado por"
                   name="autorizado_por"
-                  value={formVisita.autorizado_por}
+                  value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
                   onChange={onChangeVisita}
+                  disabled={!!currentUser}  // Deshabilita si hay usuario logueado
                 />
               </div>
 
@@ -511,7 +573,7 @@ export default function RegistroAcceso() {
   );
 }
 
-// Subcomponentes
+// Subcomponentes (modificado FieldEditable para soportar disabled)
 function Field({ label, value, disabled = false }) {
   return (
     <div className="ra-field">
@@ -525,7 +587,8 @@ function Field({ label, value, disabled = false }) {
     </div>
   );
 }
-function FieldEditable({ label, name, value, onChange }) {
+
+function FieldEditable({ label, name, value, onChange, disabled = false }) {
   return (
     <div className="ra-field">
       <label className="ra-label">{label}</label>
@@ -534,10 +597,12 @@ function FieldEditable({ label, name, value, onChange }) {
         value={value || ""}
         onChange={onChange}
         className="ra-input"
+        disabled={disabled}  // NUEVO: Soporte para disabled
       />
     </div>
   );
 }
+
 function Info({ label, value, full=false }) {
   return (
     <div className={`ra-info${full ? " ra-info-full" : ""}`}>
@@ -546,6 +611,7 @@ function Info({ label, value, full=false }) {
     </div>
   );
 }
+
 function IconImage() {
   return (
     <svg width="88" height="88" viewBox="0 0 24 24" fill="none" className="ra-icon">

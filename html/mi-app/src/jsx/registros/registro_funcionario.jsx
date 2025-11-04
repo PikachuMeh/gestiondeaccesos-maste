@@ -94,6 +94,7 @@ export default function RegistroPersona() {
   
   if (fotoArchivo) {
     formData.append("foto", fotoArchivo);
+    console.log(form)
   }
 
   try {
