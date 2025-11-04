@@ -93,7 +93,7 @@ class JWTHandler:
             "sub": username,
             "user_id": user_id,
             "rol_id": rol_id,
-            "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # Siempre int del modelo
+            "exp": datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)  # Siempre int del modelo
         }
         
         return self.create_access_token(data)
