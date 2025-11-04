@@ -16,6 +16,7 @@ from app.schemas import (
     PersonaResponse,
     PersonaListResponse,
 )
+from app.auth.api_permisos import require_admin, require_operator_or_above
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import asc
 router = APIRouter(prefix="/personas", tags=["personas"])
@@ -50,7 +51,7 @@ async def create_persona(
     Crea una nueva persona. Valida que la cédula no esté duplicada.
     La foto se guarda en html/mi-app/src/img/personas/
     """
-    
+    current_user = Depends(require_operator_or_above)  # NUEVO: Requiere OPERADOR+
     # VALIDACIÓN: Verificar si la cédula ya existe
     persona_existente = db.query(Persona).filter(
         Persona.documento_identidad == documento_identidad
@@ -254,6 +255,7 @@ async def update_persona(
     foto: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
+    current_user = Depends(require_operator_or_above)  # NUEVO
     """
     Actualiza una persona existente. Permite cambiar la foto.
     """
@@ -319,7 +321,10 @@ async def update_persona(
 @router.delete("/{persona_id}")
 async def delete_persona(persona_id: int, db: Session = Depends(get_db)):
     persona = _get_persona_or_404(db, persona_id)
+    current_user = Depends(require_operator_or_above)  # NUEVO
     try:
+        if persona.empresa == "SENIAT":  # Asume "personal" son de SENIAT
+            raise HTTPException(403, detail="No se puede borrar personal interno")
         # Eliminar foto si existe
         if persona.foto:
             foto_file = FOTO_DIR / os.path.basename(persona.foto)
