@@ -42,8 +42,14 @@ export const AuthProvider = ({ children }) => {
       const userData = {
         id: tokenPayload.id,
         username: tokenPayload.username,
-        rol: tokenPayload.rol
+        rol: tokenPayload.rol  // Asume {id_rol: 1, nombre_rol: 'ADMINISTRADOR'}
       };
+
+      // NUEVO: Validación básica del rol si no existe
+      if (!userData.rol || !userData.rol.id_rol) {
+        console.log(userData  )
+        throw new Error("Rol no válido en el token");
+      }
 
       setToken(data.access_token);
       setUser(userData);
@@ -72,13 +78,38 @@ export const AuthProvider = ({ children }) => {
     return !!token && !!user;
   };
 
+  // NUEVO: Función genérica para permisos (jerarquía: ID bajo = más privilegios, ej: 1=ADMIN permite >=1)
+  const hasPermission = (requiredRolId) => {
+    if (!user || !user.rol || typeof user.rol.id_rol !== 'number') {
+      return false;
+    }
+    // Ajusta la lógica si tu jerarquía es inversa (ID alto = privilegios)
+    return user.rol.id_rol <= requiredRolId;  // ADMIN(1) <= 2 (permite OPERADOR+), etc.
+  };
+
+  // NUEVO: Helpers específicos (ajusta IDs según tu tabla roles)
+  const isAdmin = () => hasPermission(1);  // Solo id_rol === 1 (o <=1 si hay sub-admins)
+  const isOperatorOrAbove = () => hasPermission(2);  // ADMIN(1) o OPERADOR(2)
+  const isSupervisorOrAbove = () => hasPermission(4);  // Si SUPERVISOR=4 es bajo, ajusta
+  const isAuditorOrBelow = () => user?.rol.id_rol >= 3;  // AUDITOR(3) o SUPERVISOR(4): solo lectura
+
+  // NUEVO: Función para obtener rol actual (útil para mostrar en UI)
+  const getCurrentRoleName = () => user?.rol?.nombre_rol || 'Desconocido';
+
   const value = {
     user,
     token,
     login,
     logout,
     isAuthenticated,
-    loading
+    loading,
+    // NUEVO: Exporta las funciones de permisos
+    hasPermission,
+    isAdmin,
+    isOperatorOrAbove,
+    isSupervisorOrAbove,
+    isAuditorOrBelow,
+    getCurrentRoleName
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
