@@ -12,7 +12,7 @@ from app.auth import jwt_handler, get_current_active_user,get_current_user
 from app.services.usuario_service import UsuarioService
 from app.services.persona_service import PersonaService
 from app.schemas import Token, UsuarioLogin, UsuarioResponse
-from app.schemas.esquema_usuario import PerfilResponse
+from app.schemas.esquema_usuario import PerfilResponse,SolicitudRecuperacionPassword, ResetPasswordRequest
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -100,6 +100,155 @@ async def login_json(
         "token_type": "bearer",
         "expires_in": int(access_token_expires.total_seconds()),
     }
+
+@router.post("/solicitar_recuperacion", summary="Solicitar recuperación de contraseña")
+async def solicitar_recuperacion_password(
+    solicitud: SolicitudRecuperacionPassword,
+    db: Session = Depends(get_db)
+):
+    usuario_service = UsuarioService(db)
+    
+    user = usuario_service.get_by_email(solicitud.email)
+    if not user:
+        return {
+            "message": "Si el correo existe, recibirás instrucciones para recuperar tu contraseña"
+        }
+    
+    # ✅ Ahora funciona correctamente con self
+    reset_token = jwt_handler.create_password_reset_token(
+        user.id, 
+        user.username, 
+        user.hashed_password
+    )
+    
+    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    
+    return {
+        "message": "Token generado exitosamente",
+        "token": reset_token,
+        "reset_link": reset_link
+    }
+
+
+@router.get("/verificar-token-reset", summary="Verificar token de recuperación")
+async def verificar_token_reset(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Verifica si un token de recuperación es válido."""
+    usuario_service = UsuarioService(db)
+    
+    # Decodificar sin verificar para obtener el user_id
+    try:
+        from jose import jwt
+        unverified = jwt.get_unverified_claims(token)
+        user_id = unverified.get("user_id")
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido"
+            )
+        
+        # Obtener usuario y verificar con su hash actual
+        user = usuario_service.get(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+        
+        # Verificar token con el hash actual
+        payload = jwt_handler.verify_password_reset_token(token, user.hashed_password)
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El token es inválido o ha expirado"
+            )
+        
+        return {
+            "valid": True,
+            "username": payload["username"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token inválido"
+        )
+
+
+@router.post("/reset-password", summary="Resetear contraseña con token")
+async def reset_password(
+    reset_data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Resetea la contraseña del usuario usando el token de recuperación.
+    """
+    if reset_data.nueva_password != reset_data.confirmar_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Las contraseñas no coinciden"
+        )
+    
+    if len(reset_data.nueva_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña debe tener al menos 6 caracteres"
+        )
+    
+    usuario_service = UsuarioService(db)
+    
+    # Decodificar token sin verificar para obtener user_id
+    try:
+        from jose import jwt
+        unverified = jwt.get_unverified_claims(reset_data.token)
+        user_id = unverified.get("user_id")
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido"
+            )
+        
+        # Obtener usuario
+        user = usuario_service.get(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+        
+        # Verificar token con hash ACTUAL (antes del cambio)
+        payload = jwt_handler.verify_password_reset_token(reset_data.token, user.hashed_password)
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido o expirado. Solicita uno nuevo."
+            )
+        
+        # Cambiar contraseña
+        new_hashed = usuario_service.get_password_hash(reset_data.nueva_password)
+        user.hashed_password = new_hashed
+        user.fecha_actualizacion = datetime.now()
+        db.commit()
+        
+        return {
+            "message": "Contraseña actualizada exitosamente",
+            "username": user.username
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Error al procesar el token"
+        )
+
 
 @router.get("/perfil", response_model=PerfilResponse, summary="Obtener usuario y perfil actual (Alias de /me)")
 async def obtener_info_usuario(

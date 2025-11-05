@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "../jsx/auth/AuthContext";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom"; // Agregar Link aquí
 import "../css/login.css";
+
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -9,17 +10,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate(); // Navegación aquí
+  const navigate = useNavigate();
+
 
   // Si ya está autenticado, redirigir
   if (isAuthenticated()) {
     return <Navigate to="/accesos" replace />;
   }
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
 
     if (!username || !password) {
       setError("Usuario y contraseña son requeridos");
@@ -27,16 +31,18 @@ export default function LoginPage() {
       return;
     }
 
+
     const result = await login(username, password);
     
     if (result.success) {
-      navigate("/accesos"); // Navegamos después del login exitoso
+      navigate("/accesos");
     } else {
       setError(result.error);
     }
     
     setLoading(false);
   };
+
 
   return (
     <div className="login-container">
@@ -47,12 +53,14 @@ export default function LoginPage() {
           <p>Ingresa tus credenciales para continuar</p>
         </div>
 
+
         <form onSubmit={handleSubmit} className="login-form">
           {error && (
             <div className="error-message">
               ⚠️ {error}
             </div>
           )}
+
 
           <div className="form-group">
             <label htmlFor="username">Usuario</label>
@@ -67,6 +75,7 @@ export default function LoginPage() {
             />
           </div>
 
+
           <div className="form-group">
             <label htmlFor="password">Contraseña</label>
             <input
@@ -79,6 +88,7 @@ export default function LoginPage() {
             />
           </div>
 
+
           <button 
             type="submit" 
             className="btn btn--primary btn--full"
@@ -86,6 +96,20 @@ export default function LoginPage() {
           >
             {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </button>
+
+          {/* CORREGIDO: Link sin botón envolvente */}
+          <div style={{ marginTop: "16px", textAlign: "center" }}>
+            <Link 
+              to="/forgot-password" 
+              style={{ 
+                color: "#007bff", 
+                textDecoration: "none",
+                fontSize: "14px"
+              }}
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
         </form>
       </div>
     </div>

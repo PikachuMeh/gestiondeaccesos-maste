@@ -132,3 +132,14 @@ class RolResponse(BaseModel):
     nombre_rol: str
 
     model_config = {"from_attributes": True}
+
+
+class SolicitudRecuperacionPassword(BaseModel):
+    """Esquema para solicitar recuperación de contraseña"""
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    """Esquema para resetear contraseña con token"""
+    token: str
+    nueva_password: str
+    confirmar_password: str

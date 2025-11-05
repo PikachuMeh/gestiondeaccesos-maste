@@ -57,6 +57,11 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
             "fecha_actualizacion": user.fecha_actualizacion,
         }
 
+    def get_by_email(self, email: str):
+        """Obtiene un usuario por su email"""
+        return self.db.query(Usuario).filter(Usuario.email == email).first()
+
+
     def get_by_username(self, username: str) -> Optional[Usuario]:
         """
         Obtiene un usuario por su nombre de usuario.

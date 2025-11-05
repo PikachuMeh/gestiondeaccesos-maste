@@ -13,15 +13,21 @@ import DetalleVisitaPage from "./jsx/DetalleVisita.jsx";
 import DetallePersonaPage from "./jsx/DetallePersona.jsx";
 import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx";
 import Perfil_persona from "./jsx/profile/perfil.jsx";
+import ForgotPasswordPage from "./jsx/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./jsx/ResetPasswordPage.jsx";
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <AuthProvider>
       <Routes>
-        {/* Ruta pública */}
+        {/* ========== RUTAS PÚBLICAS (sin autenticación) ========== */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Rutas protegidas */}
+
+        {/* ========== RUTAS PROTEGIDAS (requieren autenticación) ========== */}
         <Route
           path="/"
           element={
@@ -31,7 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         >
           <Route index element={<Navigate to="/accesos" replace />} />
-          <Route path="perfil" element ={< Perfil_persona/>}/>
+          <Route path="perfil" element={<Perfil_persona />} />
           <Route path="accesos" element={<AccesosPage />} />
           <Route path="accesos/:id" element={<DetalleVisitaPage />} />
           <Route path="accesos/nuevo" element={<CrearAccesoPage />} />
@@ -41,7 +47,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="registro/visitante" element={<CrearVisitante />} />
         </Route>
 
-        {/* Ruta catch-all: cualquier ruta no definida */}
+
+        {/* ========== RUTA CATCH-ALL ========== */}
         <Route
           path="*"
           element={
