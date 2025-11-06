@@ -28,7 +28,8 @@ export default function ForgotPasswordPage() {
 
       if (response.ok) {
         setMessage(data.message);
-        // En desarrollo, mostramos el token y link
+        // Ya NO mostrar el token en desarrollo
+        setEmail("");  // Limpiar el campo
         if (data.token) {
           setResetToken(data.token);
         }

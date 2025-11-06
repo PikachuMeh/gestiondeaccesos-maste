@@ -14,6 +14,7 @@ from app.services.persona_service import PersonaService
 from app.schemas import Token, UsuarioLogin, UsuarioResponse
 from app.schemas.esquema_usuario import PerfilResponse,SolicitudRecuperacionPassword, ResetPasswordRequest
 from app.config import settings
+from app.services.email_service import email_service
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -106,29 +107,70 @@ async def solicitar_recuperacion_password(
     solicitud: SolicitudRecuperacionPassword,
     db: Session = Depends(get_db)
 ):
+    """
+    Genera un token de recuperación y lo envía por email.
+    """
     usuario_service = UsuarioService(db)
     
+    # Buscar usuario por email
     user = usuario_service.get_by_email(solicitud.email)
-    if not user:
-        return {
-            "message": "Si el correo existe, recibirás instrucciones para recuperar tu contraseña"
-        }
     
-    # ✅ Ahora funciona correctamente con self
-    reset_token = jwt_handler.create_password_reset_token(
-        user.id, 
-        user.username, 
-        user.hashed_password
-    )
-    
-    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
-    
-    return {
-        "message": "Token generado exitosamente",
-        "token": reset_token,
-        "reset_link": reset_link
+    # Por seguridad, siempre retornar el mismo mensaje
+    response_message = {
+        "message": "Si el correo existe en nuestro sistema, recibirás instrucciones para recuperar tu contraseña"
     }
+    
+    if not user:
+        # No revelar si el email existe o no
+        return response_message
+    
+    try:
+        # Generar token
+        reset_token = jwt_handler.create_password_reset_token(
+            user.id, 
+            user.username, 
+            user.hashed_password
+        )
+        
+        # ✅ ENVIAR EMAIL
+        email_sent = await email_service.send_password_reset_email(
+            email=solicitud.email,
+            username=user.username,
+            reset_token=reset_token
+        )
+        
+        if email_sent:
+            print(f"✓ Email de recuperación enviado a {solicitud.email}")
+        else:
+            print(f"✗ Error al enviar email a {solicitud.email}")
+        
+        # Siempre retornar el mismo mensaje (seguridad)
+        return response_message
+        
+    except Exception as e:
+        print(f"Error en solicitud de recuperación: {str(e)}")
+        return response_message
 
+
+#esto es de prueba 
+
+@router.post("/test-email", summary="Probar envío de email (solo desarrollo)")
+async def test_email(email: str):
+    """Endpoint de prueba para verificar configuración de email"""
+    try:
+        result = await email_service.send_test_email(email)
+        if result:
+            return {"message": "Email de prueba enviado exitosamente", "email": email}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al enviar email de prueba"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error: {str(e)}"
+        )
 
 @router.get("/verificar-token-reset", summary="Verificar token de recuperación")
 async def verificar_token_reset(
