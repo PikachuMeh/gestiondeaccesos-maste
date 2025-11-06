@@ -49,7 +49,7 @@ def create_tables():
         user_db = result.fetchone()
         print(f"✓ Conectado como: {user_db[0]} en base de datos: {user_db[1]}")
         
-        result = conn.execute(text("SELECT has_schema_privilege('postgres', 'sistema_gestiones', 'CREATE');"))
+        result = conn.execute(text("SELECT has_schema_privilege('admin01', 'sistema_gestiones', 'CREATE');"))
         has_perm = result.fetchone()
         print(f"✓ Tiene permiso CREATE: {has_perm[0]}")
     

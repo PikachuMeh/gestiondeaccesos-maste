@@ -24,6 +24,7 @@ from app.schemas import (
 from datetime import datetime, date
 import random
 from app.auth import require_operator_or_above, get_current_active_user
+from app.auth.api_permisos import require_admin
 router = APIRouter(prefix="/visitas", tags=["visitas"])
 
 # ----------------------------
@@ -338,8 +339,20 @@ async def registrar_salida(visita_id: int, payload: VisitaSalida, db: Session = 
         raise HTTPException(status_code=500, detail=f"Error registrando salida: {exc}")
 
 @router.delete("/{visita_id}")
-async def delete_visita(visita_id: int, db: Session = Depends(get_db)):
+async def delete_visita(
+    visita_id: int, 
+    current_user = Depends(require_admin),  # AGREGADO: Solo ADMIN (rol <=1)
+    db: Session = Depends(get_db)
+):
     visita = _get_visita_or_404(db, visita_id)
+    
+    # AGREGADO: Solo eliminar si está "Programada" (ajusta ID según tu esquema)
+    if visita.estado_id != 1:  # Asume 1=Programada; verifica en EstadoVisita
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se pueden eliminar visitas en estado 'Programada'"
+        )
+    
     try:
         db.delete(visita)
         db.commit()

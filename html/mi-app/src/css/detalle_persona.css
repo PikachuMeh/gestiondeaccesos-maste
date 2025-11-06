@@ -224,3 +224,45 @@
     justify-content: center;
   }
 }
+/* Agregados para borrado en PersonasPage */
+.pp-action-btn--delete {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.pp-action-btn--delete:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+.pp-action-btn--delete:active {
+  background-color: #a71e2a;
+}
+
+.pp-no-permission {
+  color: #6c757d;
+  font-style: italic;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+/* Asegura que .pp-actions tenga espacio para más botones */
+.pp-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Estado error más visible si hay mensajes de backend */
+.pp-state--error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+  

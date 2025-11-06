@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey,Date    
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -94,6 +94,7 @@ class Usuario(Base):
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
+    controles = relationship("Control", back_populates="usuario")  # Ajusta "Control" al nombre real del modelo
     rol = relationship("RolUsuario", back_populates="usuarios")
 
 
@@ -153,3 +154,20 @@ class Visita(Base):
     persona = relationship("Persona", back_populates="visitas")
     centro_datos = relationship("CentroDatos", back_populates="visitas")
     area = relationship("Area", back_populates="visitas")
+
+
+
+class Control(Base):
+    __tablename__ = "control"
+    __table_args__ = {"schema": SCHEMA}
+
+    id = Column(Integer, primary_key=True, index=True)
+    realizado = Column(String(100), nullable=False)  # Acción: 'crear_visita', 'borrar_persona', etc.
+    fecha = Column(Date, nullable=False, index=True)
+    hora = Column(String(8), nullable=False)  # 'HH:MM:SS'
+    usuario_id = Column(Integer, ForeignKey(f"{SCHEMA}.usuario.id"), nullable=False, index=True)
+
+    usuario = relationship("Usuario", back_populates="controles")  # Nueva relación en Usuario
+
+    # Agregar a modelo Usuario:
+    # controles = relationship("Control", back_populates="usuario", cascade="all, delete-orphan")

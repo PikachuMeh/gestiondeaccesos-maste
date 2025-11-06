@@ -42,12 +42,12 @@ export const AuthProvider = ({ children }) => {
       const userData = {
         id: tokenPayload.id,
         username: tokenPayload.username,
-        rol: tokenPayload.rol  // Asume {id_rol: 1, nombre_rol: 'ADMINISTRADOR'}
+        rol: tokenPayload.rol  // Asume {id_rol: 3, nombre_rol: 'OPERADOR'} para operador
       };
 
-      // NUEVO: Validación básica del rol si no existe
+      // Validación básica del rol si no existe
       if (!userData.rol || !userData.rol.id_rol) {
-        console.log(userData  )
+        console.log(userData);
         throw new Error("Rol no válido en el token");
       }
 
@@ -57,7 +57,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user", JSON.stringify(userData));
       
-      // NO navegamos aquí, retornamos éxito
       return { success: true };
     } catch (error) {
       console.error("Error en login:", error);
@@ -70,7 +69,6 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
-    // NO navegamos aquí, retornamos éxito
     return { success: true };
   };
 
@@ -78,22 +76,21 @@ export const AuthProvider = ({ children }) => {
     return !!token && !!user;
   };
 
-  // NUEVO: Función genérica para permisos (jerarquía: ID bajo = más privilegios, ej: 1=ADMIN permite >=1)
+  // Función genérica para permisos (jerarquía: ID bajo = más privilegios; <= required permite igual o superior)
   const hasPermission = (requiredRolId) => {
     if (!user || !user.rol || typeof user.rol.id_rol !== 'number') {
       return false;
     }
-    // Ajusta la lógica si tu jerarquía es inversa (ID alto = privilegios)
-    return user.rol.id_rol <= requiredRolId;  // ADMIN(1) <= 2 (permite OPERADOR+), etc.
+    return user.rol.id_rol <= requiredRolId;  // E.g., required=3 permite 1(ADMIN),2(SUPERVISOR),3(OPERADOR)
   };
 
-  // NUEVO: Helpers específicos (ajusta IDs según tu tabla roles)
-  const isAdmin = () => hasPermission(1);  // Solo id_rol === 1 (o <=1 si hay sub-admins)
-  const isOperatorOrAbove = () => hasPermission(2);  // ADMIN(1) o OPERADOR(2)
-  const isSupervisorOrAbove = () => hasPermission(4);  // Si SUPERVISOR=4 es bajo, ajusta
-  const isAuditorOrBelow = () => user?.rol.id_rol >= 3;  // AUDITOR(3) o SUPERVISOR(4): solo lectura
+  // Helpers específicos (ajustados a tu jerarquía: ADMIN=1, SUPERVISOR=2, OPERADOR=3, AUDITOR=4)
+  const isAdmin = () => hasPermission(1);  // Solo ADMIN (id_rol <=1)
+  const isSupervisorOrAbove = () => hasPermission(2);  // ADMIN(1) + SUPERVISOR(2)
+  const isOperatorOrAbove = () => hasPermission(3);  // ADMIN(1) + SUPERVISOR(2) + OPERADOR(3)
+  const isAuditorOrBelow = () => user?.rol.id_rol >= 4;  // AUDITOR(4): solo lectura básica, excluye privilegios altos
 
-  // NUEVO: Función para obtener rol actual (útil para mostrar en UI)
+  // Función para obtener rol actual
   const getCurrentRoleName = () => user?.rol?.nombre_rol || 'Desconocido';
 
   const value = {
@@ -103,11 +100,11 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAuthenticated,
     loading,
-    // NUEVO: Exporta las funciones de permisos
+    // Exporta las funciones de permisos
     hasPermission,
     isAdmin,
+    isSupervisorOrAbove,  // Renombrado para claridad (era isSupervisorOrAbove)
     isOperatorOrAbove,
-    isSupervisorOrAbove,
     isAuditorOrBelow,
     getCurrentRoleName
   };

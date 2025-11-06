@@ -45,7 +45,7 @@ async def login_for_access_token(
     usuario_service = UsuarioService(db)
     user = usuario_service.authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
+        raise HTTPException(    
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
             headers={"WWW-Authenticate": "Bearer"},

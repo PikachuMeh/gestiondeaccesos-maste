@@ -16,7 +16,9 @@ from app.schemas import (
     PersonaResponse,
     PersonaListResponse,
 )
-from app.auth.api_permisos import require_admin, require_operator_or_above
+from app.services.visita_service import VisitaService
+from app.auth.api_permisos import require_admin, require_operator_or_above,require_supervisor_or_above
+from app.services.visita_service import VisitaService
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import asc
 router = APIRouter(prefix="/personas", tags=["personas"])
@@ -319,12 +321,26 @@ async def update_persona(
 
 
 @router.delete("/{persona_id}")
-async def delete_persona(persona_id: int, db: Session = Depends(get_db)):
+async def delete_persona(
+    persona_id: int,
+    current_user = Depends(require_supervisor_or_above),  # AGREGADO: Solo rol <=2
+    db: Session = Depends(get_db)
+):
     persona = _get_persona_or_404(db, persona_id)
-    current_user = Depends(require_operator_or_above)  # NUEVO
+    
+    # AGREGADO: Check integridad - visitas activas
+    visita_service = VisitaService(db)
+    visitas_activas = visita_service.count({"persona_id": persona_id, "activo": True})
+    if visitas_activas > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar: la persona tiene visitas activas pendientes. Elimínalas primero."
+        )
+    
     try:
-        if persona.empresa == "SENIAT":  # Asume "personal" son de SENIAT
-            raise HTTPException(403, detail="No se puede borrar personal interno")
+        if persona.empresa == "SENIAT":
+            raise HTTPException(403, detail="No se puede borrar personal interno (SENIAT)")
+        
         # Eliminar foto si existe
         if persona.foto:
             foto_file = FOTO_DIR / os.path.basename(persona.foto)
@@ -336,5 +352,4 @@ async def delete_persona(persona_id: int, db: Session = Depends(get_db)):
         return {"detail": "Persona eliminada correctamente"}
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error eliminando persona: {exc}")
+        raise HTTPException(500, detail=f"Error eliminando persona: {exc}")

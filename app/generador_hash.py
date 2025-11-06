@@ -10,7 +10,7 @@ from passlib.context import CryptContext
 import bcrypt
 
 # ==================== CONFIGURACIÓN ====================
-DATABASE_URL = "postgresql://postgres:juanes321@localhost/sistema_gestiones"
+DATABASE_URL = "postgresql://admin01:123456@localhost/gestion_accesos"
 SCHEMA = "sistema_gestiones"
 
 # Crear contexto de passlib

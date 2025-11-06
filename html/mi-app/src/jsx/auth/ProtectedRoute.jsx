@@ -1,8 +1,9 @@
+// src/jsx/auth/ProtectedRoute.jsx (actualizado)
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext.jsx";
+import { useAuth } from "./AuthContext.jsx";
 
-export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+export default function ProtectedRoute({ children, requiredRoleId = null }) {
+  const { isAuthenticated, loading, hasPermission } = useAuth();
 
   if (loading) {
     return (
@@ -19,6 +20,10 @@ export default function ProtectedRoute({ children }) {
 
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requiredRoleId !== null && !hasPermission(requiredRoleId)) {
+    return <Navigate to="/accesos" replace />;  // Ruta base para operadores
   }
 
   return children;

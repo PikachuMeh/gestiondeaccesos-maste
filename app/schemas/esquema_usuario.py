@@ -143,3 +143,23 @@ class ResetPasswordRequest(BaseModel):
     token: str
     nueva_password: str
     confirmar_password: str
+
+    class UsuarioCreate(BaseModel):
+        """
+        Esquema para crear un nuevo operador o supervisor (solo ADMIN).
+        """
+        username: str = Field(..., min_length=3, max_length=50, description="Nombre de usuario único")
+        password: str = Field(..., min_length=6, description="Contraseña (se hashea)")
+        email: EmailStr = Field(..., description="Email único")
+        cedula: str = Field(..., min_length=7, max_length=8, description="Cédula (números, ej. 12345678)")
+        rol_id: int = Field(..., ge=2, le=3, description="Rol: 2=Supervisor, 3=Operador (no ADMIN)")
+    
+    class Config:
+        from_attributes = True  # Para compatibilidad con ORM
+
+# Opcional: Respuesta para creación exitosa
+class UsuarioCreateResponse(UsuarioResponse):
+    """
+    Usuario creado sin password (hereda de UsuarioResponse).
+    """
+    message: str = "Usuario creado exitosamente"

@@ -1,6 +1,8 @@
+// src/jsx/AccesosPage.jsx (actualizado)
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../css/lista_acceso.css";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext.jsx";  // Ajusta ruta si necesario
+import "../css/lista_acceso.css";
 
 const API_BASE = "http://localhost:8000/api/v1/visitas";
 const PAGE_SIZE = 10;
@@ -8,25 +10,32 @@ const PAGE_SIZE = 10;
 export default function VisitasPage() {
   const didMount = useRef(false);
   const navigate = useNavigate();
-  // Datos
+  const { token, isAdmin, isOperatorOrAbove } = useAuth();  // NUEVO: Para token y roles
+
+  // Datos (sin cambios)
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // Filtros
-  const [estadoId, setEstadoId] = useState("");        // number | ""
-  const [tipoActividadId, setTipoActividadId] = useState(""); // number | ""
-  const [personaId, setPersonaId] = useState("");      // number | ""
-  const [q, setQ] = useState("");                      // búsqueda rápida local
+  // Filtros (sin cambios)
+  const [estadoId, setEstadoId] = useState("");
+  const [tipoActividadId, setTipoActividadId] = useState("");
+  const [personaId, setPersonaId] = useState("");
+  const [q, setQ] = useState("");
 
-  // Estado UI
+  // Estado UI (sin cambios)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Cargar desde backend cuando cambian filtros/página
+  // Cargar desde backend (AGREGADO: token en headers)
   useEffect(() => {
     if (!didMount.current) didMount.current = true;
+    if (!token) {  // NUEVO: Verifica token antes de fetch
+      setError("No autenticado");
+      setLoading(false);
+      return;
+    }
 
     const ctrl = new AbortController();
     setLoading(true);
@@ -39,7 +48,13 @@ export default function VisitasPage() {
       ...(personaId ? { persona_id: String(personaId) } : {}),
     });
 
-    fetch(`${API_BASE}?${params.toString()}`, { signal: ctrl.signal })
+    fetch(`${API_BASE}?${params.toString()}`, { 
+      signal: ctrl.signal,
+      headers: {  // NUEVO: Incluye token para backend
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      }
+    })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -57,9 +72,9 @@ export default function VisitasPage() {
       .finally(() => setLoading(false));
 
     return () => ctrl.abort();
-  }, [page, estadoId, tipoActividadId, personaId]);
+  }, [page, estadoId, tipoActividadId, personaId, token]);  // AGREGADO: token en deps
 
-  // Filtro rápido local por texto (en campos comunes ya traídos en la página)
+  // Filtro rápido (sin cambios)
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return rows;
@@ -74,19 +89,8 @@ export default function VisitasPage() {
       const asunto = v.asunto || v.descripcion || "";
       const fecha = v.fecha_programada || v.fecha || "";
       return [
-        persona,
-        cedula,
-        empresa,
-        unidad,
-        estado,
-        actividad,
-        centro,
-        asunto,
-        fecha,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(t);
+        persona, cedula, empresa, unidad, estado, actividad, centro, asunto, fecha
+      ].join(" ").toLowerCase().includes(t);
     });
   }, [q, rows]);
 
@@ -94,24 +98,27 @@ export default function VisitasPage() {
   const onPrev = () => setPage((p) => Math.max(1, p - 1));
   const onNext = () => setPage((p) => Math.min(pages, p + 1));
 
-  // Handlers de filtros (reinician a página 1)
-  const onEstado = (e) => {
-    setEstadoId(e.target.value);
-    setPage(1);
-  };
-  const onActividad = (e) => {
-    setTipoActividadId(e.target.value);
-    setPage(1);
-  };
-  const onPersona = (e) => {
-    setPersonaId(e.target.value);
-    setPage(1);
+  // Handlers de filtros (sin cambios)
+  const onEstado = (e) => { setEstadoId(e.target.value); setPage(1); };
+  const onActividad = (e) => { setTipoActividadId(e.target.value); setPage(1); };
+  const onPersona = (e) => { setPersonaId(e.target.value); setPage(1); };
+
+  // NUEVO: Verifica rol antes de navegar a detalle/edición
+  const goToDetail = (id) => {
+    if (!isOperatorOrAbove()) {  // Bloquea si no es operador+
+      setError("Permiso denegado para ver detalles");
+      return;
+    }
+    navigate(`/accesos/${id}`);
   };
 
-  const goToDetail = (id) => {
-    // Ajusta a tu router si tienes vista de detalle
-      navigate(`/accesos/${id}`);
-    
+  // NUEVO: Botón para nuevo acceso (solo operadores+)
+  const handleNuevoAcceso = () => {
+    if (!isOperatorOrAbove()) {
+      setError("Permiso denegado para crear accesos");
+      return;
+    }
+    navigate("/accesos/nuevo");
   };
 
   return (
@@ -119,6 +126,7 @@ export default function VisitasPage() {
       <div className="vp-card">
         <h1 className="vp-title">Accesos / Visitas</h1>
 
+        {/* NUEVO: Toolbar con botón condicional */}
         <div className="vp-toolbar">
           <div className="vp-search">
             <span className="vp-search__icon" aria-hidden>🔎</span>
@@ -137,7 +145,6 @@ export default function VisitasPage() {
               <option value="2">En curso</option>
               <option value="3">Finalizada</option>
               <option value="4">Cancelada</option>
-              {/* Ajusta IDs a tu catálogo real */}
             </select>
 
             <select className="vp-select" value={tipoActividadId} onChange={onActividad}>
@@ -145,7 +152,6 @@ export default function VisitasPage() {
               <option value="1">Mantenimiento</option>
               <option value="2">Instalación</option>
               <option value="3">Auditoría</option>
-              {/* Ajusta IDs a tu catálogo real */}
             </select>
 
             <input
@@ -157,6 +163,13 @@ export default function VisitasPage() {
               onChange={onPersona}
             />
           </div>
+
+          {/* NUEVO: Botón crear solo para operadores+ */}
+          {isOperatorOrAbove() && (
+            <button className="btn btn--success" onClick={handleNuevoAcceso}>
+              Nuevo Acceso
+            </button>
+          )}
 
           <span className="vp-count">{total} resultados</span>
         </div>
@@ -177,7 +190,7 @@ export default function VisitasPage() {
                     <th>Actividad</th>
                     <th>Area</th>
                     <th>Centro de Datos</th>
-                    <th></th>
+                    <th>Acciones</th>  {/* AGREGADO: Columna para botones */}
                   </tr>
                 </thead>
                 <tbody>
@@ -196,7 +209,22 @@ export default function VisitasPage() {
                         <td>{area.nombre ?? area.id ?? "—"}</td>
                         <td>{cd.nombre ?? "—"}</td>
                         <td>
-                          <button className="vp-btn" onClick={() => goToDetail(v.id)}>Ver</button>
+                          {/* Botón Ver siempre para operadores+; agrega Editar/Borrar solo admin */}
+                          {isOperatorOrAbove() && (
+                            <button className="vp-btn" onClick={() => goToDetail(v.id)}>
+                              Ver
+                            </button>
+                          )}
+                          {isAdmin() && (  // Solo admin: edición/borrado
+                            <>
+                              <button className="vp-btn vp-btn--edit" onClick={() => navigate(`/accesos/${v.id}/edit`)}>
+                                Editar
+                              </button>
+                              <button className="vp-btn vp-btn--delete" onClick={() => handleDelete(v.id)}>
+                                Borrar
+                              </button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     );
@@ -222,6 +250,7 @@ export default function VisitasPage() {
   );
 }
 
+// Función fmtFecha (sin cambios)
 function fmtFecha(s) {
   if (!s) return "—";
   const d = new Date(s);
@@ -233,3 +262,14 @@ function fmtFecha(s) {
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${y}-${m}-${day} ${hh}:${mm}`;
 }
+
+// NUEVO: Handler ejemplo para borrado (solo admin, implementa fetch DELETE con token)
+const handleDelete = (id) => {
+  if (!isAdmin()) return;
+  if (window.confirm("¿Borrar esta visita?")) {
+    fetch(`${API_BASE}/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` },
+    }).then(() => setPage(1));  // Recarga página
+  }
+};
