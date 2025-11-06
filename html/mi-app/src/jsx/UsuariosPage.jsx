@@ -112,6 +112,16 @@ export default function UsuariosPage() {
   return (
     <div className="usuarios-screen">
       <h1>Gestión de Operadores</h1>
+      {isAdmin() && (  // Solo ADMIN ve botón crear
+        <div className="usuarios-header-actions">
+          <button 
+            className="btn btn--primary" 
+            onClick={() => navigate("/usuarios/nuevo")}
+          >
+            Crear Nuevo Usuario
+          </button>
+        </div>
+      )}
       <div className="info-rol">
         Rol actual: {currentRole} (ID: {user?.id}) | Visibles: {usuarios.length} usuarios
       </div>

@@ -5,7 +5,7 @@ from app.database import get_db
 from app.services.usuario_service import UsuarioService
 from app.auth.api_permisos import require_supervisor_or_above, require_admin
 from app.models import Usuario,Visita
-from app.schemas.esquema_usuario import UsuarioResponse, UsuarioListResponse  # Asume esquemas
+from app.schemas.esquema_usuario import UsuarioResponse, UsuarioListResponse, UsuarioCreate, UsuarioCreateResponse  # Asume esquemas
 from sqlalchemy import and_
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios/Operadores"])
@@ -67,3 +67,33 @@ async def delete_usuario(
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error eliminando usuario: {exc}")
+
+@router.post("/", response_model=UsuarioCreateResponse, status_code=status.HTTP_201_CREATED, summary="Crear operador o supervisor (solo ADMIN)")
+async def create_usuario(
+    payload: UsuarioCreate,
+    current_user = Depends(require_admin),  # Solo ADMIN (rol <=1)
+    db: Session = Depends(get_db)
+):
+    """
+    Crea un nuevo operador o supervisor. ADMIN solo.
+    """
+    try:
+        usuario_service = UsuarioService(db)
+        new_user = usuario_service.create_operator_or_supervisor(
+            username=payload.username,
+            password=payload.password,
+            email=payload.email,
+            cedula=payload.cedula,
+            rol_id=payload.rol_id,
+            db=db
+        )
+        # Retorna sin password (serializado via UsuarioResponse)
+        return UsuarioCreateResponse(
+            **usuario_service.to_dict(new_user),  # Asume to_dict sin hashed_password
+            message="Usuario creado exitosamente"
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creando usuario: {exc}")

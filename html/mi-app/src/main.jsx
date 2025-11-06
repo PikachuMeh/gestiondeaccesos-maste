@@ -17,6 +17,7 @@ import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx";
 import Perfil_persona from "./jsx/profile/perfil.jsx";
 import ForgotPasswordPage from "./jsx/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./jsx/ResetPasswordPage.jsx";
+import CrearUsuarioPage from "./jsx/registros/CrearUsuarioPage.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -100,6 +101,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             } 
           />
+           <Route 
+              path="usuarios/nuevo" 
+              element={
+                <ProtectedRoute requiredRoleId={1}>
+                  <CrearUsuarioPage />
+                </ProtectedRoute>
+              } 
+            />
           {/* Si necesitas detalle/editar usuarios, agrega: */}
           {/* <Route path="usuarios/:id" element={<ProtectedRoute requiredRoleId={2}><DetalleUsuario /></ProtectedRoute>} /> */}
 

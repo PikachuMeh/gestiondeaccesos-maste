@@ -343,3 +343,50 @@ class UsuarioService(BaseService[Usuario, UsuarioCreate, UsuarioUpdate]):
                 Usuario.activo == True
             )
         ).all()
+    def create_operator_or_supervisor(
+        self, 
+        username: str, 
+        password: str, 
+        email: str, 
+        cedula: str, 
+        rol_id: int, 
+        db: Session
+    ) -> Usuario:
+        """
+        Crea un operador (3) o supervisor (2). Solo para ADMIN.
+        Valida: username/email únicos, rol 2-3, password >6, cedula numérica.
+        """
+        # Validar rol (no crear ADMIN)
+        if rol_id not in [2, 3]:
+            raise ValueError("rol_id debe ser 2 (Supervisor) o 3 (Operador)")
+        
+        # Verificar username único
+        if self.get_by_username(username):
+            raise ValueError(f"Username '{username}' ya existe")
+        
+        # Verificar email único (opcional, si usas email en usuarios)
+        existing_email = db.query(Usuario).filter(Usuario.email == email).first()
+        if existing_email:
+            raise ValueError(f"Email '{email}' ya está registrado")
+        
+        # Verificar cédula numérica (8 dígitos aprox.)
+        if not cedula.isdigit() or len(cedula) < 7:
+            raise ValueError("Cédula debe ser numérica y válida (ej. 12345678)")
+        
+        # Crear usuario
+        hashed_password = self.get_password_hash(password)
+        new_user = Usuario(
+            username=username,
+            hashed_password=hashed_password,
+            email=email,
+            cedula=cedula,  # Como string en modelo
+            rol_id=rol_id,
+            activo=True,
+            fecha_creacion=datetime.now(),
+            ultimo_acceso=datetime.now()  # Opcional
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+
