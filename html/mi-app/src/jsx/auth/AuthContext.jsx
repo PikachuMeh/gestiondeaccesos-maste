@@ -88,6 +88,7 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = () => hasPermission(1);  // Solo ADMIN (id_rol <=1)
   const isSupervisorOrAbove = () => hasPermission(2);  // ADMIN(1) + SUPERVISOR(2)
   const isOperatorOrAbove = () => hasPermission(3);  // ADMIN(1) + SUPERVISOR(2) + OPERADOR(3)
+  const isAuditor = () => user?.rol.id_rol === 4;  // Solo AUDITOR (id_rol =4)
   const isAuditorOrBelow = () => user?.rol.id_rol >= 4;  // AUDITOR(4): solo lectura básica, excluye privilegios altos
 
   // Función para obtener rol actual
@@ -105,6 +106,7 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isSupervisorOrAbove,  // Renombrado para claridad (era isSupervisorOrAbove)
     isOperatorOrAbove,
+    isAuditor,
     isAuditorOrBelow,
     getCurrentRoleName
   };
@@ -119,3 +121,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

@@ -166,6 +166,11 @@ class Control(Base):
     fecha = Column(Date, nullable=False, index=True)
     hora = Column(String(8), nullable=False)  # 'HH:MM:SS'
     usuario_id = Column(Integer, ForeignKey(f"{SCHEMA}.usuario.id"), nullable=False, index=True)
+    detalles = Column(Text, nullable=True)  # Detalles adicionales de la acción
+    ip_address = Column(String(45), nullable=True)  # IPv4/IPv6
+    user_agent = Column(Text, nullable=True)  # Información del navegador/dispositivo
+    tabla_afectada = Column(String(50), nullable=True)  # 'personas', 'visitas', 'usuario', etc.
+    registro_id = Column(Integer, nullable=True)  # ID del registro afectado
 
     usuario = relationship("Usuario", back_populates="controles")  # Nueva relación en Usuario
 

@@ -217,9 +217,6 @@ export default function VisitasPage() {
                           )}
                           {isAdmin() && (  // Solo admin: edición/borrado
                             <>
-                              <button className="vp-btn vp-btn--edit" onClick={() => navigate(`/accesos/${v.id}/edit`)}>
-                                Editar
-                              </button>
                               <button className="vp-btn vp-btn--delete" onClick={() => handleDelete(v.id)}>
                                 Borrar
                               </button>

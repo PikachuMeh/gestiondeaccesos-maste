@@ -15,8 +15,9 @@ export default function PersonasPage() {
   const didMount = useRef(false);
 
   // AGREGADO: De AuthContext para auth y permisos
-  const { token, isSupervisorOrAbove } = useAuth();
+  const { token, isSupervisorOrAbove,isOperatorOrAbove } = useAuth();
   const canDelete = isSupervisorOrAbove();  // Solo rol <=2 (SUPERVISOR/ADMIN)
+  const canEdit = isOperatorOrAbove(); 
 
   // Datos y paginación (sin cambios)
   const [rows, setRows] = useState([]);
@@ -216,15 +217,17 @@ export default function PersonasPage() {
                           >
                             👁️ Ver
                           </button>
-                          {canDelete && (  // AGREGADO: Solo si permiso (SUPERVISOR/ADMIN)
+                          {console.log(canDelete)}
+                          {canEdit &&(  // AGREGADO: Solo si permiso (SUPERVISOR/ADMIN)
                             <>
-                              <button
-                                className="pp-action-btn pp-action-btn--edit"
-                                onClick={() => onEditarPersona(p.id)}
-                                title="Editar persona"
-                              >
-                                ✏️ Editar
-                              </button>
+                                <button
+                                  className="pp-action-btn pp-action-btn--edit"
+                                  onClick={() => onEditarPersona(p.id)}
+                                  title="Editar persona"
+                                >
+                                  ✏️ Editar
+                                </button>
+                              {canDelete && (
                               <button
                                 className="pp-action-btn pp-action-btn--delete"  // AGREGADO: Nuevo botón
                                 onClick={() => handleDeletePersona(p.id, `${p.nombre} ${p.apellido}`)}
@@ -232,9 +235,15 @@ export default function PersonasPage() {
                               >
                                 🗑️ Borrar
                               </button>
+                              )}
+                              {!canDelete && (
+                                <span className="pp-no-permission" title="Solo SUPERVISOR/ADMIN pueden editar/borrar">
+                                  Sin acciones
+                                </span>
+                              )}
                             </>
                           )}
-                          {!canDelete && (  // Fallback para OPERADOR/AUDITOR
+                          {!canEdit && (  // Fallback para OPERADOR/AUDITOR
                             <span className="pp-no-permission" title="Solo SUPERVISOR/ADMIN pueden editar/borrar">
                               Sin acciones
                             </span>

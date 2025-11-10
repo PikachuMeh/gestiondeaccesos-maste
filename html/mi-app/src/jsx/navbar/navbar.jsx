@@ -4,7 +4,7 @@ import "../../css/navbar.css";
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, isAdmin, isSupervisorOrAbove, isOperatorOrAbove, getCurrentRoleName } = useAuth();  // AGREGADO: isSupervisorOrAbove
+  const { user, logout, isAuthenticated, isAdmin, isSupervisorOrAbove, isOperatorOrAbove, isAuditor, getCurrentRoleName } = useAuth();  // AGREGADO: isAuditor
 
   const handleLogout = () => {
     logout();
@@ -57,7 +57,7 @@ export default function Navbar() {
                 Crear Acceso
               </button>
             )}
-            {isAdmin() && (  // Solo ADMIN: gestión avanzada */}
+            {isAuditor() && (  // Solo AUDITOR: gestión avanzada */}
               <button className="btn btn--warning" onClick={() => navigate("/admin/gestion")}>
                 Gestión Avanzada (Borrados)
               </button>

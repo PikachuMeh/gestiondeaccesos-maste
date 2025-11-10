@@ -30,3 +30,6 @@ def require_supervisor_or_above(current_user = Depends(require_role(2)), db: Ses
 
 def require_operator_or_above(current_user = Depends(require_role(3)), db: Session = Depends(get_db)):
     return current_user  # ADMIN(1) + SUPERVISOR(2) + OPERADOR(3)
+
+def require_auditor(current_user = Depends(require_role(4)), db: Session = Depends(get_db)):
+    return current_user  # Solo AUDITOR(4)
