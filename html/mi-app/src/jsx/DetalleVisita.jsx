@@ -1,187 +1,144 @@
+// src/jsx/DetalleVisita.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext.jsx";  // AGREGADO: Importa AuthContext (ajusta path si es ./auth/)
 import "../css/detalle_visita.css";
 
-
 const API_BASE = "http://localhost:8000/api/v1/visitas";
-
 
 export default function DetalleVisitaPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token, isAuthenticated } = useAuth();  // AGREGADO: Obtiene token y check auth
+
   const [visita, setVisita] = useState(null);
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-
   useEffect(() => {
+    // AGREGADO: Verifica auth antes de fetch; si no, redirige
+    if (!isAuthenticated()) {
+      setError("Sesión expirada. Redirigiendo a login...");
+      setTimeout(() => navigate("/login"), 2000);
+      return;
+    }
+
     const ctrl = new AbortController();
     setLoading(true);
+    setError(null);
 
+    // Headers comunes con token
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,  // AGREGADO: Incluye token
+    };
 
     // Cargar la visita específica
-    fetch(`${API_BASE}/${id}`, { signal: ctrl.signal })
+    fetch(`${API_BASE}/${id}`, {
+      signal: ctrl.signal,
+      headers,  // AGREGADO: Usa headers con token
+    })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) {
+          if (r.status === 403) throw new Error("Acceso denegado: Verifica tu sesión.");
+          if (r.status === 401) throw new Error("No autenticado: Redirigiendo...");
+          throw new Error(`HTTP ${r.status}`);
+        }
         return r.json();
       })
       .then((data) => {
         setVisita(data);
-        
-        // Una vez cargada la visita, cargar todo el historial de la persona
-        return fetch(`${API_BASE}/persona/${data.persona_id}/historial`, { signal: ctrl.signal });
+        // Una vez cargada la visita, cargar historial de la persona (con token)
+        if (data.persona_id) {
+          return fetch(`${API_BASE}/persona/${data.persona_id}/historial`, {
+            signal: ctrl.signal,
+            headers,  // AGREGADO: Token aquí también
+          });
+        }
       })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (r && !r.ok) throw new Error(`HTTP ${r.status} en historial`);
+        if (!r) return [];  // No hay persona_id, salta historial
         return r.json();
       })
       .then((historialData) => {
-        setHistorial(historialData);
-        setError(null);
+        setHistorial(historialData || []);
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
           setError(err.message || "Error al cargar la visita");
+          if (err.message.includes("No autenticado") || err.message.includes("Acceso denegado")) {
+            setTimeout(() => navigate("/login"), 2000);
+          }
         }
       })
       .finally(() => setLoading(false));
 
-
     return () => ctrl.abort();
-  }, [id]);
+  }, [id, token, isAuthenticated, navigate]);  // AGREGADO: Deps con token/auth
 
+  if (loading) return <div>Cargando detalles de visita...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
 
-  if (loading) return <div className="dv-loading">Cargando...</div>;
-  if (error) return <div className="dv-error">Error: {error}</div>;
-  if (!visita) return <div className="dv-error">Visita no encontrada</div>;
+  if (!visita) return <div>Visita no encontrada.</div>;
 
-
-  const persona = visita.persona || {};
-  const cd = visita.centro_datos || {};
-
+  const { persona, centro_datos: centro, area, actividad, descripcion, fecha_programada, estado } = visita;
+  const fmtFecha = (f) => new Date(f).toLocaleDateString("es-VE");
+  const fmtHora = (f) => new Date(f).toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="dv-container">
-      <div className="dv-card">
-        <div className="dv-header">
-          <h1 className="dv-title">
-            Nombre y Apellido: {persona.nombre} {persona.apellido}
-          </h1>
-          <button className="dv-btn-back" onClick={() => navigate("/accesos")}>
-            ← Volver
-          </button>
-        </div>
+    <div className="detalle-visita">
+      <h1>Detalle de Visita</h1>
+      <div className="info-visita">
+        <h2>Información General</h2>
+        <table>
+          <tbody>
+            <tr><td>Fecha:</td><td>{fmtFecha(fecha_programada)}</td></tr>
+            <tr><td>Persona:</td><td>{persona?.nombre} {persona?.apellido}</td></tr>
+            <tr><td>Cédula:</td><td>{persona?.documento_identidad || "—"}</td></tr>
+            <tr><td>Empresa:</td><td>{persona?.empresa || "—"}</td></tr>
+            <tr><td>Actividad:</td><td>{actividad?.nombre_actividad || descripcion || "—"}</td></tr>
+            <tr><td>Área:</td><td>{area?.nombre || "—"}</td></tr>
+            <tr><td>Centro:</td><td>{centro?.nombre || "—"}</td></tr>
+            <tr><td>Estado:</td><td>{estado?.nombre || "—"}</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-
-        <div className="dv-content">
-          <div className="dv-section">
-            <div className="dv-field">
-              <label className="dv-label">Cedula</label>
-              <div className="dv-value">{persona.documento_identidad || "—"}</div>
-            </div>
-
-
-            <div className="dv-field">
-              <label className="dv-label">Correo</label>
-              <div className="dv-value">{persona.email || "—"}</div>
-            </div>
-
-
-            <div className="dv-field">
-              <label className="dv-label">Unidad</label>
-              <div className="dv-value">{persona.unidad || "—"}</div>
-            </div>
-
-
-            <div className="dv-field">
-              <label className="dv-label">Centro de Datos</label>
-              <div className="dv-value">{cd.nombre || "—"}</div>
-            </div>
-          </div>
-
-
-          <div className="dv-photo">
-            {console.log(visita)}
-            {persona.foto ? (
-              <img 
-                src={persona.foto} 
-                alt={`${persona.nombre} ${persona.apellido}`}
-                className="dv-photo-img"
-              />
-            ) : (
-              <div className="dv-photo-placeholder">
-                <span className="dv-photo-icon">🖼️</span>
-                <span className="dv-photo-text">Sin foto</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-
-        <div className="dv-table-section">
-          <h2 className="dv-subtitle">Historial de Accesos ({historial.length} visitas)</h2>
-          <table className="dv-table">
+      <div className="historial">
+        <h2>Historial de Visitas</h2>
+        {historial.length > 0 ? (
+          <table>
             <thead>
               <tr>
                 <th>Fecha</th>
                 <th>Hora</th>
                 <th>Lugar</th>
                 <th>Área</th>
-                <th>Actvidad</th>
+                <th>Actividad</th>
                 <th>Descripción</th>
               </tr>
             </thead>
             <tbody>
-              {historial.length > 0 ? (
-                historial.map((v, idx) => {
-                  const centro = v.centro_datos || {};
-                  const actividad = v.actividad || {};
-                  const area = v.area || {};
-                  const descripcion = v.descripcion_actividad || {};
-                  return (
-                    <tr key={v.id || idx}>
-                      <td>{fmtFecha(v.fecha_programada)}</td>
-                      <td>{fmtHora(v.fecha_programada)}</td>
-                      <td>{centro.nombre || "—"}</td>
-                      <td>{area.nombre || "—"}</td>
-                      <td>{actividad.nombre_actividad || v.descripcion_actividad ||"—"}</td>
-                      <td>{descripcion || v.descripcion_actividad || "—"}</td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: "center" }}>
-                    No hay historial de visitas
-                  </td>
+              {historial.map((v, i) => (
+                <tr key={i}>
+                  <td>{fmtFecha(v.fecha_programada)}</td>
+                  <td>{fmtHora(v.fecha_programada)}</td>
+                  <td>{v.centro_datos?.nombre || "—"}</td>
+                  <td>{v.area?.nombre || "—"}</td>
+                  <td>{v.actividad?.nombre_actividad || v.descripcion_actividad || "—"}</td>
+                  <td>{v.descripcion || v.descripcion_actividad || "—"}</td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
+        ) : (
+          <p>No hay historial de visitas.</p>
+        )}
       </div>
+
+      <button onClick={() => navigate(-1)}>Volver</button>
     </div>
   );
-}
-
-
-function fmtFecha(s) {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (isNaN(d)) return s;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${day}/${m}/${y}`;
-}
-
-
-function fmtHora(s) {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (isNaN(d)) return "—";
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
 }

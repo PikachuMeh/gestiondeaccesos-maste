@@ -7,7 +7,8 @@ from .models import (
     TipoActividad,
     Usuario,
     RolUsuario,
-    Area
+    Area,
+    Control
 )
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "TipoActividad",
     "Usuario",
     "RolUsuario",
-    "Area"
+    "Area",
+    "Control"
 ]

@@ -10,6 +10,9 @@ from .esquema_usuario import (
     UsuarioBase, UsuarioCreate, UsuarioUpdate, UsuarioResponse, UsuarioListResponse,
     UsuarioLogin, Token, TokenData
 )
+from .esquema_control import(
+    ControlLogResponse,ControlStatsResponse,ControlSearchRequest
+)
 
 __all__ = [
     # Persona
@@ -23,4 +26,6 @@ __all__ = [
     # Usuario
     "UsuarioBase", "UsuarioCreate", "UsuarioUpdate", "UsuarioResponse", "UsuarioListResponse",
     "UsuarioLogin", "Token", "TokenData"
+    #auditoria
+    "AuditLogResponse", "AuditStatsResponse", "AuditSearchRequest"
 ]

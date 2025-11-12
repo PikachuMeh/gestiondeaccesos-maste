@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Foreign
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from sqlalchemy import Index
 
 SCHEMA = "sistema_gestiones"
 
@@ -94,7 +95,7 @@ class Usuario(Base):
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
-    controles = relationship("Control", back_populates="usuario")  # Ajusta "Control" al nombre real del modelo
+    controles = relationship("Control", back_populates="usuario", cascade="all, delete-orphan")  # Ajusta "Control" al nombre real del modelo
     rol = relationship("RolUsuario", back_populates="usuarios")
 
 
@@ -160,6 +161,9 @@ class Visita(Base):
 class Control(Base):
     __tablename__ = "control"
     __table_args__ = {"schema": SCHEMA}
+ 
+
+    __table_args__ = (Index('idx_control_fecha_usuario', 'fecha', 'usuario_id'), {})
 
     id = Column(Integer, primary_key=True, index=True)
     realizado = Column(String(100), nullable=False)  # Acción: 'crear_visita', 'borrar_persona', etc.

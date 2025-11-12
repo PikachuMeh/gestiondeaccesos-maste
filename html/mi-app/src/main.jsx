@@ -1,4 +1,4 @@
-// src/main.jsx (versión corregida e integrada)
+// src/main.jsx (actualizado: + ruta auditoría)
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -7,7 +7,7 @@ import { AuthProvider } from "./jsx/auth/AuthContext.jsx";
 import ProtectedRoute from "./jsx/auth/ProtectedRoute.jsx";
 import AccesosPage from "./jsx/AccesosPage.jsx";
 import PersonasPage from "./jsx/PersonasPage.jsx";
-import UsuariosPage from "./jsx/UsuariosPage.jsx";  // AGREGADO: Para gestión de operadores/supervisores
+import UsuariosPage from "./jsx/UsuariosPage.jsx";
 import CrearAccesoPage from "./jsx/registros/registro_acceso.jsx";
 import LoginPage from "./jsx/LoginPage.jsx";
 import CrearVisitante from "./jsx/registros/registro_funcionario.jsx";
@@ -17,7 +17,8 @@ import EditarPersonaPage from "./jsx/EditarPersonaPage.jsx";
 import Perfil_persona from "./jsx/profile/perfil.jsx";
 import ForgotPasswordPage from "./jsx/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./jsx/ResetPasswordPage.jsx";
-import CrearUsuarioPage from "./jsx/registros/CrearUsuarioPage.jsx"
+import CrearUsuarioPage from "./jsx/registros/CrearUsuarioPage.jsx";
+import AuditPage from "./jsx/AuditPage.jsx";  // Crea este archivo (ver abajo)
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -32,17 +33,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route
           path="/"
           element={
-            <ProtectedRoute>  {/* Solo auth básica (sin rol específico) */}
+            <ProtectedRoute>  {/* Solo auth básica */}
               <App />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/accesos" replace />} />  {/* Redirige a accesos por defecto */}
+          <Route index element={<Navigate to="/accesos" replace />} />
 
-          {/* Acceso general para autenticados (sin rol extra) */}
+          {/* Acceso general */}
           <Route path="perfil" element={<Perfil_persona />} />
 
-          {/* Rutas para OPERADOR+ (rol <=3: consulta/registrar visitas/personas) */}
+          {/* OPERADOR+ (rol <=3: consultas/registrar) */}
           <Route 
             path="accesos" 
             element={
@@ -86,13 +87,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route 
             path="registro/visitante" 
             element={
-              <ProtectedRoute requiredRoleId={3}>  {/* CORREGIDO: Typo 'ProtectedRoleId' → 'requiredRoleId' */}
+              <ProtectedRoute requiredRoleId={3}>
                 <CrearVisitante />
               </ProtectedRoute>
             } 
           />
 
-          {/* NUEVA: Rutas para SUPERVISOR+ (rol <=2: gestión de operadores y ediciones avanzadas) */}
+          {/* SUPERVISOR+ (rol <=2: gestión operadores) */}
           <Route 
             path="usuarios" 
             element={
@@ -101,18 +102,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             } 
           />
-           <Route 
-              path="usuarios/nuevo" 
-              element={
-                <ProtectedRoute requiredRoleId={1}>
-                  <CrearUsuarioPage />
-                </ProtectedRoute>
-              } 
-            />
-          {/* Si necesitas detalle/editar usuarios, agrega: */}
-          {/* <Route path="usuarios/:id" element={<ProtectedRoute requiredRoleId={2}><DetalleUsuario /></ProtectedRoute>} /> */}
+          <Route 
+            path="usuarios/nuevo" 
+            element={
+              <ProtectedRoute requiredRoleId={1}>
+                <CrearUsuarioPage />
+              </ProtectedRoute>
+            } 
+          />
 
-          {/* Rutas solo para ADMIN (rol <=1: ediciones avanzadas, borrados) */}
+          {/* ADMIN (rol <=1: ediciones avanzadas) */}
           <Route 
             path="personas/:id/editar" 
             element={
@@ -121,11 +120,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             } 
           />
-          {/* Agrega si necesitas admin/gestion para borrados avanzados: */}
-          {/* <Route path="admin/gestion" element={<ProtectedRoute requiredRoleId={1}><GestionPage /></ProtectedRoute>} /> */}
+
+          {/* AGREGADO: AUDITOR (rol =4: solo logs de auditoría) */}
+          <Route 
+            path="admin/gestion" 
+            element={
+              <ProtectedRoute requiredRoleId={4}>  {/* Ajusta si ProtectedRoute usa 'exact' para 4; o agrega prop requiredRoleExact={4} */}
+                <AuditPage />
+              </ProtectedRoute>
+            } 
+          />
         </Route>
 
-        {/* ========== CATCH-ALL (redirige a accesos si no autenticado) ========== */}
+        {/* ========== CATCH-ALL ========== */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </AuthProvider>

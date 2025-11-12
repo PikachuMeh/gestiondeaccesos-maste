@@ -4,6 +4,9 @@ from app.auth import get_current_active_user
 from app.services.usuario_service import UsuarioService  # Para obtener usuario completo
 from app.database import get_db
 from sqlalchemy.orm import Session
+from fastapi import Request  # Para IP en logs
+from app.utils.log_utils import log_action  # Dependencia de logging
+from app.services.Control_service import ControlService
 
 def require_role(required_role_id: int):
     """

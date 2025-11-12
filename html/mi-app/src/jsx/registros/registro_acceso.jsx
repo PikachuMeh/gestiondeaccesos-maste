@@ -1,7 +1,35 @@
 // src/components/RegistroAcceso.jsx
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";  // OK: Ya usado
 import "../../css/registro_acceso.css";
+
+// CORREGIDO: Helper para fetch con token (centraliza auth)
+function apiFetch(url, options = {}) {
+  const token = localStorage.getItem('access_token');  // Obtén token
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,  // Merge con custom headers si needed
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;  // AGREGADO: Token siempre si existe
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  }).then(async (response) => {
+    if (!response.ok) {
+      const errorText = await response.text();  // Detalle error
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('access_token');  // Limpia token inválido
+        window.location.href = '/login';  // Redirige login (o usa navigate si en router)
+        throw new Error('Sesión expirada. Redirigiendo al login.');
+      }
+      throw new Error(errorText || `HTTP ${response.status}`);
+    }
+    return response;
+  });
+}
 
 export default function RegistroAcceso() {
   const navigate = useNavigate();
@@ -68,33 +96,10 @@ export default function RegistroAcceso() {
   // NUEVO: API base para auth
   const API_AUTH = "http://localhost:8000/api/v1/auth";
 
-  // NUEVO: Función para obtener el perfil del usuario actual
+  // CORREGIDO: Usa helper apiFetch (ya incluye token)
   async function fetchCurrentUser() {
-    const token = localStorage.getItem('access_token');  // Obtén el token de localStorage
-    if (!token) {
-      setUserLoading(false);
-      navigate('/login');  // Redirige si no hay token
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_AUTH}/me`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');  // Limpia token inválido
-          navigate('/login');
-          return;
-        }
-        throw new Error('Error al obtener perfil del usuario');
-      }
-
+      const response = await apiFetch(`${API_AUTH}/me`);
       const userData = await response.json();
       setCurrentUser(userData);
       
@@ -103,7 +108,6 @@ export default function RegistroAcceso() {
         ...prev,
         autorizado_por: `${userData.nombre} ${userData.apellidos}`.trim(),  // Nombre completo
       }));
-
     } catch (error) {
       console.error('Error fetching current user:', error);
       // Opcional: mostrar alerta o redirigir
@@ -112,52 +116,56 @@ export default function RegistroAcceso() {
     }
   }
 
-  // Personas
+  // CORREGIDO: Usa apiFetch (agrega token)
   async function fetchCedulas() {
-    const r = await fetch(`${API_PERSONAS}/cedulas`);
-    if (!r.ok) throw new Error("Error listando cédulas");
+    const r = await apiFetch(`${API_PERSONAS}/cedulas`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
   async function searchCedulas(prefix) {
-    const r = await fetch(`${API_PERSONAS}/search?q=${encodeURIComponent(prefix)}`);
-    if (!r.ok) throw new Error("Error buscando cédulas");
+    const r = await apiFetch(`${API_PERSONAS}/search?q=${encodeURIComponent(prefix)}`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
   async function fetchPersonaById(id) {
     if (detalleCache.has(id)) return detalleCache.get(id);
-    const r = await fetch(`${API_PERSONAS}/${id}`);
-    if (!r.ok) throw new Error("No se pudo obtener la persona");
+    const r = await apiFetch(`${API_PERSONAS}/${id}`);
     const p = await r.json();
     setDetalleCache(prev => new Map(prev).set(id, p));
     return p;
   }
 
-  // Centros
+  // CORREGIDO: Usa apiFetch para centros
   async function loadCentros() {
     setLoading(true);
     try {
-      const r = await fetch(`${API_CENTROS}?size=1000`);
+      const r = await apiFetch(`${API_CENTROS}?size=1000`);
       const json = await r.json();
       const list = Array.isArray(json) ? json : (json.items ?? []);
       setCentros(list);
+    } catch (error) {
+      console.error("Error cargando centros:", error);
+      setCentros([]);
     } finally {
       setLoading(false);
     }
   }
   async function loadCentroDetalle(id) {
     if (!id) return setCdDetalle(null);
-    const r = await fetch(`${API_CENTROS}/${id}`);
-    if (!r.ok) return setCdDetalle(null);
-    const obj = await r.json();
-    setCdDetalle(obj);
+    try {
+      const r = await apiFetch(`${API_CENTROS}/${id}`);
+      const obj = await r.json();
+      setCdDetalle(obj);
+    } catch (error) {
+      console.error("Error cargando detalle centro:", error);
+      setCdDetalle(null);
+    }
   }
-  // Tipos de actividad
+  // CORREGIDO: Usa apiFetch para tipos actividad
   async function loadTipoActividad() {
     setLoading(true); // true en minúsculas
     try {
-      const r = await fetch(`${API_VISITAS}/tipo_actividad`);
+      const r = await apiFetch(`${API_VISITAS}/tipo_actividad`);
       const json = await r.json();
       setTiposActividad(json); // Guarda el resultado en el estado
     } catch (error) {
@@ -168,7 +176,7 @@ export default function RegistroAcceso() {
     }
   }
 
-  // Área 
+  // CORREGIDO: Usa apiFetch para áreas
   async function loadAreasPorCentro(centro_id) {
     if (!centro_id) {
       setAreas([]);
@@ -178,12 +186,7 @@ export default function RegistroAcceso() {
     
     setLoading(true);
     try {
-      const r = await fetch(`${API_VISITAS}/areas/${centro_id}`);
-      if (!r.ok) {
-        console.error("Error cargando áreas");
-        setAreas([]);
-        return;
-      }
+      const r = await apiFetch(`${API_VISITAS}/areas/${centro_id}`);
       const json = await r.json();
       setAreas(json);
     } catch (error) {
@@ -226,9 +229,10 @@ export default function RegistroAcceso() {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        setSugerencias(s ? await searchCedulas(s) : await fetchCedulas());
+        setSugerencias(s ? await searchCedulas(s) : await fetchCedulas());  // CORREGIDO: Ahora con token
       } catch (err) {
         console.error(err);
+        setSugerencias([]);  // Fallback vacío
       }
     }, 200);
   };
@@ -236,7 +240,7 @@ export default function RegistroAcceso() {
   // Selección persona
   const onSelectById = async (id) => {
     try {
-      const p = await fetchPersonaById(id);
+      const p = await fetchPersonaById(id);  // CORREGIDO: Con token
       setSelected(p);
       setForm({
         cedula: p.documento_identidad || "",
@@ -255,6 +259,7 @@ export default function RegistroAcceso() {
       setNewFoto(null);
     } catch (err) {
       console.error(err);
+      alert("Error cargando persona seleccionada");
     }
   };
 
@@ -271,7 +276,7 @@ export default function RegistroAcceso() {
     const id = e.target.value;
     setCdSel(id);
     setAreaSel(""); // Resetear área seleccionada
-    await loadCentroDetalle(id);
+    await loadCentroDetalle(id);  // CORREGIDO: Con token
     await loadAreasPorCentro(id); // Cargar áreas del centro seleccionado
   };
 
@@ -301,7 +306,7 @@ export default function RegistroAcceso() {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
 
-  // Crear visita
+  // CORREGIDO: Usa apiFetch en POST (agrega token)
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
@@ -338,19 +343,13 @@ export default function RegistroAcceso() {
       };
 
       console.log("Body enviado:", body);
-      console.log("tipo_actividad_id:", body.tipo_actividad_id, typeof body.tipo_actividad_id);
+      console.log("tipo_actividad_id:", body.tipo_actividad_id, typeof body.tipo_activividad_id);
       console.log("area_id:", body.area_id, typeof body.area_id);
 
-      const res = await fetch(API_VISITAS, {
+      const res = await apiFetch(API_VISITAS, {  // CORREGIDO: Usa helper (POST con token)
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText);
-      }
       
       const created = await res.json();
       navigate(`/accesos/${created.id}`);

@@ -1,3 +1,5 @@
+/* src/css/detalle_persona.css - Basado en tu original, con soporte para adiciones */
+
 /* Contenedor principal */
 .dp-container {
   min-height: 100vh;
@@ -66,6 +68,33 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* AGREGADO: Para nuevas secciones (e.g., historial) */
+.dp-section--historial {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-top: 1rem;
+}
+
+.dp-section--historial h3 {
+  color: #374151;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.dp-section--historial ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dp-section--historial li {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  color: #6b7280;
 }
 
 /* Campo de información */
@@ -164,6 +193,18 @@
   transform: translateY(0);
 }
 
+/* AGREGADO: Para nuevo botón (e.g., Ver Visitas) */
+.dp-btn--view-visits {
+  background-color: #10b981;
+  color: white;
+}
+
+.dp-btn--view-visits:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
 /* Estados de carga y error */
 .dp-loading,
 .dp-error {
@@ -224,7 +265,8 @@
     justify-content: center;
   }
 }
-/* Agregados para borrado en PersonasPage */
+
+/* Tus extras originales para PersonasPage (mantengo para compatibilidad, si se importan aquí) */
 .pp-action-btn--delete {
   background-color: #dc3545;
   color: white;
@@ -249,14 +291,12 @@
   margin: 0 4px;
 }
 
-/* Asegura que .pp-actions tenga espacio para más botones */
-.pp-actions {
+.pp-actions { 
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-/* Estado error más visible si hay mensajes de backend */
 .pp-state--error {
   background: #f8d7da;
   color: #721c24;
@@ -265,4 +305,3 @@
   border-radius: 4px;
   margin: 10px 0;
 }
-  

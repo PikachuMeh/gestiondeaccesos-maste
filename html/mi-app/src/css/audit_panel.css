@@ -1,0 +1,127 @@
+/* src/css/audit_panel.css - Estilos para AuditPage */
+.ap-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', sans-serif;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+.ap-title {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 2em;
+}
+
+.ap-subtitle {
+  text-align: center;
+  color: #7f8c8d;
+  margin-bottom: 20px;
+}
+
+.ap-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.ap-filter {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.ap-btn-filter {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ap-table-container {
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.ap-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ap-table th,
+.ap-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.ap-table th {
+  background: #3498db;
+  color: white;
+  font-weight: bold;
+}
+
+.ap-table tr:hover {
+  background: #f1f2f6;
+}
+
+/* Colores por acción */
+.ap-action-create { color: #27ae60; font-weight: bold; }
+.ap-action-update { color: #f39c12; font-weight: bold; }
+.ap-action-delete { color: #e74c3c; font-weight: bold; }
+
+.ap-no-data {
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+  padding: 20px;
+}
+
+.ap-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.ap-pagination button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ap-btn-back {
+  display: block;
+  margin: 20px auto;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ap-loading,
+.ap-error {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.2em;
+}
+
+.ap-error { color: #e74c3c; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ap-filters { flex-direction: column; }
+  .ap-table th, .ap-table td { padding: 8px; font-size: 12px; }
+}
