@@ -1,10 +1,16 @@
 import { useState } from "react";
 import "../../css/registro_persona.css";
+import { useAuth } from "../auth/AuthContext.jsx"; 
+import { useNavigate } from "react-router-dom";
 
 const onlyLetters = (s) => s.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").replace(/\s{2,}/g, " ");
 const onlyDigits = (s) => s.replace(/\D/g, "");
 
 export default function RegistroPersona() {
+
+  const navigate = useNavigate();  
+  const { token, loading, isAuthenticated } = useAuth(); 
+
   const [form, setForm] = useState({
     cedula: "",
     nombre: "",
@@ -81,6 +87,17 @@ export default function RegistroPersona() {
   e.preventDefault();
   if (!validate()) return;
 
+  if (!isAuthenticated()) {  // AGREGADO: Verifica auth antes de enviar
+      setModalMsg("No autenticado. Redirigiendo al login.");
+      setShowModal(true);
+      navigate("/login");
+      return;
+  }
+  if (loading) { 
+      setModalMsg("Cargando autenticación...");
+      setShowModal(true);
+      return;
+    }
   const formData = new FormData();
   formData.append("nombre", form.nombre.trim());
   formData.append("apellido", form.apellido.trim());
@@ -100,18 +117,28 @@ export default function RegistroPersona() {
   try {
     const res = await fetch("http://localhost:8000/api/v1/personas/", {
       method: "POST",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       body: formData
     });
 
     if (res.ok) {
-      setModalMsg("Persona registrada correctamente.");
-      setShowModal(true);
+        setModalMsg("Persona registrada correctamente.");
+        setShowModal(true);
+        clearForm();
     } else {
       const data = await res.json();
       
       // Manejar error de cédula duplicada
       if (res.status === 409) {
         setModalMsg(data.detail || "Cédula o correo ya registrado");
+      } else if (res.status === 401 || res.status === 403) {  //Acceso expirado
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          setModalMsg("Sesión expirada. Redirigiendo al login.");
+          setShowModal(true);
+          navigate("/login");
       } else {
         setModalMsg("Error: " + (data.detail || "No se pudo registrar"));
       }
@@ -122,7 +149,8 @@ export default function RegistroPersona() {
     setShowModal(true);
   }
 };
-
+  if (loading) return <div>Cargando...</div>;  // Spinner simple
+  if (!isAuthenticated()) return navigate("/login");
 
   const handleCloseModal = () => {
     setShowModal(false);
