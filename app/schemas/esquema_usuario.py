@@ -39,17 +39,7 @@ class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8)
     rol_id: int = Field(default=1, description="ID del rol del modelo RolUsuario")
 
-    @validator('password')
-    def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError('La contraseña debe tener al menos 8 caracteres')
-        if not any(c.isupper() for c in v):
-            raise ValueError('La contraseña debe contener al menos una letra mayúscula')
-        if not any(c.islower() for c in v):
-            raise ValueError('La contraseña debe contener al menos una letra minúscula')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('La contraseña debe contener al menos un número')
-        return v
+
 
 class UsuarioUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)

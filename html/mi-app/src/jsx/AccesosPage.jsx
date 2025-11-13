@@ -153,15 +153,6 @@ export default function VisitasPage() {
               <option value="2">Instalación</option>
               <option value="3">Auditoría</option>
             </select>
-
-            <input
-              className="vp-input"
-              type="number"
-              min="1"
-              placeholder="Persona ID"
-              value={personaId}
-              onChange={onPersona}
-            />
           </div>
 
           {/* NUEVO: Botón crear solo para operadores+ */}

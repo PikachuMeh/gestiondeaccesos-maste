@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext.jsx";  // Ajusta la ruta según tu estructura (ej. si está en src/jsx/auth/)
 import "../css/editar_persona.css";
 
 const API_BASE = "http://localhost:8000/api/v1/personas";
@@ -7,6 +8,7 @@ const API_BASE = "http://localhost:8000/api/v1/personas";
 export default function EditarPersonaPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token, loading: authLoading, isAuthenticated } = useAuth();  // Obtener token y estado de auth
 
   // Estado para los datos de la persona
   const [formData, setFormData] = useState({
@@ -26,17 +28,39 @@ export default function EditarPersonaPage() {
   const [nuevaFoto, setNuevaFoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // Estados de UI
-  const [loading, setLoading] = useState(true);
+  // Estados de UI (renombrado loading a isLoading para incluir authLoading)
+  const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
 
   // Cargar datos de la persona al montar el componente
   useEffect(() => {
-    fetch(`${API_BASE}/${id}`)
+    // Verificar autenticación antes de hacer el fetch
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
+    }
+
+    if (authLoading) {
+      return;  // Esperar a que el Context cargue
+    }
+
+    fetch(`${API_BASE}/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,  // Agregar header de autenticación
+      },
+    })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) {
+          if (r.status === 401 || r.status === 403) {  // Manejo específico de errores de auth
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("user");
+            navigate("/login");
+            throw new Error("Sesión expirada. Redirigiendo al login.");
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
         return r.json();
       })
       .then((data) => {
@@ -55,8 +79,8 @@ export default function EditarPersonaPage() {
         setError(null);
       })
       .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
+      .finally(() => setIsLoading(false));
+  }, [id, token, authLoading, isAuthenticated, navigate]);
 
   // Limpiar preview URL cuando el componente se desmonte
   useEffect(() => {
@@ -121,6 +145,13 @@ export default function EditarPersonaPage() {
   // Guardar cambios
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Verificar autenticación antes de enviar
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccessMessage("");
@@ -143,13 +174,26 @@ export default function EditarPersonaPage() {
 
       const response = await fetch(`${API_BASE}/${id}`, {
         method: "PUT",
+        headers: {
+          'Authorization': `Bearer ${token}`,  // Agregar header de autenticación
+        },
         body: data,
         // No establecer Content-Type, el navegador lo hace automáticamente con FormData
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
+        if (response.status === 401 || response.status === 403) {  // Manejo de errores de auth
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          setError("Sesión expirada. Redirigiendo al login.");
+          navigate("/login");
+          return;
+        } else if (response.status === 409) {  // Manejo específico para duplicados (ej. email)
+          setError(errorData.detail || "Correo ya registrado");
+        } else {
+          throw new Error(errorData.detail || `HTTP ${response.status}`);
+        }
       }
 
       const result = await response.json();
@@ -171,10 +215,12 @@ export default function EditarPersonaPage() {
     navigate(`/personas/${id}`);
   };
 
-  if (loading) return <div className="ep-loading">Cargando datos...</div>;
+  // Early return para loading o no autenticado
+  if (authLoading || isLoading) return <div className="ep-loading">Cargando datos...</div>;
+  if (!isAuthenticated()) return null;  // navigate ya maneja la redirección
 
-  // Determinar qué foto mostrar
-  const displayFoto = previewUrl || fotoActual;
+  // Determinar qué foto mostrar (ajustado para path de foto actual)
+  const displayFoto = previewUrl || (fotoActual ? `${window.location.origin}/img/personas/${fotoActual}` : null);  // Ajusta la URL base según tu config de static files (ej. /img/personas/ o endpoint /foto/{id})
 
   return (
     <div className="ep-container">

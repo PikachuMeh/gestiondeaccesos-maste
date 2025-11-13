@@ -120,12 +120,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             } 
           />
-
-          {/* AGREGADO: AUDITOR (rol =4: solo logs de auditoría) */}
+          {/* AUDITOR (rol =4: solo logs de auditoría) */}
           <Route 
             path="admin/gestion" 
             element={
-              <ProtectedRoute requiredRoleId={4}>  {/* Ajusta si ProtectedRoute usa 'exact' para 4; o agrega prop requiredRoleExact={4} */}
+              <ProtectedRoute requiredRoleId={4}>
                 <AuditPage />
               </ProtectedRoute>
             } 

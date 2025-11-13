@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";  // OK: Ya usado
 import "../../css/registro_acceso.css";
+import { useAuth } from "../auth/AuthContext.jsx"; 
 
 // CORREGIDO: Helper para fetch con token (centraliza auth)
 function apiFetch(url, options = {}) {
