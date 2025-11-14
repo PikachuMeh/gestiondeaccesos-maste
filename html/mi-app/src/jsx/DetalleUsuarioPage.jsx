@@ -115,7 +115,7 @@ export default function DetalleUsuarioPage() {
                 {usuario.activo ? "Sí" : "No"}
             </span>
         </div>
-
+{/**/}
         <div className="usuarios-detalle-row">
           <span className="label">Fecha de creación:</span>
           <span>{usuario.fecha_creacion || "N/A"}</span>
