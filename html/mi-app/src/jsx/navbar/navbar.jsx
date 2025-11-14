@@ -38,12 +38,14 @@ export default function Navbar() {
         {isAuthenticated() ? (
           <>
             <span className="user-info">
-              <button>
-                <NavLink to="/perfil" className={({isActive}) => `tab ${isActive ? "is-active" : ""}`}>
-                  Perfil
-                </NavLink>
-                👤 {user?.username} ({getCurrentRoleName()})
-              </button>
+              <NavLink to="/perfil" className={({isActive}) => `tab ${isActive ? "is-active" : ""}`}>
+                  
+                  <button>
+                      Perfil
+                
+                  👤 {user?.username} ({getCurrentRoleName()})
+                  </button>
+              </NavLink>
             </span>
               
             {/* SIN CAMBIOS: Botones para OPERADOR+ (1,2,3): crear visitas/accesos/personas */}
