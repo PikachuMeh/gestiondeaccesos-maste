@@ -14,6 +14,10 @@ export default function UsuariosPage() {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(10);
+  // Dentro de UsuariosPage
+  const handleView = (usuarioId) => {
+    navigate(`/usuarios/${usuarioId}`);
+  };
 
   // Fetch (sin cambios)
   useEffect(() => {
@@ -157,9 +161,9 @@ export default function UsuariosPage() {
                   <td>{usuario.cedula || "N/A"}</td>
                   <td>{usuario.activo ? "Sí" : "No"}</td>
                   <td className="acciones">
-                    <button 
-                      className="btn btn--primary" 
-                      onClick={() => navigate(`/usuarios/${usuario.id}`)}
+                    <button
+                      className="btn btn--info"
+                      onClick={() => handleView(usuario.id)}
                     >
                       Ver
                     </button>

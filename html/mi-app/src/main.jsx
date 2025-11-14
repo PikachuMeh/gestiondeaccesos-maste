@@ -18,7 +18,9 @@ import Perfil_persona from "./jsx/profile/perfil.jsx";
 import ForgotPasswordPage from "./jsx/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./jsx/ResetPasswordPage.jsx";
 import CrearUsuarioPage from "./jsx/registros/CrearUsuarioPage.jsx";
-import AuditPage from "./jsx/AuditPage.jsx";  // Crea este archivo (ver abajo)
+import AuditPage from "./jsx/AuditPage.jsx";  
+import DetalleUsuarioPage from "./jsx/DetalleUsuarioPage.jsx";
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -110,6 +112,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             } 
           />
+          <Route
+              path="usuarios/:id"
+              element={
+                <ProtectedRoute requiredRoleId={2}>
+                  <DetalleUsuarioPage />
+                </ProtectedRoute>
+              }
+            />
 
           {/* ADMIN (rol <=1: ediciones avanzadas) */}
           <Route 

@@ -256,3 +256,34 @@ async def update_user(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@router.get("/{usuario_id}", response_model=UsuarioResponse)
+async def get_usuario(
+    usuario_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_supervisor_or_above),  # supervisor+ puede ver detalles
+):
+    usuario_service = UsuarioService(db)
+    usuario = usuario_service.get(usuario_id)  # ajusta al método real de tu service
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    # Auditoría opcional
+    await log_action(
+        accion="consultar_usuario",        # o crear_usuario, borrar_usuario, etc.
+        tabla_afectada="usuarios",         # nombre de tabla/modelo
+        registro_id=usuario_id,            # ID afectado
+        detalles={
+            "username": usuario.username,
+            "rol_id": usuario.rol_id,
+        },                                 # dict con info legible
+        db=db,
+        request=request,
+        current_user=current_user,         # el usuario autenticado que hace la acción
+    )
+
+    return usuario
