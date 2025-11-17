@@ -1,9 +1,10 @@
-# app/services/control_service.py - Servicio para modelo Control (auditoría)
-from sqlalchemy import and_, or_, func, desc,String
-from sqlalchemy.orm import Session, joinedload  # AGREGADO: joinedload para eager load
+# app/services/control_service.py
+from sqlalchemy import and_, or_, func, desc, String
+from sqlalchemy.orm import Session, joinedload
 from datetime import date, datetime
-from app.models import Control, Usuario  # Modelos SQLAlchemy
+from app.models import Control, Usuario
 from typing import Dict, Tuple, List, Any, Optional
+
 
 class ControlService:
     def __init__(self, db: Session):
@@ -19,12 +20,11 @@ class ControlService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> Control:
-        """Crea un nuevo log en tabla 'control' usando modelo SQLAlchemy."""
         control = Control(
             realizado=realizado,
             fecha=date.today(),
             hora=datetime.now().strftime("%H:%M:%S"),
-            usuario_id=usuario_id,  # FK directo
+            usuario_id=usuario_id,
             tabla_afectada=tabla_afectada,
             registro_id=registro_id,
             detalles=detalles,
@@ -42,28 +42,61 @@ class ControlService:
         skip: int = 0,
         limit: int = 100
     ) -> Tuple[List[Control], int]:
-        """Obtiene logs filtrados y paginados (eager load Usuario en Control)."""
-        # CORREGIDO: Options con path desde root (Control): joinedload(Control.usuario)
-        # No joinedload(Usuario.rol) - no usado en response
-        query = self.db.query(Control).options(joinedload(Control.usuario))
-        
-        # Filtros en Control (no necesita join explícito)
-        if filters.get('usuario_id'):
-            query = query.filter(Control.usuario_id == filters['usuario_id'])
-        if filters.get('fecha_desde'):
-            query = query.filter(Control.fecha >= filters['fecha_desde'])
-        if filters.get('fecha_hasta'):
-            query = query.filter(Control.fecha <= filters['fecha_hasta'])
-        if filters.get('realizado'):
-            query = query.filter(Control.realizado == filters['realizado'])
-        if filters.get('tabla_afectada'):
-            query = query.filter(Control.tabla_afectada == filters['tabla_afectada'])
-        
-        # Orden: Fecha DESC, luego hora (cast a String para orden lexicográfico HH:MM:SS)
-        query = query.order_by(desc(Control.fecha), desc(func.cast(Control.hora, String)))
-        
-        total = query.count()  # Cuenta Controls (filtros aplicados)
-        logs = query.offset(skip).limit(limit).all()  # CORREGIDO: Ahora compila sin error
+        """
+        Obtiene logs filtrados y paginados.
+        Soporta filtros:
+          - usuario_id (int)
+          - usuario_username (str, búsqueda parcial)
+          - fecha_desde / fecha_hasta (date)
+          - realizado (str, búsqueda parcial)
+          - tabla_afectada (str, búsqueda parcial)
+        """
+        # Hacemos join con Usuario para poder filtrar por username
+        query = (
+            self.db.query(Control)
+            .join(Usuario, Control.usuario_id == Usuario.id)
+            .options(joinedload(Control.usuario))
+        )
+
+        usuario_id = filters.get("usuario_id")
+        usuario_username = filters.get("usuario_username")
+        fecha_desde = filters.get("fecha_desde")
+        fecha_hasta = filters.get("fecha_hasta")
+        realizado = filters.get("realizado")
+        tabla_afectada = filters.get("tabla_afectada")
+
+        if usuario_id:
+            query = query.filter(Control.usuario_id == usuario_id)
+
+        # Filtro por username del actor (búsqueda parcial, case-insensitive)
+        if usuario_username:
+            like_value = f"%{usuario_username}%"
+            query = query.filter(Usuario.username.ilike(like_value))
+
+        # Acción realizada: búsqueda parcial (ej: "crear", "borrar")
+        if realizado:
+            like_value = f"%{realizado}%"
+            query = query.filter(Control.realizado.ilike(like_value))
+
+        # Entidad afectada: búsqueda parcial
+        if tabla_afectada:
+            like_value = f"%{tabla_afectada}%"
+            query = query.filter(Control.tabla_afectada.ilike(like_value))
+
+        # Rango de fechas
+        if fecha_desde:
+            query = query.filter(Control.fecha >= fecha_desde)
+        if fecha_hasta:
+            query = query.filter(Control.fecha <= fecha_hasta)
+
+        # Orden: Fecha DESC, luego hora DESC
+        query = query.order_by(
+            desc(Control.fecha),
+            desc(func.cast(Control.hora, String))
+        )
+
+        total = query.count()
+        logs = query.offset(skip).limit(limit).all()
         return logs, total
 
     def get_control_stats(
@@ -71,18 +104,19 @@ class ControlService:
         fecha_desde: Optional[date] = None,
         fecha_hasta: Optional[date] = None
     ) -> Dict[str, List[Dict[str, Any]]]:
-        """Stats: Conteos por realizado y tabla_afectada (sin join Usuario - innecesario)."""
-        # CORREGIDO: Remueve join(Usuario) - no filtra/user en stats
         query = self.db.query(
             Control.realizado,
             Control.tabla_afectada,
-            func.count(Control.id).label('count')
+            func.count(Control.id).label("count")
         )
         if fecha_desde:
             query = query.filter(Control.fecha >= fecha_desde)
         if fecha_hasta:
             query = query.filter(Control.fecha <= fecha_hasta)
-        query = query.group_by(Control.realizado, Control.tabla_afectada).order_by(desc(func.count(Control.id)))
+        query = query.group_by(
+            Control.realizado,
+            Control.tabla_afectada
+        ).order_by(desc(func.count(Control.id)))
         stats = [row._asdict() for row in query.all()]
         return {"stats": stats}
 
@@ -92,10 +126,12 @@ class ControlService:
         skip: int = 0,
         limit: int = 100
     ) -> Tuple[List[Control], int]:
-        """Búsqueda en realizado, detalles, tabla_afectada, username (join + path joinedload)."""
-        # CORREGIDO: Join via relación (Control.usuario); joinedload con path Control.usuario
-        query = self.db.query(Control).options(joinedload(Control.usuario)).join(Control.usuario)
-        
+        query = (
+            self.db.query(Control)
+            .options(joinedload(Control.usuario))
+            .join(Control.usuario)
+        )
+
         if search_term:
             search_like = f"%{search_term}%"
             query = query.filter(
@@ -103,13 +139,12 @@ class ControlService:
                     Control.realizado.like(search_like),
                     Control.detalles.like(search_like),
                     Control.tabla_afectada.like(search_like),
-                    # Filtros en Usuario (post-join)
                     Usuario.username.like(search_like),
-                    Usuario.nombre.like(search_like)
+                    Usuario.nombre.like(search_like),
                 )
             )
-        
+
         query = query.order_by(desc(Control.fecha))
         total = query.count()
-        logs = query.offset(skip).limit(limit).all()  # CORREGIDO: Compila OK
+        logs = query.offset(skip).limit(limit).all()
         return logs, total

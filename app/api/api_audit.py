@@ -81,6 +81,7 @@ async def get_controls(
 async def get_control_logs(
     request: Request,
     usuario_id: Optional[int] = Query(None),
+    usuario_username: Optional[str] = Query(None),
     fecha_desde: Optional[date] = Query(None),
     fecha_hasta: Optional[date] = Query(None),
     realizado: Optional[str] = Query(None),  # CORREGIDO: Acción → realizado
@@ -93,9 +94,10 @@ async def get_control_logs(
     control_service = ControlService(db)  # CORREGIDO: Usa ControlService
     filters = {
         'usuario_id': usuario_id,
+        'usuario_username': usuario_username,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
-        'realizado': realizado,  # CORREGIDO
+        'realizado': realizado,  
         'tabla_afectada': tabla_afectada
     }
     skip = (page - 1) * size

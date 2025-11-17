@@ -73,16 +73,17 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
 
 @router.get("/", response_model=VisitaListResponse, summary="Listar visitas")
 async def list_visitas(
-    request: Request,  # Agregado
-    skip: int = Query(0, ge=0, description="Número de registros a omitir"),
-    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
-    search: Optional[str] = Query(None, description="Término de búsqueda"),
-    persona_id: Optional[int] = Query(None, description="Filtrar por persona"),
-    centro_datos_id: Optional[int] = Query(None, description="Filtrar por centro de datos"),
-    area_id: Optional[int] = Query(None, description="Filtrar por área"),
-    estado: Optional[str] = Query(None, description="Filtrar por estado"),
-    fecha_desde: Optional[date] = Query(None, description="Fecha de inicio"),
-    fecha_hasta: Optional[date] = Query(None, description="Fecha de fin"),
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    search: Optional[str] = Query(None),
+    persona_id: Optional[int] = Query(None),
+    centro_datos_id: Optional[int] = Query(None),
+    area_id: Optional[int] = Query(None),
+    estado_id: Optional[int] = Query(None, description="Filtrar por estado"),
+    tipo_actividad_id: Optional[int] = Query(None, description="Filtrar por tipo actividad"),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
     current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db),
 ):
@@ -91,13 +92,15 @@ async def list_visitas(
 
     filters = {}
     if persona_id:
-        filters['persona_id'] = persona_id
+        filters["persona_id"] = persona_id
     if centro_datos_id:
-        filters['centro_datos_id'] = centro_datos_id
+        filters["centro_datos_id"] = centro_datos_id
     if area_id:
-        filters['area_id'] = area_id
-    if estado:
-        filters['estado'] = estado
+        filters["area_id"] = area_id
+    if tipo_actividad_id:                      # ← NUEVO
+        filters["tipo_actividad_id"] = tipo_actividad_id
+    if estado_id:
+        filters["estado_id"] = estado_id
 
     fecha_desde_dt = None
     fecha_hasta_dt = None
@@ -126,7 +129,7 @@ async def list_visitas(
     # Logging
     filtros_detalles = {
         "search": search, "persona_id": persona_id, "centro_datos_id": centro_datos_id,
-        "area_id": area_id, "estado": estado, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta,
+        "area_id": area_id, "estado_id": estado_id, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta,
         "skip": skip, "limit": limit
     }
     await log_action(

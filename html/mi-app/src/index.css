@@ -1,22 +1,120 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(0, 0, 0, 0.87);
-  background-color: #ffffff;
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  :root {
+    /* Material Design 3 Color Tokens */
+    --primary: 262.1 83.3% 57.8%;
+    --on-primary: 0 0% 100%;
+    --primary-container: 261.9 100% 96.1%;
+    --on-primary-container: 262.1 83.3% 10%;
+
+    --secondary: 286.7 21.4% 47.1%;
+    --on-secondary: 0 0% 100%;
+    --secondary-container: 286.7 21.4% 93.9%;
+    --on-secondary-container: 286.7 21.4% 10%;
+
+    --tertiary: 120 60% 40%;
+    --on-tertiary: 0 0% 100%;
+    --tertiary-container: 120 60% 90%;
+    --on-tertiary-container: 120 60% 10%;
+
+    --error: 0 84.2% 60.2%;
+    --on-error: 0 0% 100%;
+    --error-container: 0 84.2% 96.1%;
+    --on-error-container: 0 84.2% 10%;
+
+    --background: 0 0% 100%;
+    --on-background: 0 0% 9%;
+    --surface: 0 0% 100%;
+    --on-surface: 0 0% 9%;
+    --surface-variant: 286.7 21.4% 93.9%;
+    --on-surface-variant: 286.7 21.4% 30%;
+
+    --outline: 286.7 21.4% 47.1%;
+    --outline-variant: 286.7 21.4% 80%;
+
+    --shadow: 0 0% 0%;
+    --scrim: 0 0% 0%;
+
+    /* Legacy mappings for compatibility */
+    --foreground: var(--on-background);
+    --card: var(--surface);
+    --card-foreground: var(--on-surface);
+    --popover: var(--surface);
+    --popover-foreground: var(--on-surface);
+    --primary-foreground: var(--on-primary);
+    --secondary-foreground: var(--on-secondary);
+    --muted: var(--surface-variant);
+    --muted-foreground: var(--on-surface-variant);
+    --accent: var(--secondary-container);
+    --accent-foreground: var(--on-secondary-container);
+    --destructive: var(--error);
+    --destructive-foreground: var(--on-error);
+    --border: var(--outline-variant);
+    --input: var(--surface-variant);
+    --ring: var(--primary);
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Material Design 3 Dark Theme */
+    --primary: 262.1 83.3% 70%;
+    --on-primary: 262.1 83.3% 10%;
+    --primary-container: 262.1 83.3% 15%;
+    --on-primary-container: 262.1 83.3% 90%;
+
+    --secondary: 286.7 21.4% 60%;
+    --on-secondary: 286.7 21.4% 10%;
+    --secondary-container: 286.7 21.4% 20%;
+    --on-secondary-container: 286.7 21.4% 90%;
+
+    --tertiary: 120 60% 60%;
+    --on-tertiary: 120 60% 10%;
+    --tertiary-container: 120 60% 20%;
+    --on-tertiary-container: 120 60% 90%;
+
+    --error: 0 84.2% 70%;
+    --on-error: 0 84.2% 10%;
+    --error-container: 0 84.2% 20%;
+    --on-error-container: 0 84.2% 90%;
+
+    --background: 0 0% 4%;
+    --on-background: 0 0% 98%;
+    --surface: 0 0% 6%;
+    --on-surface: 0 0% 98%;
+    --surface-variant: 286.7 21.4% 20%;
+    --on-surface-variant: 286.7 21.4% 80%;
+
+    --outline: 286.7 21.4% 60%;
+    --outline-variant: 286.7 21.4% 30%;
+
+    --shadow: 0 0% 0%;
+    --scrim: 0 0% 0%;
+
+    /* Legacy mappings */
+    --foreground: var(--on-background);
+    --card: var(--surface);
+    --card-foreground: var(--on-surface);
+    --popover: var(--surface);
+    --popover-foreground: var(--on-surface);
+    --primary-foreground: var(--on-primary);
+    --secondary-foreground: var(--on-secondary);
+    --muted: var(--surface-variant);
+    --muted-foreground: var(--on-surface-variant);
+    --accent: var(--secondary-container);
+    --accent-foreground: var(--on-secondary-container);
+    --destructive: var(--error);
+    --destructive-foreground: var(--on-error);
+    --border: var(--outline-variant);
+    --input: var(--surface-variant);
+    --ring: var(--primary);
+  }
+
 }
 
 
-body {
-  margin: 0;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}

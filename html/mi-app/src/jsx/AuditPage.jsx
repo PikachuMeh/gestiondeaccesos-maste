@@ -1,16 +1,18 @@
 // src/jsx/AuditPage.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext.jsx";  // Ajusta ruta si necesario
-import "../css/audit_panel.css";                   // Ajusta nombre si cambió
+import { useAuth } from "./auth/AuthContext.jsx";
+import "../css/audit_panel.css";
 
 const API_BASE = "http://localhost:8000/api/v1/audit/logs";
 const PAGE_SIZE = 10;
+const DEBOUNCE_MS = 400;
 
 export default function AuditPage() {
   const navigate = useNavigate();
   const { token } = useAuth();
   const didMount = useRef(false);
+  const debounceTimer = useRef(null);
 
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
@@ -19,23 +21,27 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // error específico de fechas
+  const [dateError, setDateError] = useState("");
+
   // Filtros
   const [realizado, setRealizado] = useState("");
   const [tablaAfectada, setTablaAfectada] = useState("");
   const [usuarioId, setUsuarioId] = useState("");
-  
 
-  useEffect(() => {
-    didMount.current = true;
-    fetchLogs();
-    return () => {
-      didMount.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, realizado, tablaAfectada, usuarioId]);
+  const [actorUsername, setActorUsername] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+
+  // Hoy en formato yyyy-mm-dd para usar en max del input date
+  const todayStr = new Date().toISOString().split("T")[0];
 
   const fetchLogs = async () => {
     if (!token) return;
+
+    // Si hay error de fechas, no llamamos a la API
+    if (dateError) return;
+
     setLoading(true);
     setError(null);
 
@@ -44,9 +50,14 @@ export default function AuditPage() {
         page: String(page),
         size: String(PAGE_SIZE),
       });
+
       if (realizado.trim()) params.append("realizado", realizado.trim());
       if (tablaAfectada.trim()) params.append("tabla_afectada", tablaAfectada.trim());
       if (usuarioId.trim()) params.append("usuario_id", usuarioId.trim());
+
+      if (actorUsername.trim()) params.append("usuario_username", actorUsername.trim());
+      if (fechaDesde.trim()) params.append("fecha_desde", fechaDesde.trim());
+      if (fechaHasta.trim()) params.append("fecha_hasta", fechaHasta.trim());
 
       const response = await fetch(`${API_BASE}?${params.toString()}`, {
         headers: {
@@ -63,7 +74,7 @@ export default function AuditPage() {
         throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json(); // { items, total, page, pages }
+      const data = await response.json();
       if (!didMount.current) return;
 
       setRows(data.items || []);
@@ -75,6 +86,57 @@ export default function AuditPage() {
       if (didMount.current) setLoading(false);
     }
   };
+
+  // Valida que fechaDesde <= fechaHasta y que fechaHasta <= hoy
+  const validateDates = (from, to) => {
+    // Siempre limpiamos error y luego lo fijamos si algo está mal
+    let msg = "";
+
+    if (to && to > todayStr) {
+      msg = "La fecha 'hasta' no puede ser posterior a hoy.";
+    } else if (from && to && from > to) {
+      msg = "La fecha 'desde' no puede ser mayor que la fecha 'hasta'.";
+    }
+
+    setDateError(msg);
+    return msg === "";
+  };
+
+  useEffect(() => {
+    didMount.current = true;
+
+    // Validar fechas antes de programar fetch
+    const ok = validateDates(fechaDesde, fechaHasta);
+
+    if (!ok) {
+      // si el rango es inválido, no lanzamos fetch; solo limpiamos timer
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      return () => {
+        didMount.current = false;
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+        }
+      };
+    }
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      fetchLogs();
+    }, DEBOUNCE_MS);
+
+    return () => {
+      didMount.current = false;
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, realizado, tablaAfectada, usuarioId, actorUsername, fechaDesde, fechaHasta]);
 
   // ==== Helpers de presentación ====
 
@@ -129,18 +191,16 @@ export default function AuditPage() {
     }
   };
 
-  // NUEVO: Construye mensaje legible a partir de realizado + tabla + detalles JSON
   const buildHumanMessage = (log) => {
     const { realizado, tabla_afectada, registro_id, detalles, usuario } = log || {};
     const actor = usuario?.username || "Usuario desconocido";
 
-    // Intenta parsear detalles como JSON
     let parsed = null;
     if (detalles && typeof detalles === "string") {
       try {
         parsed = JSON.parse(detalles);
       } catch {
-        // si no es JSON, lo usamos como texto
+        // ignorar
       }
     } else if (typeof detalles === "object" && detalles !== null) {
       parsed = detalles;
@@ -148,11 +208,8 @@ export default function AuditPage() {
 
     const entityName = getEntidadDisplay(tabla_afectada);
 
-    // Caso 1: tenemos estructura con usuario afectado o entidad afectada
     let sujeto = "";
     if (parsed && parsed.usuario_afectado) {
-      // Ejemplo de estructura que podrías guardar en log_utils:
-      // { usuario_afectado: { username, nombre_completo, id }, ... }
       const u = parsed.usuario_afectado;
       sujeto = `${u.nombre_completo || u.username || "usuario"} (ID ${u.id ?? "?"})`;
     } else if (parsed && parsed.entidad) {
@@ -164,10 +221,9 @@ export default function AuditPage() {
       sujeto = entityName;
     }
 
-    const accionLabel = getAccionDisplay(realizado); // “Creación”, “Edición”, etc.
-
-    // Mensajes específicos por tipo de acción/tabla
+    const accionLabel = getAccionDisplay(realizado);
     const r = (realizado || "").toLowerCase();
+
     if (tabla_afectada === "usuarios") {
       if (r.includes("crear")) {
         return `${actor} creó el usuario ${sujeto}.`;
@@ -210,7 +266,6 @@ export default function AuditPage() {
       }
     }
 
-    // Caso genérico
     if (accionLabel === "Consulta") {
       return `${actor} consultó información de ${sujeto}.`;
     }
@@ -237,10 +292,10 @@ export default function AuditPage() {
       <div className="ap-filters">
         <input
           type="text"
-          placeholder="Acción (ej: crear_usuario, borrar_persona...)"
-          value={realizado}
+          placeholder="Usuario actor (username)"
+          value={actorUsername}
           onChange={(e) => {
-            setRealizado(e.target.value);
+            setActorUsername(e.target.value);
             setPage(1);
           }}
           className="ap-filter"
@@ -256,30 +311,56 @@ export default function AuditPage() {
           className="ap-filter"
         />
         <input
-          type="number"
-          placeholder="ID usuario actor"
-          value={usuarioId}
+          type="text"
+          placeholder="Acción (ej: crear, borrar, editar...)"
+          value={realizado}
           onChange={(e) => {
-            setUsuarioId(e.target.value);
+            setRealizado(e.target.value);
             setPage(1);
           }}
           className="ap-filter"
         />
-        <button onClick={fetchLogs} className="ap-btn-filter">
-          Filtrar
-        </button>
+        <input
+          type="date"
+          value={fechaDesde}
+          max={fechaHasta || todayStr}
+          onChange={(e) => {
+            setFechaDesde(e.target.value);
+            setPage(1);
+          }}
+          className="ap-filter"
+        />
+        <input
+          type="date"
+          value={fechaHasta}
+          max={todayStr}
+          min={fechaDesde || undefined}
+          onChange={(e) => {
+            setFechaHasta(e.target.value);
+            setPage(1);
+          }}
+          className="ap-filter"
+        />
+
         <button
           onClick={() => {
             setRealizado("");
             setTablaAfectada("");
             setUsuarioId("");
+            setActorUsername("");
+            setFechaDesde("");
+            setFechaHasta("");
             setPage(1);
+            setDateError("");
           }}
           className="ap-btn-clear"
         >
           Limpiar
         </button>
       </div>
+
+      {/* Mensaje de error de fechas */}
+      {dateError && <div className="ap-error ap-error-dates">{dateError}</div>}
 
       {/* Tabla de logs */}
       <div className="ap-table-container">
@@ -317,7 +398,6 @@ export default function AuditPage() {
         </table>
       </div>
 
-      {/* Paginación */}
       <div className="ap-pagination">
         <button
           onClick={() => setPage((p) => Math.max(1, p - 1))}

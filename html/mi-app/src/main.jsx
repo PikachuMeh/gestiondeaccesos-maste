@@ -2,9 +2,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import App from "./App.jsx";  // Layout con Navbar
 import { AuthProvider } from "./jsx/auth/AuthContext.jsx";
 import ProtectedRoute from "./jsx/auth/ProtectedRoute.jsx";
+
 import AccesosPage from "./jsx/AccesosPage.jsx";
 import PersonasPage from "./jsx/PersonasPage.jsx";
 import UsuariosPage from "./jsx/UsuariosPage.jsx";
@@ -18,8 +20,9 @@ import Perfil_persona from "./jsx/profile/perfil.jsx";
 import ForgotPasswordPage from "./jsx/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./jsx/ResetPasswordPage.jsx";
 import CrearUsuarioPage from "./jsx/registros/CrearUsuarioPage.jsx";
-import AuditPage from "./jsx/AuditPage.jsx";  
+import AuditPage from "./jsx/AuditPage.jsx";
 import DetalleUsuarioPage from "./jsx/DetalleUsuarioPage.jsx";
+import './index.css';
 
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -125,7 +128,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route 
             path="personas/:id/editar" 
             element={
-              <ProtectedRoute requiredRoleId={1}>
+              <ProtectedRoute requiredRoleId={3}>
                 <EditarPersonaPage />
               </ProtectedRoute>
             } 

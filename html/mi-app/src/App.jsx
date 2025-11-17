@@ -9,13 +9,12 @@ export default function App() {
     return <Navigate to="/login" replace />;
   }
   return (
-    <>
-     
+    <div className="min-h-screen bg-surface-variant">
       <Navbar />
-      <main style={{ padding: "24px" }}>
+      <main className="p-4 sm:p-6 lg:p-8">
         <Outlet />
       </main>
-    </>
+    </div>
   );
   
 }

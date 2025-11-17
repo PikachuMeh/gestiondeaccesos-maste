@@ -1,8 +1,7 @@
 // src/components/RegistroAcceso.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";  // OK: Ya usado
-import "../../css/registro_acceso.css";
-import { useAuth } from "../auth/AuthContext.jsx"; 
+import { useAuth } from "../auth/AuthContext.jsx";
 
 // CORREGIDO: Helper para fetch con token (centraliza auth)
 function apiFetch(url, options = {}) {
@@ -367,54 +366,56 @@ export default function RegistroAcceso() {
 
   // NUEVO: Manejo de loading para usuario
   if (userLoading) {
-    return <div className="ra-loading">Cargando usuario...</div>;  // O un spinner personalizado
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center py-12 text-gray-500">Cargando usuario...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="ra-root">
-      <div className="ra-card">
-        <form className="ra-grid" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
-          <div className="ra-title">REGISTRO ACCESO</div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="bg-surface rounded-lg shadow-sm p-6">
+        <form className="space-y-6" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
+          <div className="text-2xl font-semibold text-on-surface mb-6">REGISTRO ACCESO</div>
 
           {/* Buscador de cédula SIEMPRE visible */}
-          <div className="ra-form">
-            <div className="ra-row">
-              <div className="ra-field" style={{ position: "relative" }}>
-                <label className="ra-label">CÉDULA</label>
-                <input
-                  type="text"
-                  placeholder="Buscar..."
-                  value={q}
-                  onChange={onCedulaChange}
-                  className="ra-input"
-                  autoFocus
-                />
+          <div className="space-y-4">
+            <div className="relative">
+              <label className="block text-sm font-medium text-on-surface mb-2">CÉDULA</label>
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={q}
+                onChange={onCedulaChange}
+                className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                autoFocus
+              />
 
-                {!selected && sugerencias.length > 0 && (
-                  <ul className="ra-suggestions">
-                    {sugerencias.slice(0, 100).map(p => (
-                      <li key={p.id} onMouseDown={() => onSelectById(p.id)}>
-                        V-{p.documento_identidad} - {p.nombre} {p.apellido}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              {!selected && sugerencias.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full bg-surface border border-outline rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {sugerencias.slice(0, 100).map(p => (
+                    <li key={p.id} className="px-3 py-2 hover:bg-surface-variant cursor-pointer text-on-surface" onMouseDown={() => onSelectById(p.id)}>
+                      V-{p.documento_identidad} - {p.nombre} {p.apellido}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-                {showNoResults && (
-                  <div className="ra-empty">
-                    <div className="ra-error" style={{ marginBottom: 8 }}>
-                      No se encontró la cédula. Puede registrar al visitante.
-                    </div>
-                    <button
-                      type="button"
-                      className="ra-button-primary"
-                      onMouseDown={goRegistrarVisitante}
-                    >
-                      Registrar visitante
-                    </button>
+              {showNoResults && (
+                <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="text-red-800 mb-2">
+                    No se encontró la cédula. Puede registrar al visitante.
                   </div>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    onMouseDown={goRegistrarVisitante}
+                  >
+                    Registrar visitante
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -422,24 +423,25 @@ export default function RegistroAcceso() {
           {selected && (
             <>
               {/* Datos Persona */}
-              <div className="ra-form">
-                <div className="ra-row">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-on-surface">Datos de la Persona</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Nombre" value={form.nombre} disabled />
                   <Field label="Apellido" value={form.apellido} disabled />
                 </div>
 
-                <div className="ra-row">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field label="Correo" value={form.email} disabled />
                   <Field label="Empresa" value={form.empresa} disabled />
                   <Field label="Cargo" value={form.cargo} disabled />
                 </div>
 
-                <div className="ra-row">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Dirección" value={form.direccion} disabled />
                   <Field label="Unidad" value={form.unidad} disabled />
                 </div>
 
-                <div className="ra-row">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Observaciones" value={form.observaciones} disabled />
                   <Field
                     label="Fecha de Registro"
@@ -450,64 +452,69 @@ export default function RegistroAcceso() {
               </div>
 
               {/* Media */}
-              <div className="ra-media">
+              <div className="space-y-4">
                 {selected?.foto && (
-                  <img src={selected.foto} alt="foto" className="ra-image-preview" />
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">Foto</label>
+                    <img src={selected.foto} alt="foto" className="w-32 h-32 object-cover rounded-lg border border-outline" />
+                  </div>
                 )}
               </div>
 
               {/* Datos de visita */}
-              <div className="ra-subtitle">Datos de visita</div>
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
 
-              <div className="ra-row">
-                <div className="ra-field">
-                  <label className="ra-label">Centro de datos</label>
-                  <select className="ra-input" value={cdSel} onChange={onCentroChange} required>
-                    <option value="">Seleccione...</option>
-                    {centros.map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre}</option>
-                    ))}
-                  </select>
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">Centro de datos</label>
+                    <select className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary" value={cdSel} onChange={onCentroChange} required>
+                      <option value="">Seleccione...</option>
+                      {centros.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* NUEVO: Select de Área */}
-                <div className="ra-field">
-                  <label className="ra-label">Área</label>
-                  <select 
-                    className="ra-input" 
-                    value={areaSel} 
-                    onChange={onAreaChange}
-                    disabled={!cdSel || areas.length === 0}
-                  >
-                    <option value="">Seleccione...</option>
-                    {areas.map(a => (
-                      <option key={a.id} value={a.id}>{a.nombre}</option>
-                    ))}
-                  </select>
-                </div>
+                  {/* NUEVO: Select de Área */}
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">Área</label>
+                    <select
+                      className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      value={areaSel}
+                      onChange={onAreaChange}
+                      disabled={!cdSel || areas.length === 0}
+                    >
+                      <option value="">Seleccione...</option>
+                      {areas.map(a => (
+                        <option key={a.id} value={a.id}>{a.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="ra-field">
-                  <label className="ra-label">Tipo de actividad</label>
-                  <select 
-                    className="ra-input" 
-                    value={idTipo_act} 
-                    onChange={onActividadChange}
-                    required
-                  >
-                    <option value="">Seleccione...</option>
-                    {tiposActividad.map(t => (
-                      <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
-                        {t.nombre_actividad}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">Tipo de actividad</label>
+                    <select
+                      className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      value={idTipo_act}
+                      onChange={onActividadChange}
+                      required
+                    >
+                      <option value="">Seleccione...</option>
+                      {tiposActividad.map(t => (
+                        <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
+                          {t.nombre_actividad}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {cdDetalle && (
-                <div className="ra-panel">
-                  <div className="ra-panel-title">Centro seleccionado</div>
-                  <div className="ra-panel-grid">
+                <div className="bg-surface-variant rounded-lg p-4">
+                  <h4 className="text-md font-medium text-on-surface mb-3">Centro seleccionado</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <Info label="Código" value={cdDetalle.codigo} />
                     <Info label="Ciudad" value={cdDetalle.ciudad} />
                     <Info label="País" value={cdDetalle.pais} />
@@ -520,17 +527,13 @@ export default function RegistroAcceso() {
                 </div>
               )}
 
-              <div className="ra-row">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FieldEditable
                   label="Descripción"
                   name="descripcion_actividad"
                   value={formVisita.descripcion_actividad}
                   onChange={onChangeVisita}
                 />
-              </div>
-
-              <div className="ra-row">
-                {/* NUEVO: Campo deshabilitado para Autorizado por */}
                 <FieldEditable
                   label="Autorizado por"
                   name="autorizado_por"
@@ -540,7 +543,7 @@ export default function RegistroAcceso() {
                 />
               </div>
 
-              <div className="ra-row">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FieldEditable
                   label="Equipos"
                   name="equipos_ingresados"
@@ -555,10 +558,10 @@ export default function RegistroAcceso() {
                 />
               </div>
 
-              <div className="ra-actions">
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  className="ra-button-primary"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={onRegistrarAcceso}
                   disabled={posting || loading || !selected}
                 >
@@ -576,12 +579,12 @@ export default function RegistroAcceso() {
 // Subcomponentes (modificado FieldEditable para soportar disabled)
 function Field({ label, value, disabled = false }) {
   return (
-    <div className="ra-field">
-      <label className="ra-label">{label}</label>
+    <div>
+      <label className="block text-sm font-medium text-on-surface mb-2">{label}</label>
       <input
         value={value || ""}
         disabled={disabled}
-        className="ra-input"
+        className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm bg-surface text-on-surface disabled:bg-gray-100 disabled:cursor-not-allowed"
         readOnly={disabled}
       />
     </div>
@@ -590,13 +593,13 @@ function Field({ label, value, disabled = false }) {
 
 function FieldEditable({ label, name, value, onChange, disabled = false }) {
   return (
-    <div className="ra-field">
-      <label className="ra-label">{label}</label>
+    <div>
+      <label className="block text-sm font-medium text-on-surface mb-2">{label}</label>
       <input
         name={name}
         value={value || ""}
         onChange={onChange}
-        className="ra-input"
+        className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
         disabled={disabled}  // NUEVO: Soporte para disabled
       />
     </div>
@@ -605,9 +608,9 @@ function FieldEditable({ label, name, value, onChange, disabled = false }) {
 
 function Info({ label, value, full=false }) {
   return (
-    <div className={`ra-info${full ? " ra-info-full" : ""}`}>
-      <div className="ra-info-label">{label}</div>
-      <div className="ra-info-value">{value ?? "—"}</div>
+    <div className={`${full ? 'col-span-full' : ''}`}>
+      <div className="text-sm font-medium text-on-surface-variant">{label}</div>
+      <div className="text-sm text-on-surface">{value ?? "—"}</div>
     </div>
   );
 }

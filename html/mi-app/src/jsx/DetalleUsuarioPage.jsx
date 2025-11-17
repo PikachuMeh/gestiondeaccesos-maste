@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
-import "../css/usuarios_detalles.css"; // opcional, o reutiliza usuarios.css
 
 const API_BASE = "http://localhost:8000/api/v1/usuarios";
 
@@ -56,76 +55,104 @@ export default function DetalleUsuarioPage() {
   };
 
   if (loading) {
-    return <div className="usuarios-detalle-loading">Cargando usuario...</div>;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12 text-muted-foreground">Cargando usuario...</div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="usuarios-detalle-error">
-        <p>Error: {error}</p>
-        <button onClick={handleBack}>Volver</button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800 mb-4">
+          <p>Error: {error}</p>
+        </div>
+        <button
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          onClick={handleBack}
+        >
+          Volver
+        </button>
       </div>
     );
   }
 
   if (!usuario) {
     return (
-      <div className="usuarios-detalle-error">
-        <p>No se encontró el usuario solicitado.</p>
-        <button onClick={handleBack}>Volver</button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-yellow-800 mb-4">
+          <p>No se encontró el usuario solicitado.</p>
+        </div>
+        <button
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          onClick={handleBack}
+        >
+          Volver
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="usuarios-detalle-container">
-      <h1>Detalle de usuario</h1>
-      <p className="usuarios-detalle-subtitle">
-        Información completa del usuario seleccionado.
-      </p>
-
-      <div className="usuarios-detalle-card">
-        <div className="usuarios-detalle-row">
-          <span className="label">ID:</span>
-          <span>{usuario.id}</span>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Detalle de usuario</h1>
+          <p className="text-muted-foreground mt-2">
+            Información completa del usuario seleccionado.
+          </p>
         </div>
-        <div className="usuarios-detalle-row">
-          <span className="label">Nombre:</span>
-          <span>{usuario.nombre}</span>
-        </div>
-        <div className="usuarios-detalle-row">
-          <span className="label">Nombre de usuario:</span>
-          <span>{usuario.username}</span>
-        </div>
-        <div className="usuarios-detalle-row">
-          <span className="label">Correo:</span>
-          <span>{usuario.email || "N/A"}</span>
-        </div>
-        <div className="usuarios-detalle-row">
-          <span className="label">Rol:</span>
-          <span>{usuario.rol?.nombre_rol || "N/A"}</span>
-        </div>
-        <div className="usuarios-detalle-row">
-          <span className="label">Cédula:</span>
-          <span>{usuario.cedula || "N/A"}</span>
-        </div>
-        <div className="usuarios-detalle-row">
-            <span className="label">Activo:</span>
-            <span className={usuario.activo ? "estado-activo" : "estado-inactivo"}>
-                {usuario.activo ? "Sí" : "No"}
-            </span>
-        </div>
-{/**/}
-        <div className="usuarios-detalle-row">
-          <span className="label">Fecha de creación:</span>
-          <span>{usuario.fecha_creacion || "N/A"}</span>
-        </div>
-        {/* Agrega más campos si tu esquema los trae */}
+        <button
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+          onClick={handleBack}
+        >
+          Volver a la lista
+        </button>
       </div>
 
-      <button className="btn btn--secondary" onClick={handleBack}>
-        Volver a la lista
-      </button>
+      <div className="rounded-md border bg-card text-card-foreground shadow-sm">
+        <div className="p-6">
+          <div className="grid gap-4">
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">ID</label>
+              <div className="col-span-2 text-sm">{usuario.id}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nombre</label>
+              <div className="col-span-2 text-sm">{usuario.nombre}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nombre de usuario</label>
+              <div className="col-span-2 text-sm">{usuario.username}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Correo</label>
+              <div className="col-span-2 text-sm">{usuario.email || "N/A"}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Rol</label>
+              <div className="col-span-2 text-sm">{usuario.rol?.nombre_rol || "N/A"}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Cédula</label>
+              <div className="col-span-2 text-sm">{usuario.cedula || "N/A"}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Activo</label>
+              <div className="col-span-2 text-sm">
+                <span className={usuario.activo ? "text-green-600" : "text-red-600"}>
+                  {usuario.activo ? "Sí" : "No"}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Fecha de creación</label>
+              <div className="col-span-2 text-sm">{usuario.fecha_creacion || "N/A"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
