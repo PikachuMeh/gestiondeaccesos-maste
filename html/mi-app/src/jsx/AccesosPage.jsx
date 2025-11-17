@@ -226,14 +226,6 @@ export default function AccesosPage() {
       <div className="bg-surface rounded-lg shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">Accesos / Visitas</h1>
-          {isOperatorOrAbove && (
-            <button
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              onClick={handleNuevoAcceso}
-            >
-              Nuevo Acceso
-            </button>
-          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -254,7 +246,7 @@ export default function AccesosPage() {
               </div>
               <input
                 type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
                 placeholder="Buscar por persona, cédula, empresa, estado, actividad…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -265,7 +257,7 @@ export default function AccesosPage() {
           <div className="flex gap-4">
             {/* Filtro por estado (id_estado) */}
             <select
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
               value={estadoId}
               onChange={onEstado}
             >
@@ -278,7 +270,7 @@ export default function AccesosPage() {
 
             {/* Filtro por actividad (tipo_actividad_id) */}
             <select
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
               value={tipoActividadId}
               onChange={onActividad}
             >

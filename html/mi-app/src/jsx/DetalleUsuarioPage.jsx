@@ -115,12 +115,9 @@ export default function DetalleUsuarioPage() {
         <div className="p-6">
           <div className="grid gap-4">
             <div className="grid grid-cols-3 items-center gap-4">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">ID</label>
-              <div className="col-span-2 text-sm">{usuario.id}</div>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nombre</label>
-              <div className="col-span-2 text-sm">{usuario.nombre}</div>
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nombre y Apellido</label>
+              <div className="col-span-2 text-sm">{usuario.nombre + " " +usuario.apellidos}</div>
+              {console.log(usuario)}
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nombre de usuario</label>

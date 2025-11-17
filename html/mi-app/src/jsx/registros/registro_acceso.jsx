@@ -375,9 +375,12 @@ export default function RegistroAcceso() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="bg-surface rounded-lg shadow-sm p-6">
-        <form className="space-y-6" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
-          <div className="text-2xl font-semibold text-on-surface mb-6">REGISTRO ACCESO</div>
+      <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
+          {/* Left side - Form */}
+          <div className="p-8">
+            <form className="space-y-6" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
+              <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
 
           {/* Buscador de cédula SIEMPRE visible */}
           <div className="space-y-4">
@@ -388,7 +391,7 @@ export default function RegistroAcceso() {
                 placeholder="Buscar..."
                 value={q}
                 onChange={onCedulaChange}
-                className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
                 autoFocus
               />
 
@@ -409,7 +412,7 @@ export default function RegistroAcceso() {
                   </div>
                   <button
                     type="button"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors"
                     onMouseDown={goRegistrarVisitante}
                   >
                     Registrar visitante
@@ -451,15 +454,6 @@ export default function RegistroAcceso() {
                 </div>
               </div>
 
-              {/* Media */}
-              <div className="space-y-4">
-                {selected?.foto && (
-                  <div>
-                    <label className="block text-sm font-medium text-on-surface mb-2">Foto</label>
-                    <img src={selected.foto} alt="foto" className="w-32 h-32 object-cover rounded-lg border border-outline" />
-                  </div>
-                )}
-              </div>
 
               {/* Datos de visita */}
               <div className="space-y-4">
@@ -468,7 +462,7 @@ export default function RegistroAcceso() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-on-surface mb-2">Centro de datos</label>
-                    <select className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary" value={cdSel} onChange={onCentroChange} required>
+                    <select className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all" value={cdSel} onChange={onCentroChange} required>
                       <option value="">Seleccione...</option>
                       {centros.map(c => (
                         <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -480,7 +474,7 @@ export default function RegistroAcceso() {
                   <div>
                     <label className="block text-sm font-medium text-on-surface mb-2">Área</label>
                     <select
-                      className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
                       value={areaSel}
                       onChange={onAreaChange}
                       disabled={!cdSel || areas.length === 0}
@@ -495,7 +489,7 @@ export default function RegistroAcceso() {
                   <div>
                     <label className="block text-sm font-medium text-on-surface mb-2">Tipo de actividad</label>
                     <select
-                      className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
                       value={idTipo_act}
                       onChange={onActividadChange}
                       required
@@ -558,10 +552,10 @@ export default function RegistroAcceso() {
                 />
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-start pt-4">
                 <button
                   type="button"
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                   onClick={onRegistrarAcceso}
                   disabled={posting || loading || !selected}
                 >
@@ -571,6 +565,39 @@ export default function RegistroAcceso() {
             </>
           )}
         </form>
+          </div>
+
+          {/* Right side - Image/Person Photo with Parallax Effect */}
+          <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
+            {/* Parallax background layers */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/90"></div>
+            <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
+              <div className="w-full h-full bg-gradient-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
+            </div>
+            <div className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce" style={{animationDuration: '3s'}}></div>
+            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse" style={{animationDelay: '1s'}}></div>
+
+            <div className="text-center relative z-10">
+              {selected?.foto ? (
+                <div className="w-64 h-64 mx-auto mb-6 rounded-lg overflow-hidden shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
+                  <img
+                    src={selected.foto}
+                    alt={`Foto de ${selected.nombre} ${selected.apellido}`}
+                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              ) : (
+                <div className="w-64 h-64 mx-auto mb-6 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
+                  <svg className="w-32 h-32 text-white transform hover:scale-110 transition-transform duration-300" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                </div>
+              )}
+              <h3 className="text-xl font-semibold text-white mb-2 transform hover:scale-105 transition-transform duration-300">Registro de Acceso</h3>
+              <p className="text-white/80 transform hover:scale-105 transition-transform duration-300">Complete el formulario para registrar un nuevo acceso al sistema</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -580,11 +607,11 @@ export default function RegistroAcceso() {
 function Field({ label, value, disabled = false }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-on-surface mb-2">{label}</label>
+      <label className="block text-sm font-medium text-on-surface mb-3">{label}</label>
       <input
         value={value || ""}
         disabled={disabled}
-        className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm bg-surface text-on-surface disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
         readOnly={disabled}
       />
     </div>
@@ -594,12 +621,12 @@ function Field({ label, value, disabled = false }) {
 function FieldEditable({ label, name, value, onChange, disabled = false }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-on-surface mb-2">{label}</label>
+      <label className="block text-sm font-medium text-on-surface mb-3">{label}</label>
       <input
         name={name}
         value={value || ""}
         onChange={onChange}
-        className="block w-full px-3 py-2 border border-outline rounded-lg shadow-sm focus:outline-none focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
         disabled={disabled}  // NUEVO: Soporte para disabled
       />
     </div>

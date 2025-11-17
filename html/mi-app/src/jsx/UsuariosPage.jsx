@@ -106,7 +106,7 @@ export default function UsuariosPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 mb-4">
           Error: {error}
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors" onClick={() => window.location.reload()}>
+        <button className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors" onClick={() => window.location.reload()}>
           Recargar
         </button>
       </div>
@@ -123,7 +123,7 @@ export default function UsuariosPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Gestión de Operadores</h1>
           {isAdmin() && (  // Solo ADMIN ve botón crear
             <button
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors"
               onClick={() => navigate("/usuarios/nuevo")}
             >
               Crear Nuevo Usuario
