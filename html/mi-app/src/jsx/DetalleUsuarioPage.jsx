@@ -147,6 +147,10 @@ export default function DetalleUsuarioPage() {
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Fecha de creación</label>
               <div className="col-span-2 text-sm">{usuario.fecha_creacion || "N/A"}</div>
             </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Última fecha de conexión</label>
+              <div className="col-span-2 text-sm">{usuario.fecha_actualizacion || "N/A"}</div>
+            </div>
           </div>
         </div>
       </div>
