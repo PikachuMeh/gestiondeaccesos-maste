@@ -570,9 +570,9 @@ export default function RegistroAcceso() {
           {/* Right side - Image/Person Photo with Parallax Effect */}
           <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
             {/* Parallax background layers */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/90"></div>
+            <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/90"></div>
             <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
-              <div className="w-full h-full bg-gradient-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
+              <div className="w-full h-full bg-linear-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
             </div>
             <div className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce" style={{animationDuration: '3s'}}></div>
             <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse" style={{animationDelay: '1s'}}></div>

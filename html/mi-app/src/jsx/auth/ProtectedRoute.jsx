@@ -1,17 +1,18 @@
-// src/jsx/auth/ProtectedRoute.jsx (actualizado)
-import { useEffect } from "react";  // Nuevo: Para efecto de validación
+// src/jsx/auth/ProtectedRoute.jsx
+import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext.jsx";
 
 export default function ProtectedRoute({ children, requiredRoleId = null }) {
   const { isAuthenticated, loading, hasPermission, logout } = useAuth();
 
-  // Nuevo: Efecto para forzar logout si isAuthenticated cambia a false (token inválido)
   useEffect(() => {
-    if (!isAuthenticated()) {
-      logout();  // Limpia y redirige
+    // CORRECCIÓN: Solo ejecutar logout si NO está cargando y NO está autenticado.
+    // Si está cargando (loading === true), todavía estamos esperando el token del localStorage.
+    if (!loading && !isAuthenticated()) {
+      logout();
     }
-  }, [isAuthenticated, logout]);
+  }, [isAuthenticated, logout, loading]); // Agregamos 'loading' a las dependencias
 
   if (loading) {
     return (
@@ -31,7 +32,7 @@ export default function ProtectedRoute({ children, requiredRoleId = null }) {
   }
 
   if (requiredRoleId !== null && !hasPermission(requiredRoleId)) {
-    return <Navigate to="/accesos" replace />;  // Ruta base para operadores
+    return <Navigate to="/accesos" replace />;
   }
 
   return children;

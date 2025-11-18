@@ -12,10 +12,11 @@ from app.schemas import Token, UsuarioLogin, UsuarioResponse
 from app.schemas.esquema_usuario import PerfilResponse, SolicitudRecuperacionPassword, ResetPasswordRequest
 from app.config import settings
 from app.services.email_service import email_service
-from app.utils.log_utils import log_action  # Agregado, usa current_user=None para login
+from app.utils.log_utils import log_action
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
+# ... existing helper functions (_raise_404, _raise_401) ...
 def _raise_404_user_not_found():
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
@@ -28,7 +29,7 @@ def _raise_401_bad_credentials():
 
 @router.post("/login", response_model=Token, summary="Autenticar usuario")
 async def login_for_access_token(
-    request: Request,  # Agregado
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -41,8 +42,16 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = jwt_handler.create_token_for_user(user.id, user.username, user.rol)
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    # CAMBIO: Definir duración de 4 días
+    access_token_expires = timedelta(days=4)
+    
+    # CAMBIO: Pasar la duración al handler
+    access_token = jwt_handler.create_token_for_user(
+        user.id, 
+        user.username, 
+        user.rol, 
+        expires_delta=access_token_expires
+    )
 
     # Logging para login (current_user=None pre-auth)
     ip = request.client.host
@@ -52,7 +61,7 @@ async def login_for_access_token(
         detalles={"username": form_data.username, "ip": ip},
         request=request,
         db=db,
-        current_user=None  # Pre-user
+        current_user=None
     )
 
     return {
@@ -83,8 +92,16 @@ async def login_json(
     user.ultimo_acceso = datetime.now()
     db.commit()
 
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = jwt_handler.create_token_for_user(user_id=user.id, username=user.username, rol=user.rol)
+    # CAMBIO: Definir duración de 4 días aquí también
+    access_token_expires = timedelta(days=4)
+    
+    # CAMBIO: Pasar la duración al handler
+    access_token = jwt_handler.create_token_for_user(
+        user_id=user.id, 
+        username=user.username, 
+        rol=user.rol,
+        expires_delta=access_token_expires
+    )
 
     # Logging similar a login
     ip = request.client.host
@@ -103,7 +120,8 @@ async def login_json(
         "expires_in": int(access_token_expires.total_seconds()),
     }
 
-# Resto de endpoints (recuperación, test_email, etc.) sin cambios mayores, pero agrega logging donde aplique
+# ... rest of the existing code (endpoints: solicitar_recuperacion, test-email, etc) ...
+# Asegúrate de incluir todo el resto del código original aquí sin cambios
 @router.post("/solicitar_recuperacion", summary="Solicitar recuperación de contraseña")
 async def solicitar_recuperacion_password(
     request: Request,
@@ -167,7 +185,6 @@ async def test_email(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error: {str(e)}")
 
-# Endpoints de verificación y reset sin logging (sensibles, pero opcional agregar)
 @router.get("/verificar-token-reset", summary="Verificar token de recuperación")
 async def verificar_token_reset(
     token: str,
@@ -227,7 +244,6 @@ async def reset_password(
         user.fecha_actualizacion = datetime.now()
         db.commit()
 
-        # Logging
         await log_action(
             accion="reset_password_exitoso",
             tabla_afectada="auth",
@@ -248,10 +264,10 @@ async def obtener_info_usuario(
     current_user: dict = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    response = await get_current_user_info(current_user=current_user, db=db, request=request)  # Pasa request
+    response = await get_current_user_info(current_user=current_user, db=db, request=request)
     return response
 
-async def get_current_user_info(  # Agregado async y request
+async def get_current_user_info(
     request: Request,
     current_user: dict = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -287,7 +303,6 @@ async def get_current_user_info(  # Agregado async y request
             'cargo': None,
         })
 
-    # Logging para perfil
     await log_action(
         accion="consultar_perfil_usuario",
         tabla_afectada="usuarios",
@@ -311,10 +326,16 @@ async def refresh_token(
     request: Request,
     current_user: dict = Depends(get_current_active_user)
 ):
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = jwt_handler.create_token_for_user(current_user["id"], current_user["username"], current_user["rol_id"])
+    # CAMBIO: Definir duración de 4 días también en el refresh
+    access_token_expires = timedelta(days=4)
+    
+    access_token = jwt_handler.create_token_for_user(
+        current_user["id"], 
+        current_user["username"], 
+        current_user["rol_id"],
+        expires_delta=access_token_expires # Pasamos el tiempo
+    )
 
-    # Logging para refresh
     await log_action(
         accion="refresh_token",
         tabla_afectada="auth",
@@ -335,7 +356,6 @@ async def logout(
     request: Request,
     current_user: dict = Depends(get_current_active_user)
 ):
-    # Logging para logout
     await log_action(
         accion="logout_exitoso",
         tabla_afectada="auth",
