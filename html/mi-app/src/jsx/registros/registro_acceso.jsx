@@ -13,7 +13,6 @@ function apiFetch(url, options = {}) {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;  // AGREGADO: Token siempre si existe
   }
-
   return fetch(url, {
     ...options,
     headers,
@@ -237,6 +236,14 @@ export default function RegistroAcceso() {
     }, 200);
   };
 
+  //Mostrar tipo de actividad
+  const getSelectedActividadName = () => {
+  const selectedTipo = tiposActividad.find(
+    t => String(t.id_tipo_actividad) === String(idTipo_act)
+  );
+  return selectedTipo ? selectedTipo.nombre_actividad : null;
+};
+  const requiereEquiposYObs = ["1","2","3","6","7"].includes(String(idTipo_act));
   // Selección persona
   const onSelectById = async (id) => {
     try {
@@ -288,7 +295,7 @@ export default function RegistroAcceso() {
   // Selección de tipo de actividad
   const onActividadChange = (e) => {
     const id = e.target.value;
-    console.log("Tipo actividad seleccionado:", id); // DEBUG
+    console.log("Tipo actividad seleccionado:", id);
     setidTipo_act(id);
   };
   // Form visita (modificado para prevenir edición de autorizado_por)
@@ -376,198 +383,152 @@ export default function RegistroAcceso() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
-          {/* Left side - Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px] gap-6">
+          {/* Left side - Visit Data */}
           <div className="p-8">
-            <form className="space-y-6" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
+            <form className="space-y-5" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
               <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
 
-          {/* Buscador de cédula SIEMPRE visible */}
-          <div className="space-y-4">
-            <div className="relative">
-              <label className="block text-sm font-medium text-on-surface mb-2">CÉDULA</label>
-              <input
-                type="text"
-                placeholder="Buscar..."
-                value={q}
-                onChange={onCedulaChange}
-                className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                autoFocus
-              />
-
-              {!selected && sugerencias.length > 0 && (
-                <ul className="absolute z-10 mt-1 w-full bg-surface border border-outline rounded-lg shadow-lg max-h-60 overflow-auto">
-                  {sugerencias.slice(0, 100).map(p => (
-                    <li key={p.id} className="px-3 py-2 hover:bg-surface-variant cursor-pointer text-on-surface" onMouseDown={() => onSelectById(p.id)}>
-                      V-{p.documento_identidad} - {p.nombre} {p.apellido}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {showNoResults && (
-                <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="text-red-800 mb-2">
-                    No se encontró la cédula. Puede registrar al visitante.
-                  </div>
-                  <button
-                    type="button"
-                    className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors"
-                    onMouseDown={goRegistrarVisitante}
-                  >
-                    Registrar visitante
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Resto del formulario solo si hay persona seleccionada */}
-          {selected && (
-            <>
-              {/* Datos Persona */}
+              {/* Buscador de cédula SIEMPRE visible */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Datos de la Persona</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Nombre" value={form.nombre} disabled />
-                  <Field label="Apellido" value={form.apellido} disabled />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Field label="Correo" value={form.email} disabled />
-                  <Field label="Empresa" value={form.empresa} disabled />
-                  <Field label="Cargo" value={form.cargo} disabled />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Dirección" value={form.direccion} disabled />
-                  <Field label="Unidad" value={form.unidad} disabled />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Observaciones" value={form.observaciones} disabled />
-                  <Field
-                    label="Fecha de Registro"
-                    value={form.fecha_creacion ? new Date(form.fecha_creacion).toLocaleDateString() : new Date().toLocaleDateString()}
-                    disabled
+                <div className="relative">
+                  <label className="block text-sm font-medium text-on-surface mb-2">CÉDULA</label>
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={q}
+                    onChange={onCedulaChange}
+                    className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                    autoFocus
                   />
+
+                  {!selected && sugerencias.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full bg-surface border border-outline rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {sugerencias.slice(0, 100).map(p => (
+                        <li key={p.id} className="px-3 py-2 hover:bg-surface-variant cursor-pointer text-on-surface" onMouseDown={() => onSelectById(p.id)}>
+                          V-{p.documento_identidad} - {p.nombre} {p.apellido}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  
                 </div>
+                {showNoResults && (
+                    <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="text-red-800 mb-2">
+                        No se encontró la cédula. Puede registrar al visitante.
+                      </div>
+                      <button
+                        type="button"
+                        className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors"
+                        onMouseDown={goRegistrarVisitante}
+                      >
+                        Registrar visitante
+                      </button>
+                    </div>
+                  )}
               </div>
 
+              {/* Datos de visita - Solo si hay persona seleccionada */}
+              {selected && (
+                <>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
 
-              {/* Datos de visita */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-on-surface mb-2">Centro de datos</label>
+                        <select className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all" value={cdSel} onChange={onCentroChange} required>
+                          <option value="">Seleccione...</option>
+                          {centros.map(c => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-on-surface mb-2">Centro de datos</label>
-                    <select className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all" value={cdSel} onChange={onCentroChange} required>
-                      <option value="">Seleccione...</option>
-                      {centros.map(c => (
-                        <option key={c.id} value={c.id}>{c.nombre}</option>
-                      ))}
-                    </select>
+                      {/* NUEVO: Select de Área */}
+                      <div>
+                        <label className="block text-sm font-medium text-on-surface mb-2">Área</label>
+                        <select
+                          className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
+                          value={areaSel}
+                          onChange={onAreaChange}
+                          disabled={!cdSel || areas.length === 0}
+                        >
+                          <option value="">Seleccione...</option>
+                          {areas.map(a => (
+                            <option key={a.id} value={a.id}>{a.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-on-surface mb-2">Tipo de actividad</label>
+                        <select
+                          className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                          value={idTipo_act}
+                          onChange={onActividadChange}
+                          required
+                        >
+                          <option value="">Seleccione...</option>
+                          {tiposActividad.map(t => (
+                            <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
+                              {t.nombre_actividad}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* NUEVO: Select de Área */}
-                  <div>
-                    <label className="block text-sm font-medium text-on-surface mb-2">Área</label>
-                    <select
-                      className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-                      value={areaSel}
-                      onChange={onAreaChange}
-                      disabled={!cdSel || areas.length === 0}
+                  <div className="grid grid-cols-1 gap-4">
+                    <FieldEditable
+                      label="Descripción"
+                      name="descripcion_actividad"
+                      value={formVisita.descripcion_actividad}
+                      onChange={onChangeVisita}
+                    />
+                    <FieldEditable
+                      label="Autorizado por"
+                      name="autorizado_por"
+                      value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
+                      onChange={onChangeVisita}
+                      disabled={!!currentUser}  // Deshabilita si hay usuario logueado
+                    />
+                  </div>
+                  {requiereEquiposYObs && (
+                    <div className="grid grid-cols-1 gap-4">
+                      <FieldEditable
+                        label="Equipos"
+                        name="equipos_ingresados"
+                        value={formVisita.equipos_ingresados}
+                        onChange={onChangeVisita}
+                      />
+                      <FieldEditable
+                        label="Observaciones"
+                        name="observaciones"
+                        value={formVisita.observaciones}
+                        onChange={onChangeVisita}
+                      />
+                    </div>
+                  )}
+                  <div className="flex justify-start pt-4">
+                    <button
+                      type="button"
+                      className="bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      onClick={onRegistrarAcceso}
+                      disabled={posting || loading || !selected}
                     >
-                      <option value="">Seleccione...</option>
-                      {areas.map(a => (
-                        <option key={a.id} value={a.id}>{a.nombre}</option>
-                      ))}
-                    </select>
+                      {posting ? "Registrando..." : "Registrar acceso"}
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-on-surface mb-2">Tipo de actividad</label>
-                    <select
-                      className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      value={idTipo_act}
-                      onChange={onActividadChange}
-                      required
-                    >
-                      <option value="">Seleccione...</option>
-                      {tiposActividad.map(t => (
-                        <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
-                          {t.nombre_actividad}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {cdDetalle && (
-                <div className="bg-surface-variant rounded-lg p-4">
-                  <h4 className="text-md font-medium text-on-surface mb-3">Centro seleccionado</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Info label="Código" value={cdDetalle.codigo} />
-                    <Info label="Ciudad" value={cdDetalle.ciudad} />
-                    <Info label="País" value={cdDetalle.pais} />
-                    <Info label="Unidad" value={cdDetalle.unidad} />
-                    <Info label="Teléfono" value={cdDetalle.telefono_contacto || "—"} />
-                    <Info label="Correo" value={cdDetalle.email_contacto || "—"} />
-                    <Info label="Dirección" value={cdDetalle.direccion} full />
-                    {cdDetalle.observaciones && <Info label="Observaciones" value={cdDetalle.observaciones} full />}
-                  </div>
-                </div>
+                </>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FieldEditable
-                  label="Descripción"
-                  name="descripcion_actividad"
-                  value={formVisita.descripcion_actividad}
-                  onChange={onChangeVisita}
-                />
-                <FieldEditable
-                  label="Autorizado por"
-                  name="autorizado_por"
-                  value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
-                  onChange={onChangeVisita}
-                  disabled={!!currentUser}  // Deshabilita si hay usuario logueado
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FieldEditable
-                  label="Equipos"
-                  name="equipos_ingresados"
-                  value={formVisita.equipos_ingresados}
-                  onChange={onChangeVisita}
-                />
-                <FieldEditable
-                  label="Observaciones"
-                  name="observaciones"
-                  value={formVisita.observaciones}
-                  onChange={onChangeVisita}
-                />
-              </div>
-
-              <div className="flex justify-start pt-4">
-                <button
-                  type="button"
-                  className="bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                  onClick={onRegistrarAcceso}
-                  disabled={posting || loading || !selected}
-                >
-                  {posting ? "Registrando..." : "Registrar acceso"}
-                </button>
-              </div>
-            </>
-          )}
-        </form>
+            </form>
           </div>
 
-          {/* Right side - Image/Person Photo with Parallax Effect */}
+          {/* Right side - Person Photo */}
           <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
             {/* Parallax background layers */}
             <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/90"></div>
@@ -593,8 +554,27 @@ export default function RegistroAcceso() {
                   </svg>
                 </div>
               )}
-              <h3 className="text-xl font-semibold text-white mb-2 transform hover:scale-105 transition-transform duration-300">Registro de Acceso</h3>
-              <p className="text-white/80 transform hover:scale-105 transition-transform duration-300">Complete el formulario para registrar un nuevo acceso al sistema</p>
+
+              {selected && (
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-black">{selected.nombre} {selected.apellido}</h3>
+                  <p className="text-black/80">{selected.empresa}</p>
+                  {form.empresa === "SENIAT" && (
+                  <>
+                    {/* Dirección Unidad */}
+                    <p className="text-black/80">{selected.unidad}</p>
+                  </>
+                )}
+
+                </div>
+              )}
+
+              {!selected && (
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-white">Registro de Acceso</h3>
+                  <p className="text-white/80">Complete el formulario para registrar un nuevo acceso al sistema</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
