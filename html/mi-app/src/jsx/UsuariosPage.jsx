@@ -146,7 +146,7 @@ export default function UsuariosPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
-        <tbody className="bg-surface divide-y divide-outline-variant">
+        <tbody className="bg-surface divide-y  divide-gray-200">
           {usuarios.length === 0 ? (
             <tr>
               <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No hay usuarios para mostrar (según tu rol).</td>

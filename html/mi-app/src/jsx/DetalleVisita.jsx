@@ -1,23 +1,22 @@
 // src/jsx/DetalleVisita.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext.jsx";  // AGREGADO: Importa AuthContext (ajusta path si es ./auth/)
-import "../css/detalle_visita.css";
+import { useAuth } from "./auth/AuthContext.jsx";
 
 const API_BASE = "http://localhost:8000/api/v1/visitas";
 
 export default function DetalleVisitaPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, isAuthenticated } = useAuth();  // AGREGADO: Obtiene token y check auth
+  const { token, isAuthenticated } = useAuth();
 
   const [visita, setVisita] = useState(null);
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [imagenError, setImagenError] = useState(false);
 
   useEffect(() => {
-    // AGREGADO: Verifica auth antes de fetch; si no, redirige
     if (!isAuthenticated()) {
       setError("Sesión expirada. Redirigiendo a login...");
       setTimeout(() => navigate("/login"), 2000);
@@ -28,16 +27,14 @@ export default function DetalleVisitaPage() {
     setLoading(true);
     setError(null);
 
-    // Headers comunes con token
     const headers = {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,  // AGREGADO: Incluye token
+      "Authorization": `Bearer ${token}`,
     };
 
-    // Cargar la visita específica
     fetch(`${API_BASE}/${id}`, {
       signal: ctrl.signal,
-      headers,  // AGREGADO: Usa headers con token
+      headers,
     })
       .then((r) => {
         if (!r.ok) {
@@ -49,17 +46,16 @@ export default function DetalleVisitaPage() {
       })
       .then((data) => {
         setVisita(data);
-        // Una vez cargada la visita, cargar historial de la persona (con token)
         if (data.persona_id) {
           return fetch(`${API_BASE}/persona/${data.persona_id}/historial`, {
             signal: ctrl.signal,
-            headers,  // AGREGADO: Token aquí también
+            headers,
           });
         }
       })
       .then((r) => {
         if (r && !r.ok) throw new Error(`HTTP ${r.status} en historial`);
-        if (!r) return [];  // No hay persona_id, salta historial
+        if (!r) return [];
         return r.json();
       })
       .then((historialData) => {
@@ -76,69 +72,239 @@ export default function DetalleVisitaPage() {
       .finally(() => setLoading(false));
 
     return () => ctrl.abort();
-  }, [id, token, isAuthenticated, navigate]);  // AGREGADO: Deps con token/auth
+  }, [id, token, isAuthenticated, navigate]);
+
+  const getImageUrl = () => {
+  const foto = persona?.foto;
+  
+  if (!foto) return null;
+
+  if (foto.startsWith("http")) return foto;              // ya viene completa
+
+  if (foto.startsWith("img/")) return `/src/${foto}`;    // BD: img/personas/0001.jpg
+  if (foto.startsWith("src/")) return `/${foto}`;        // BD: src/img/personas/0001.jpg
+  return foto                // solo nombre de archivo
+};
+
+
+  const handleImageError = () => {
+    console.error("Error cargando imagen de visita:", visita?.persona?.foto);
+    setImagenError(true);
+  };
 
   if (loading) return <div>Cargando detalles de visita...</div>;
   if (error) return <div className="error">Error: {error}</div>;
-
   if (!visita) return <div>Visita no encontrada.</div>;
 
-  const { persona, centro_datos: centro, area, actividad, descripcion, fecha_programada, estado } = visita;
+  const {
+    persona,
+    centro_datos: centro,
+    area,
+    actividad,
+    descripcion_actividad,
+    fecha_programada,
+    estado,
+  } = visita;
+
   const fmtFecha = (f) => new Date(f).toLocaleDateString("es-VE");
-  const fmtHora = (f) => new Date(f).toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
+  const fmtHora = (f) =>
+    new Date(f).toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
+
+  const fotoUrl = getImageUrl();
 
   return (
-    <div className="detalle-visita">
-      <h1>Detalle de Visita</h1>
-      <div className="info-visita">
-        <h2>Información General</h2>
-        <table>
-          <tbody>
-            <tr><td>Fecha:</td><td>{fmtFecha(fecha_programada)}</td></tr>
-            <tr><td>Persona:</td><td>{persona?.nombre} {persona?.apellido}</td></tr>
-            <tr><td>Cédula:</td><td>{persona?.documento_identidad || "—"}</td></tr>
-            <tr><td>Empresa:</td><td>{persona?.empresa || "—"}</td></tr>
-            <tr><td>Actividad:</td><td>{actividad?.nombre_actividad || descripcion || "—"}</td></tr>
-            <tr><td>Área:</td><td>{area?.nombre || "—"}</td></tr>
-            <tr><td>Centro:</td><td>{centro?.nombre || "—"}</td></tr>
-            <tr><td>Estado:</td><td>{estado?.nombre || "—"}</td></tr>
-          </tbody>
-        </table>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
+        <div className="text-2xl font-semibold text-on-surface p-8 pb-4">
+          DETALLE DE VISITA
+        </div>
+        <div className="grid grid-cols-2 gap-6 px-8 pb-8">
+          {/* Información general */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-on-surface">Información General</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Fecha
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {fmtFecha(fecha_programada)}
+                </div>
+              </div>
 
-      <div className="historial">
-        <h2>Historial de Visitas</h2>
-        {historial.length > 0 ? (
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Lugar</th>
-                <th>Área</th>
-                <th>Actividad</th>
-                <th>Descripción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historial.map((v, i) => (
-                <tr key={i}>
-                  <td>{fmtFecha(v.fecha_programada)}</td>
-                  <td>{fmtHora(v.fecha_programada)}</td>
-                  <td>{v.centro_datos?.nombre || "—"}</td>
-                  <td>{v.area?.nombre || "—"}</td>
-                  <td>{v.actividad?.nombre_actividad || v.descripcion_actividad || "—"}</td>
-                  <td>{v.descripcion || v.descripcion_actividad || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>No hay historial de visitas.</p>
-        )}
-      </div>
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Persona
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {persona?.nombre} {persona?.apellido}
+                </div>
+              </div>
 
-      <button onClick={() => navigate(-1)}>Volver</button>
+              
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Cédula
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {persona?.documento_identidad || "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Empresa
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {persona?.empresa || "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Actividad
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {actividad?.nombre_actividad || descripcion_actividad || "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Área
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {area?.nombre || "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Centro
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {centro?.nombre || "—"}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-on-surface mb-1">
+                  Descripción
+                </label>
+                <div className="block w-full px-0 py-1 border-b border-gray-200 bg-transparent text-on-surface text-sm">
+                  {descripcion_actividad || "—"}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Foto */}
+          <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden rounded-lg">
+            <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/90"></div>
+            <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
+              <div className="w-full h-full bg-linear-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
+            </div>
+            <div
+              className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce"
+              style={{ animationDuration: "3s" }}
+            ></div>
+            <div
+              className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse"
+              style={{ animationDelay: "1s" }}
+            ></div>
+            <div className="text-center relative z-10">
+              {fotoUrl ? (
+                <div className="w-64 h-64 mx-auto rounded-lg overflow-hidden shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
+                  <img
+                    src={fotoUrl}
+                    alt={`Foto de ${persona?.nombre} ${persona?.apellido}`}
+                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
+                    onError={() => setImagenError(true)}
+                  />
+                </div>
+              ) : (
+                <div className="w-64 h-64 mx-auto bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
+                  <svg
+                    className="w-32 h-32 text-white transform hover:scale-110 transition-transform duration-300"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Historial */}
+          <div className="col-span-2 space-y-4">
+            <h3 className="text-lg font-medium text-on-surface">Historial de Visitas</h3>
+
+            <div className="bg-surface-variant rounded-lg p-4">
+              {historial.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hora
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Lugar
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Área
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actividad
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {historial.map((v, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {fmtFecha(v.fecha_programada)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {fmtHora(v.fecha_programada)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {v.centro_datos?.nombre || "—"}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {v.area?.nombre || "—"}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {v.actividad?.nombre_actividad || v.descripcion_actividad || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 text-sm">
+                  No hay historial de visitas.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-start pt-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              >
+                Volver
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -246,7 +246,7 @@ export default function AccesosPage() {
               </div>
               <input
                 type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
+                className="block w-full px-12 py-2 border-b border-gray-200 bg-white focus:outline-none focus:ring-0 focus:border-gray-200"
                 placeholder="Buscar por persona, cédula, empresa, estado, actividad…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -257,7 +257,7 @@ export default function AccesosPage() {
           <div className="flex gap-4">
             {/* Filtro por estado (id_estado) */}
             <select
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
+              className="block w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
               value={estadoId}
               onChange={onEstado}
             >
@@ -270,7 +270,7 @@ export default function AccesosPage() {
 
             {/* Filtro por actividad (tipo_actividad_id) */}
             <select
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
+              className="block w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
               value={tipoActividadId}
               onChange={onActividad}
             >
@@ -328,7 +328,7 @@ export default function AccesosPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-surface divide-y divide-outline-variant">
+              <tbody className="bg-surface divide-y  divide-gray-200">
                 {filtered.map((v, i) => {
                   const persona = v.persona || {};
                   const area = v.area || {};

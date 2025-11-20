@@ -1,27 +1,27 @@
 // src/components/RegistroAcceso.jsx
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";  // OK: Ya usado
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-// CORREGIDO: Helper para fetch con token (centraliza auth)
+// Helper para fetch con token
 function apiFetch(url, options = {}) {
-  const token = localStorage.getItem('access_token');  // Obtén token
+  const token = localStorage.getItem('access_token');
   const headers = {
     'Content-Type': 'application/json',
-    ...options.headers,  // Merge con custom headers si needed
+    ...options.headers,
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;  // AGREGADO: Token siempre si existe
+    headers['Authorization'] = `Bearer ${token}`;
   }
   return fetch(url, {
     ...options,
     headers,
   }).then(async (response) => {
     if (!response.ok) {
-      const errorText = await response.text();  // Detalle error
+      const errorText = await response.text();
       if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('access_token');  // Limpia token inválido
-        window.location.href = '/login';  // Redirige login (o usa navigate si en router)
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
         throw new Error('Sesión expirada. Redirigiendo al login.');
       }
       throw new Error(errorText || `HTTP ${response.status}`);
@@ -33,14 +33,10 @@ function apiFetch(url, options = {}) {
 export default function RegistroAcceso() {
   const navigate = useNavigate();
 
-  // Cache de detalles por id para evitar refetch
+  // Estados varios
   const [detalleCache, setDetalleCache] = useState(new Map());
-
-  // Sugerencias y búsqueda
-  const [sugerencias, setSugerencias] = useState([]); // [{id, documento_identidad, nombre, apellido}]
+  const [sugerencias, setSugerencias] = useState([]);
   const [q, setQ] = useState("");
-
-  // Persona seleccionada y datos de solo lectura
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({
     cedula: "",
@@ -57,21 +53,15 @@ export default function RegistroAcceso() {
   });
   const [newFoto, setNewFoto] = useState(null);
 
-  // Centros de datos
+  // Centros de datos, áreas, tipos actividad
   const [centros, setCentros] = useState([]);
-  const [cdSel, setCdSel] = useState("");
-  const [cdDetalle, setCdDetalle] = useState(null);
-  
-  // Tipo de Actividad
-  const [tiposActividad, setTiposActividad] = useState([]); // NUEVO: array de tipos
-  const [idTipo_act, setidTipo_act] = useState(""); // ID seleccionado
-
-  // Áreas
-  // NUEVO: Estados para áreas
+  const [cdSel, setCdSel] = useState(null);
   const [areas, setAreas] = useState([]);
-  const [areaSel, setAreaSel] = useState("");
+  const [areasSel, setAreasSel] = useState([]);
+  const [cdDetalle, setCdDetalle] = useState(null);
+  const [tiposActividad, setTiposActividad] = useState([]);
+  const [idTipo_act, setidTipo_act] = useState("");
 
-  // Formulario de visita
   const [formVisita, setFormVisita] = useState({
     descripcion_actividad: "",
     fecha_programada: "",
@@ -81,10 +71,8 @@ export default function RegistroAcceso() {
     id_estado: "1",
   });
 
-  // NUEVO: Estado para el perfil del usuario autenticado
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
-
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const debounceRef = useRef();
@@ -92,40 +80,57 @@ export default function RegistroAcceso() {
   const API_PERSONAS = "http://localhost:8000/api/v1/personas";
   const API_VISITAS = "http://localhost:8000/api/v1/visitas";
   const API_CENTROS = "http://localhost:8000/api/v1/centros-datos";
-  // NUEVO: API base para auth
   const API_AUTH = "http://localhost:8000/api/v1/auth";
 
-  // CORREGIDO: Usa helper apiFetch (ya incluye token)
   async function fetchCurrentUser() {
     try {
       const response = await apiFetch(`${API_AUTH}/me`);
       const userData = await response.json();
       setCurrentUser(userData);
-      
-      // NUEVO: Actualiza formVisita con el nombre del usuario autenticado
       setFormVisita(prev => ({
         ...prev,
-        autorizado_por: `${userData.nombre} ${userData.apellidos}`.trim(),  // Nombre completo
+        autorizado_por: `${userData.nombre} ${userData.apellidos}`.trim(),
       }));
     } catch (error) {
       console.error('Error fetching current user:', error);
-      // Opcional: mostrar alerta o redirigir
     } finally {
       setUserLoading(false);
     }
   }
 
-  // CORREGIDO: Usa apiFetch (agrega token)
+  const onCentroCheckboxChange = (id) => {
+    setCdSel(prev => (prev === id ? null : id));
+    setAreasSel([]);
+    if (cdSel !== id) {
+      loadCentroDetalle(id);
+      loadAreasPorCentro(id);
+    } else {
+      setCdDetalle(null);
+      setAreas([]);
+    }
+  };
+
+  const onAreaCheckboxChange = (id) => {
+    setAreasSel(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      }
+      return [...prev, id];
+    });
+  };
+
   async function fetchCedulas() {
     const r = await apiFetch(`${API_PERSONAS}/cedulas`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
+
   async function searchCedulas(prefix) {
     const r = await apiFetch(`${API_PERSONAS}/search?q=${encodeURIComponent(prefix)}`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
+
   async function fetchPersonaById(id) {
     if (detalleCache.has(id)) return detalleCache.get(id);
     const r = await apiFetch(`${API_PERSONAS}/${id}`);
@@ -134,7 +139,6 @@ export default function RegistroAcceso() {
     return p;
   }
 
-  // CORREGIDO: Usa apiFetch para centros
   async function loadCentros() {
     setLoading(true);
     try {
@@ -149,6 +153,7 @@ export default function RegistroAcceso() {
       setLoading(false);
     }
   }
+
   async function loadCentroDetalle(id) {
     if (!id) return setCdDetalle(null);
     try {
@@ -160,29 +165,26 @@ export default function RegistroAcceso() {
       setCdDetalle(null);
     }
   }
-  // CORREGIDO: Usa apiFetch para tipos actividad
+
   async function loadTipoActividad() {
-    setLoading(true); // true en minúsculas
+    setLoading(true);
     try {
       const r = await apiFetch(`${API_VISITAS}/tipo_actividad`);
       const json = await r.json();
-      setTiposActividad(json); // Guarda el resultado en el estado
+      setTiposActividad(json);
     } catch (error) {
       console.error("Error cargando tipos de actividad:", error);
       setTiposActividad([]);
     } finally {
-      setLoading(false); // false en minúsculas
+      setLoading(false);
     }
   }
 
-  // CORREGIDO: Usa apiFetch para áreas
   async function loadAreasPorCentro(centro_id) {
     if (!centro_id) {
       setAreas([]);
-      setAreaSel("");
       return;
     }
-    
     setLoading(true);
     try {
       const r = await apiFetch(`${API_VISITAS}/areas/${centro_id}`);
@@ -194,17 +196,15 @@ export default function RegistroAcceso() {
     } finally {
       setLoading(false);
     }
-  } 
+  }
 
-  // Carga inicial (modificada)
   useEffect(() => {
     loadCentros();
     loadTipoActividad();
     fetchCedulas().then(setSugerencias).catch(console.error);
-    fetchCurrentUser();  // NUEVO: Carga el usuario autenticado
+    fetchCurrentUser();
   }, []);
 
-  // Búsqueda con debounce
   const onCedulaChange = (e) => {
     const raw = e.target.value;
     const s = raw.replace(/\D/g, "");
@@ -228,26 +228,25 @@ export default function RegistroAcceso() {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        setSugerencias(s ? await searchCedulas(s) : await fetchCedulas());  // CORREGIDO: Ahora con token
+        setSugerencias(s ? await searchCedulas(s) : await fetchCedulas());
       } catch (err) {
         console.error(err);
-        setSugerencias([]);  // Fallback vacío
+        setSugerencias([]);
       }
     }, 200);
   };
 
-  //Mostrar tipo de actividad
   const getSelectedActividadName = () => {
-  const selectedTipo = tiposActividad.find(
-    t => String(t.id_tipo_actividad) === String(idTipo_act)
-  );
-  return selectedTipo ? selectedTipo.nombre_actividad : null;
-};
-  const requiereEquiposYObs = ["1","2","3","6","7"].includes(String(idTipo_act));
-  // Selección persona
+    const selectedTipo = tiposActividad.find(
+      t => String(t.id_tipo_actividad) === String(idTipo_act)
+    );
+    return selectedTipo ? selectedTipo.nombre_actividad : null;
+  };
+  const requiereEquiposYObs = ["1", "2", "3", "6", "7"].includes(String(idTipo_act));
+
   const onSelectById = async (id) => {
     try {
-      const p = await fetchPersonaById(id);  // CORREGIDO: Con token
+      const p = await fetchPersonaById(id);
       setSelected(p);
       setForm({
         cedula: p.documento_identidad || "",
@@ -270,7 +269,6 @@ export default function RegistroAcceso() {
     }
   };
 
-  // Imagen
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -278,42 +276,23 @@ export default function RegistroAcceso() {
     setForm(f => ({ ...f, foto: file }));
   };
 
-  // Centro select
-  const onCentroChange = async (e) => {
-    const id = e.target.value;
-    setCdSel(id);
-    setAreaSel(""); // Resetear área seleccionada
-    await loadCentroDetalle(id);  // CORREGIDO: Con token
-    await loadAreasPorCentro(id); // Cargar áreas del centro seleccionado
-  };
-
-  const onAreaChange = (e) => {
-    const id = e.target.value;
-    console.log("Área seleccionada:", id); // DEBUG
-    setAreaSel(id);
-  };
-  // Selección de tipo de actividad
   const onActividadChange = (e) => {
     const id = e.target.value;
-    console.log("Tipo actividad seleccionado:", id);
     setidTipo_act(id);
   };
-  // Form visita (modificado para prevenir edición de autorizado_por)
+
   function onChangeVisita(e) {
     const { name, value, type, checked } = e.target;
-    // NUEVO: Prevenir cambios en autorizado_por si ya está poblado
     if (name === 'autorizado_por' && currentUser) {
-      return;  // No permite editar
+      return;
     }
     setFormVisita(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
-  // Validadores de cliente
   function validarDescripcion(desc) {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
 
-  // CORREGIDO: Usa apiFetch en POST (agrega token)
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
@@ -321,43 +300,35 @@ export default function RegistroAcceso() {
       console.error("idTipo_act está vacío:", idTipo_act);
       return alert("Tiene que seleccionar una actividad");
     }
-  
-    // Validación de cliente para evitar 422
     if (!validarDescripcion(formVisita.descripcion_actividad)) {
       return alert("Ingrese una descripción de al menos 3 caracteres");
     }
 
     setPosting(true);
     try {
-      const localDate = new Date();
       const tipoActividadId = parseInt(idTipo_act, 10);
-      
       if (isNaN(tipoActividadId)) {
         throw new Error("ID de tipo de actividad inválido");
       }
-      
+
       const body = {
         persona_id: selected.id,
         centro_datos_id: Number(cdSel),
         tipo_actividad_id: tipoActividadId,
-        area_id: areaSel ? Number(areaSel) : null, // NUEVO: incluir area_id
+        area_ids: areasSel.map(Number),
         descripcion_actividad: formVisita.descripcion_actividad.trim(),
         fecha_programada: new Date().toISOString(),
-        autorizado_por: formVisita.autorizado_por?.trim() || null,  // Ya poblado con el usuario
+        autorizado_por: formVisita.autorizado_por?.trim() || null,
         equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
         observaciones: formVisita.observaciones?.trim() || null,
         estado_id: Number(formVisita.id_estado ?? 1),
       };
 
-      console.log("Body enviado:", body);
-      console.log("tipo_actividad_id:", body.tipo_actividad_id, typeof body.tipo_activividad_id);
-      console.log("area_id:", body.area_id, typeof body.area_id);
-
-      const res = await apiFetch(API_VISITAS, {  // CORREGIDO: Usa helper (POST con token)
+      const res = await apiFetch(API_VISITAS, {
         method: "POST",
         body: JSON.stringify(body),
       });
-      
+
       const created = await res.json();
       navigate(`/accesos/${created.id}`);
     } catch (e) {
@@ -371,7 +342,6 @@ export default function RegistroAcceso() {
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
   const showNoResults = q && !selected && sugerencias.length === 0;
 
-  // NUEVO: Manejo de loading para usuario
   if (userLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -384,12 +354,11 @@ export default function RegistroAcceso() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px] gap-6">
-          {/* Left side - Visit Data */}
+          {/* Left side */}
           <div className="p-8">
-            <form className="space-y-5" autoComplete="off" onSubmit={(e)=>e.preventDefault()}>
+            <form className="space-y-5" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
               <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
-
-              {/* Buscador de cédula SIEMPRE visible */}
+              {/* Cédula */}
               <div className="space-y-4">
                 <div className="relative">
                   <label className="block text-sm font-medium text-on-surface mb-2">CÉDULA</label>
@@ -398,10 +367,9 @@ export default function RegistroAcceso() {
                     placeholder="Buscar..."
                     value={q}
                     onChange={onCedulaChange}
-                    className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                    className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
                     autoFocus
                   />
-
                   {!selected && sugerencias.length > 0 && (
                     <ul className="absolute z-10 mt-1 w-full bg-surface border border-outline rounded-lg shadow-lg max-h-60 overflow-auto">
                       {sugerencias.slice(0, 100).map(p => (
@@ -411,68 +379,114 @@ export default function RegistroAcceso() {
                       ))}
                     </ul>
                   )}
-
-                  
                 </div>
                 {showNoResults && (
-                    <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="text-red-800 mb-2">
-                        No se encontró la cédula. Puede registrar al visitante.
-                      </div>
-                      <button
-                        type="button"
-                        className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors"
-                        onMouseDown={goRegistrarVisitante}
-                      >
-                        Registrar visitante
-                      </button>
+                  <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-800 mb-2">
+                      No se encontró la cédula. Puede registrar al visitante.
                     </div>
-                  )}
+                    <button
+                      type="button"
+                      className="bg-[#00378B] text-white px-4 py-2 rounded-lg hover:bg-[#002A6B] transition-colors"
+                      onMouseDown={goRegistrarVisitante}
+                    >
+                      Registrar visitante
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {/* Datos de visita - Solo si hay persona seleccionada */}
+              {/* Datos de visita */}
               {selected && (
                 <>
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
-
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-4">
+                      {/* Centros de datos */}
                       <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">Centro de datos</label>
-                        <select className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all" value={cdSel} onChange={onCentroChange} required>
-                          <option value="">Seleccione...</option>
-                          {centros.map(c => (
-                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                        <label className="block text-sm font-medium text-on-surface mb-2">
+                          Centro de datos
+                        </label>
+                        <div className="flex w-full gap-4">
+                          {centros.map((c) => (
+                            <label key={c.id} className="cursor-pointer flex-1">
+                              <input
+                                type="checkbox"
+                                className="peer sr-only"
+                                checked={cdSel === c.id}
+                                onChange={() => onCentroCheckboxChange(c.id)}
+                              />
+                              <span
+                                className={`
+                                  flex justify-center items-center flex-1
+                                  px-4 py-2 rounded-full border border-gray-200
+                                  transition shadow text-sm font-medium
+                                  ${
+                                    cdSel === c.id
+                                      ? "bg-[#8ADD64] text-white"
+                                      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                  }
+                                `}
+                                style={{ width: "100%" }}
+                              >
+                                {c.nombre}
+                              </span>
+                            </label>
                           ))}
-                        </select>
+                        </div>
                       </div>
-
-                      {/* NUEVO: Select de Área */}
+                      {/* Áreas */}
                       <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">Área</label>
-                        <select
-                          className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-                          value={areaSel}
-                          onChange={onAreaChange}
-                          disabled={!cdSel || areas.length === 0}
-                        >
-                          <option value="">Seleccione...</option>
-                          {areas.map(a => (
-                            <option key={a.id} value={a.id}>{a.nombre}</option>
+                        <label className="block text-sm font-medium text-on-surface mb-2">
+                          Áreas
+                        </label>
+                        <div className="flex w-full gap-4">
+                          {areas.length === 0 && (
+                            <span className="text-sm text-on-surface-variant">
+                              Seleccione un centro de datos
+                            </span>
+                          )}
+                          {areas.map((a) => (
+                            <label key={a.id} className="cursor-pointer flex-1">
+                              <input
+                                type="checkbox"
+                                className="peer sr-only"
+                                checked={areasSel.includes(a.id)}
+                                onChange={() => onAreaCheckboxChange(a.id)}
+                                disabled={!cdSel}
+                              />
+                              <span
+                                className={`
+                                  flex justify-center items-center flex-1
+                                  px-4 py-2 rounded-full border border-gray-200
+                                  transition shadow text-sm font-medium
+                                  ${
+                                    areasSel.includes(a.id)
+                                      ? "bg-[#8ADD64] text-white"
+                                      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                  }
+                                  ${!cdSel ? "opacity-50 pointer-events-none" : ""}
+                                `}
+                                style={{ width: "100%" }}
+                              >
+                                {a.nombre}
+                              </span>
+                            </label>
                           ))}
-                        </select>
+                        </div>
                       </div>
-
+                      {/* Tipo de actividad */}
                       <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">Tipo de actividad</label>
+                        <label className="block text-sm font-medium text-on-surface mb-2">
+                          Tipo de actividad
+                        </label>
                         <select
-                          className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                          className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
                           value={idTipo_act}
                           onChange={onActividadChange}
                           required
                         >
                           <option value="">Seleccione...</option>
-                          {tiposActividad.map(t => (
+                          {tiposActividad.map((t) => (
                             <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
                               {t.nombre_actividad}
                             </option>
@@ -481,7 +495,6 @@ export default function RegistroAcceso() {
                       </div>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 gap-4">
                     <FieldEditable
                       label="Descripción"
@@ -494,7 +507,7 @@ export default function RegistroAcceso() {
                       name="autorizado_por"
                       value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
                       onChange={onChangeVisita}
-                      disabled={!!currentUser}  // Deshabilita si hay usuario logueado
+                      disabled={!!currentUser}
                     />
                   </div>
                   {requiereEquiposYObs && (
@@ -527,17 +540,14 @@ export default function RegistroAcceso() {
               )}
             </form>
           </div>
-
-          {/* Right side - Person Photo */}
+          {/* Right side */}
           <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
-            {/* Parallax background layers */}
             <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/90"></div>
             <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
               <div className="w-full h-full bg-linear-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
             </div>
-            <div className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce" style={{animationDuration: '3s'}}></div>
-            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse" style={{animationDelay: '1s'}}></div>
-
+            <div className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
+            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
             <div className="text-center relative z-10">
               {selected?.foto ? (
                 <div className="w-64 h-64 mx-auto mb-6 rounded-lg overflow-hidden shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
@@ -554,21 +564,15 @@ export default function RegistroAcceso() {
                   </svg>
                 </div>
               )}
-
               {selected && (
                 <div className="space-y-2">
                   <h3 className="text-xl font-semibold text-black">{selected.nombre} {selected.apellido}</h3>
                   <p className="text-black/80">{selected.empresa}</p>
                   {form.empresa === "SENIAT" && (
-                  <>
-                    {/* Dirección Unidad */}
                     <p className="text-black/80">{selected.unidad}</p>
-                  </>
-                )}
-
+                  )}
                 </div>
               )}
-
               {!selected && (
                 <div className="space-y-2">
                   <h3 className="text-xl font-semibold text-white">Registro de Acceso</h3>
@@ -583,7 +587,7 @@ export default function RegistroAcceso() {
   );
 }
 
-// Subcomponentes (modificado FieldEditable para soportar disabled)
+// Subcomponentes (actualizados)
 function Field({ label, value, disabled = false }) {
   return (
     <div>
@@ -591,7 +595,7 @@ function Field({ label, value, disabled = false }) {
       <input
         value={value || ""}
         disabled={disabled}
-        className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
+        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
         readOnly={disabled}
       />
     </div>
@@ -606,14 +610,14 @@ function FieldEditable({ label, name, value, onChange, disabled = false }) {
         name={name}
         value={value || ""}
         onChange={onChange}
-        className="block w-full px-0 py-2 border-b-2 border-outline bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-        disabled={disabled}  // NUEVO: Soporte para disabled
+        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
+        disabled={disabled}
       />
     </div>
   );
 }
 
-function Info({ label, value, full=false }) {
+function Info({ label, value, full = false }) {
   return (
     <div className={`${full ? 'col-span-full' : ''}`}>
       <div className="text-sm font-medium text-on-surface-variant">{label}</div>
@@ -625,9 +629,9 @@ function Info({ label, value, full=false }) {
 function IconImage() {
   return (
     <svg width="88" height="88" viewBox="0 0 24 24" fill="none" className="ra-icon">
-      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.6"/>
-      <path d="M7 14l3-3 3 3 4-4 2 2" stroke="currentColor" strokeWidth="1.6" fill="none"/>
-      <circle cx="9" cy="8" r="1.5" fill="currentColor"/>
+      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M7 14l3-3 3 3 4-4 2 2" stroke="currentColor" strokeWidth="1.6" fill="none" />
+      <circle cx="9" cy="8" r="1.5" fill="currentColor" />
     </svg>
   );
 }
