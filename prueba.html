@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ejemplo Grid</title>
+  <style>
+    /* El contenedor será nuestro grid */
+    .grid-container {
+      display: grid;                 /* Activar grid */
+      grid-template-columns: 1fr 1fr 1fr; /* 3 columnas iguales */
+      gap: 10px;                     /* Espacio entre elementos */
+      padding: 10px;
+      background-color: #f0f0f0;
+    }
+
+    /* Los ítems del grid */
+    .grid-item {
+      background-color: #4caf50;
+      color: white;
+      border-radius: 4px;
+      padding: 20px;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Ejemplo de CSS Grid</h1>
+
+  <div class="grid-container">
+    <div class="grid-item">1</div>
+    <div class="grid-item">2</div>
+    <div class="grid-item">3</div>
+    <div class="grid-item">4</div>
+    <div class="grid-item">5</div>
+    <div class="grid-item">6</div>
+  </div>
+
+</body>
+</html>
