@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Foreign
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
-from sqlalchemy import Index
+from sqlalchemy import Index, JSON
 
 SCHEMA = "sistema_gestiones"
 
@@ -119,6 +119,18 @@ class TipoActividad(Base):
 
     visitas = relationship("Visita", back_populates="actividad")
 
+class CentroAreaVisita(Base):
+    __tablename__ = "visita_centros_areas"
+    __table_args__ = {"schema": "sistema_gestiones"}
+    
+    visita_id = Column(Integer, ForeignKey("sistema_gestiones.visitas.id"), primary_key=True)
+    centro_datos_id = Column(Integer, ForeignKey("sistema_gestiones.centro_datos.id"), primary_key=True)
+    area_id = Column(Integer, ForeignKey("sistema_gestiones.area.id"), primary_key=True)
+    
+    visita = relationship("Visita", back_populates="centros_areas")
+    centro_datos = relationship("CentroDatos")
+    area = relationship("Area")
+
 # Visita
 class Visita(Base):
     __tablename__ = "visitas"
@@ -145,7 +157,8 @@ class Visita(Base):
     observaciones = Column(Text, nullable=True)
     notas_finales = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
-    
+    centros_datos_ids = Column(JSON, nullable=True, default=list)
+    areas_ids = Column(JSON, nullable=True, default=list)
     # ← FECHAS CORREGIDAS
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
@@ -153,6 +166,12 @@ class Visita(Base):
     estado = relationship("EstadoVisita", back_populates="visitas")
     actividad = relationship("TipoActividad", back_populates="visitas")
     persona = relationship("Persona", back_populates="visitas")
+    centros_areas = relationship(
+        "CentroAreaVisita", 
+        cascade="all, delete-orphan",
+        back_populates="visita"
+        
+    )
     centro_datos = relationship("CentroDatos", back_populates="visitas")
     area = relationship("Area", back_populates="visitas")
 
@@ -180,3 +199,4 @@ class Control(Base):
 
     # Agregar a modelo Usuario:
     # controles = relationship("Control", back_populates="usuario", cascade="all, delete-orphan")
+

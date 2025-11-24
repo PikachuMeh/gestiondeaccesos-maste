@@ -4,7 +4,7 @@ Define la validación y serialización de datos de visitas.
 """
 
 from pydantic import BaseModel, validator, Field, field_validator, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timezone
 
 
@@ -128,7 +128,6 @@ class VisitaCreate(BaseModel):
         v2 = v.strip()
         return v2 if v2 else None
 
-
 class VisitaUpdate(BaseModel):
     """Schema para actualizar una visita existente"""
     persona_id: Optional[int] = None
@@ -198,7 +197,10 @@ class VisitaResponse(BaseModel):
     activo: bool
     fecha_creacion: datetime
     fecha_actualizacion: Optional[datetime] = None
-    
+    areas_nombres: Optional[List[str]] = None     
+    centros_nombres: Optional[List[str]] = None    
+
+
     # Relaciones anidadas (objetos completos)
     persona: Optional[PersonaBase] = None
     centro_datos: Optional[CentroDatosBase] = None

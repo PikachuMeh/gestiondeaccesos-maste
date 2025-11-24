@@ -5,7 +5,7 @@ from typing import Optional, List
 from app.services.visita_service import VisitaService
 from app.services.persona_service import PersonaService
 from app.database import get_db
-from app.models import Visita, EstadoVisita, TipoActividad, Persona, CentroDatos, Area
+from app.models import Visita, EstadoVisita, TipoActividad, Persona, CentroDatos, Area,CentroAreaVisita
 from sqlalchemy.sql import func
 from app.schemas import (
     VisitaCreate,
@@ -70,6 +70,37 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
     if not v:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visita no encontrada")
     return v
+
+@router.get("/centros-datos", response_model=List[dict])
+async def listar_centros_datos(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_operator_or_above)
+):
+    """Listar todos los centros de datos activos"""
+    centros = db.query(CentroDatos).filter(CentroDatos.activo == True).all()
+    return [{"id": c.id, "nombre": c.nombre} for c in centros]
+
+@router.get("/tipo_actividad")
+async def obtener_tipo(db: Session = Depends(get_db)):
+    tipos = db.query(TipoActividad).all()
+    return [{"id_tipo_actividad": t.id_tipo_actividad, "nombre_actividad": t.nombre_actividad} for t in tipos]
+
+@router.get("/{visita_id}", response_model=VisitaResponse)
+def get_visita(visita_id: int, db: Session = Depends(get_db)):
+    visita = db.query(Visita).filter(Visita.id == visita_id).first()
+    if not visita:
+        raise HTTPException(404, "Visita no encontrada")
+    
+    # ✅ INNER JOIN: areas_ids → nombres reales
+    if visita.areas_ids:
+        areas = db.query(Area).filter(Area.id.in_(visita.areas_ids)).all()
+        visita.areas_nombres = [area.nombre for area in areas]  # ["TELECOM", "SERVIDORES"]
+    
+    if visita.centros_datos_ids:
+        centros = db.query(CentroDatos).filter(CentroDatos.id.in_(visita.centros_datos_ids)).all()
+        visita.centros_nombres = [centro.nombre for centro in centros]  # ["Chacao"]
+    
+    return visita
 
 @router.get("/", response_model=VisitaListResponse, summary="Listar visitas")
 async def list_visitas(
@@ -149,24 +180,23 @@ async def get_historial_persona(
     current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
-    persona = db.query(Persona.id).filter(Persona.id == persona_id).first()
-    if not persona:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Persona no encontrada")
+    visitas = db.query(Visita).filter(
+        Visita.persona_id == persona_id,
+        Visita.activo == True
+    ).options(
+        joinedload(Visita.centro_datos),
+        joinedload(Visita.area)
+    ).all()
+    
 
-    visitas = (
-        db.query(Visita)
-        .options(
-            joinedload(Visita.persona),
-            joinedload(Visita.centro_datos),
-            joinedload(Visita.estado),
-            joinedload(Visita.actividad),
-            joinedload(Visita.area),
-        )
-        .filter(Visita.persona_id == persona_id)
-        .order_by(Visita.fecha_programada.desc())
-        .all()
-    )
-    # Logging
+    for v in visitas:
+        if v.areas_ids:
+            areas = db.query(Area).filter(Area.id.in_(v.areas_ids)).all()
+            v.areas_nombres = [a.nombre for a in areas]
+        if v.centros_datos_ids:
+            centros = db.query(CentroDatos).filter(CentroDatos.id.in_(v.centros_datos_ids)).all()
+            v.centros_nombres = [c.nombre for c in centros]
+
     await log_action(
         accion="consultar_historial_visitas_persona",
         tabla_afectada="visitas",
@@ -178,25 +208,66 @@ async def get_historial_persona(
     return visitas
 
 @router.get("/areas/{centro_datos_id}", response_model=List[dict])
-async def obtener_areas_por_centro(
-    request: Request,
-    centro_datos_id: int,
-    current_user = Depends(require_operator_or_above),
-    db: Session = Depends(get_db)
-):
-    centro = db.query(CentroDatos.id).filter(CentroDatos.id == centro_datos_id).first()
-    if not centro:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Centro de datos no encontrado")
+async def obtener_areas_por_centro(centro_datos_id: int, db: Session = Depends(get_db)):
+    areas = db.query(Area).filter(Area.id_centro_datos == centro_datos_id).all()
+    return [{"id": a.id, "nombre": a.nombre} for a in areas]
 
-    rows = db.query(Area).filter(Area.id_centro_datos == centro_datos_id).all()
-    response = [{"id": row.id, "nombre": row.nombre, "id_centro_datos": row.id_centro_datos} for row in rows]
-    # Logging
+
+@router.get("/", response_model=VisitaListResponse, summary="Listar visitas")
+async def list_visitas(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    search: Optional[str] = Query(None),
+    persona_id: Optional[int] = Query(None),
+    centro_datos_id: Optional[int] = Query(None),
+    area_id: Optional[int] = Query(None),
+    estado_id: Optional[int] = Query(None, description="Filtrar por estado"),
+    tipo_actividad_id: Optional[int] = Query(None, description="Filtrar por tipo actividad"),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
+    current_user = Depends(require_operator_or_above),
+    db: Session = Depends(get_db),
+):
+    visita_service = VisitaService(db)
+    persona_service = PersonaService(db)
+    
+    filters = {}
+    if persona_id:
+        filters["persona_id"] = persona_id
+    if centro_datos_id:
+        filters["centro_datos_id"] = centro_datos_id
+    if area_id:
+        filters["area_id"] = area_id
+    if tipo_actividad_id:
+        filters["tipo_actividad_id"] = tipo_actividad_id
+    if estado_id:
+        filters["estado_id"] = estado_id
+
+    if search:
+        visitas = visita_service.search(search, ['codigo_visita', 'descripcion_actividad'])
+        total = len(visitas)
+        visitas = visitas[skip:skip + limit]
+    else:
+        visitas = visita_service.get_multi(skip=skip, limit=limit, filters=filters, order_by='fecha_programada', order_direction='desc')
+        total = visita_service.count(filters)
+
+    pages = (total + limit - 1) // limit
+    current_page = (skip // limit) + 1
+    response = VisitaListResponse(
+        items=visitas,
+        total=total,
+        page=current_page,
+        size=limit,
+        pages=pages
+    )
+
     await log_action(
-        accion="consultar_areas_centro_datos",
-        tabla_afectada="areas",
-        detalles={"centro_datos_id": centro_datos_id},
-        request=request,
+        accion="consultar_visitas",
+        tabla_afectada="visitas",
+        detalles={"page": pages, "size": total, "filtros": filters},
         db=db,
+        request=request,
         current_user=current_user
     )
     return response
@@ -204,98 +275,92 @@ async def obtener_areas_por_centro(
 @router.post("/", response_model=VisitaResponse, status_code=status.HTTP_201_CREATED)
 async def create_visita(
     request: Request,
-    payload: VisitaCreate,
-    current_user = Depends(require_operator_or_above),
+    payload: dict,
+    current_user=Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
-    estado_id_in = getattr(payload, "estado_id", None)
-    if estado_id_in is None:
-        estado_prog = db.query(EstadoVisita.id_estado).filter(EstadoVisita.nombre_estado.ilike("PROGRAMADA")).first()
-        if not estado_prog:
-            raise HTTPException(status_code=500, detail="No existe el estado 'PROGRAMADA' en estado_visita")
-        estado_id_in = estado_prog.id_estado
-
+    """Crear visita - Compatible con 1 centro + múltiples áreas"""
+    
+    # ✅ EXTRAER Y VALIDAR
+    persona_id = payload.get('persona_id')
+    centro_datos_id = payload.get('centro_datos_id')  # ← Único requerido
+    centro_datos_ids = payload.get('centro_datos_ids', [centro_datos_id])  # ← Array opcional
+    tipo_actividad_id = payload.get('tipo_actividad_id')
+    area_ids = payload.get('area_ids', [])
+    estado_id = payload.get('estado_id', 1)
+    
+    # ✅ SIEMPRE requerido
+    if not all([persona_id, centro_datos_id, tipo_actividad_id]):
+        raise HTTPException(400, detail="Faltan persona_id, centro_datos_id o tipo_actividad_id")
+    
+    # ✅ VALIDAR FKs
     _ensure_fk_visita(
         db,
-        persona_id=payload.persona_id,
-        centro_datos_id=payload.centro_datos_id,
-        estado_id=estado_id_in,
-        tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
-        area_id=getattr(payload, "area_id", None),
+        persona_id=persona_id,
+        centro_datos_id=centro_datos_id,      # ← PRIMER centro (requerido)
+        estado_id=estado_id,
+        tipo_actividad_id=tipo_actividad_id
     )
-
+    
+    area_id = area_ids[0] if area_ids else None
+    if area_id:
+        _ensure_fk_visita(
+            db,
+            persona_id=persona_id,
+            centro_datos_id=centro_datos_id,
+            area_id=area_id
+        )
+    
     try:
-        data = payload.model_dump(exclude_unset=True)
-        data["estado_id"] = estado_id_in
-        if "activo" not in data:
-            data["activo"] = True
-        if not data.get("codigo_visita"):
-            data["codigo_visita"] = _generar_codigo_9d_unico(db)
-
+        # ✅ DATA con centro_datos_id SIEMPRE presente
+        data = {
+            "persona_id": persona_id,
+            "centro_datos_id": centro_datos_id,  # ← NUNCA NULL
+            "estado_id": estado_id,
+            "tipo_actividad_id": tipo_actividad_id,
+            "area_id": area_id,                  # ← Puede ser NULL
+            "descripcion_actividad": payload.get('descripcion_actividad', ''),
+            "fecha_programada": payload['fecha_programada'],
+            "activo": True,
+            "codigo_visita": _generar_codigo_9d_unico(db),
+        }
+        
+        # ✅ Campos JSON opcionales (guardar TODAS las selecciones)
+        if centro_datos_ids:
+            data['centros_datos_ids'] = centro_datos_ids
+        if area_ids:
+            data['areas_ids'] = area_ids
+            
+        # Campos texto opcionales
+        for field in ['autorizado_por', 'equipos_ingresados', 'observaciones']:
+            if payload.get(field):
+                data[field] = payload[field]
+        
+        # Crear y guardar
         visita = Visita(**data)
         db.add(visita)
         db.commit()
         db.refresh(visita)
-
-        # Actualizar persona si existe
-        persona = db.query(Persona).filter(Persona.id == payload.persona_id).first()
-        if persona:
-            persona.fecha_actualizacion = func.now()
-
-        db.commit()
-
-        # Logging
+        
+        # Log
         await log_action(
-            accion="crear_visita",
-            tabla_afectada="visitas",
-            registro_id=visita.id,
-            detalles=data,
-            request=request,
-            db=db,
-            current_user=current_user
+            "crear_visita", "visitas",
+            {
+                "visita_id": visita.id,
+                "persona_id": persona_id,
+                "centro_id": centro_datos_id,
+                "centros": centro_datos_ids,
+                "areas": area_ids
+            },
+            request, db, current_user
         )
+        
         return visita
-    except Exception as exc:
+        
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error creando la visita: {exc}")
+        raise HTTPException(500, f"Error creando visita: {str(e)}")
 
-@router.get("/tipo_actividad")
-async def obtener_tipo(
-    request: Request,
-    current_user = Depends(require_operator_or_above),
-    db: Session = Depends(get_db)
-):
-    rows = db.query(TipoActividad).all()
-    response = [{"id_tipo_actividad": row.id_tipo_actividad, "nombre_actividad": row.nombre_actividad} for row in rows]
-    await log_action(
-        accion="consultar_tipos_actividad",
-        tabla_afectada="tipo_actividad",
-        request=request,
-        db=db,
-        current_user=current_user
-    )
-    return response
-
-@router.get("/{visita_id}", response_model=VisitaWithDetails)
-async def get_visita(
-    request: Request,
-    visita_id: int,
-    current_user = Depends(require_operator_or_above),
-    db: Session = Depends(get_db)
-):
-    try:
-        visita = _get_visita_or_404(db, visita_id)
-        await log_action(
-            accion="consultar_visita",
-            tabla_afectada="visitas",
-            registro_id=visita_id,
-            request=request,
-            db=db,
-            current_user=current_user
-        )
-        return visita
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error obteniendo visita: {exc}")
 
 @router.put("/{visita_id}", response_model=VisitaResponse)
 async def update_visita(
@@ -400,6 +465,27 @@ async def registrar_salida(
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error registrando salida: {exc}")
+
+
+@router.get("/centros-datos/{centro_id}", response_model=dict)
+async def get_centro_datos(
+    request: Request,
+    centro_id: int,
+    current_user=Depends(require_operator_or_above),
+    db: Session = Depends(get_db)
+):
+    centro = db.query(CentroDatos).filter(CentroDatos.id == centro_id).first()
+    if not centro:
+        raise HTTPException(status_code=404, detail="Centro no encontrado")
+    
+    return {
+        "id": centro.id,
+        "nombre": centro.nombre,
+        "codigo": centro.codigo,
+        "direccion": centro.direccion,
+        "ciudad": centro.ciudad
+    }
+
 
 @router.delete("/{visita_id}")
 async def delete_visita(

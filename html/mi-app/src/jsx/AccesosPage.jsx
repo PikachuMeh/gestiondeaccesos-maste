@@ -255,18 +255,6 @@ export default function AccesosPage() {
           </div>
 
           <div className="flex gap-4">
-            {/* Filtro por estado (id_estado) */}
-            <select
-              className="block w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
-              value={estadoId}
-              onChange={onEstado}
-            >
-              <option value="">Estado: Todos</option>
-              <option value="1">Programada</option>
-              <option value="2">En curso</option>
-              <option value="3">Finalizada</option>
-              <option value="4">Cancelada</option>
-            </select>
 
             {/* Filtro por actividad (tipo_actividad_id) */}
             <select

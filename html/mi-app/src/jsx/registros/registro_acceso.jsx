@@ -1,4 +1,5 @@
-// src/components/RegistroAcceso.jsx
+// src/components/RegistroAcceso.jsx - COMPLETO ✅ 1 CENTRO + MÚLTIPLES ÁREAS
+
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -53,22 +54,19 @@ export default function RegistroAcceso() {
   });
   const [newFoto, setNewFoto] = useState(null);
 
-  // Centros de datos, áreas, tipos actividad
+  // ✅ 1 CENTRO ÚNICO + MÚLTIPLES ÁREAS
   const [centros, setCentros] = useState([]);
-  const [cdSel, setCdSel] = useState(null);
-  const [areas, setAreas] = useState([]);
-  const [areasSel, setAreasSel] = useState([]);
-  const [cdDetalle, setCdDetalle] = useState(null);
+  const [cdSel, setCdSel] = useState(null);           // ← Único centro
+  const [areas, setAreas] = useState([]);             // ← Áreas del centro
+  const [areasSel, setAreasSel] = useState([]);       // ← Múltiples áreas seleccionadas
   const [tiposActividad, setTiposActividad] = useState([]);
   const [idTipo_act, setidTipo_act] = useState("");
 
   const [formVisita, setFormVisita] = useState({
     descripcion_actividad: "",
-    fecha_programada: "",
     autorizado_por: "",
     equipos_ingresados: "",
     observaciones: "",
-    id_estado: "1",
   });
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -79,7 +77,7 @@ export default function RegistroAcceso() {
 
   const API_PERSONAS = "http://localhost:8000/api/v1/personas";
   const API_VISITAS = "http://localhost:8000/api/v1/visitas";
-  const API_CENTROS = "http://localhost:8000/api/v1/centros-datos";
+  const API_CENTROS = "http://localhost:8000/api/v1/visitas/centros-datos"; 
   const API_AUTH = "http://localhost:8000/api/v1/auth";
 
   async function fetchCurrentUser() {
@@ -98,18 +96,18 @@ export default function RegistroAcceso() {
     }
   }
 
+  // ✅ SELECCIÓN CENTRO ÚNICO
   const onCentroCheckboxChange = (id) => {
-    setCdSel(prev => (prev === id ? null : id));
-    setAreasSel([]);
-    if (cdSel !== id) {
-      loadCentroDetalle(id);
-      loadAreasPorCentro(id);
+    setCdSel(id);                    // ← Solo 1 centro
+    setAreasSel([]);                 // ← Limpiar áreas seleccionadas
+    if (id) {
+      loadAreasPorCentro(id);        // ← Cargar áreas del centro
     } else {
-      setCdDetalle(null);
-      setAreas([]);
+      setAreas([]);                  // ← Limpiar áreas
     }
   };
 
+  // ✅ SELECCIÓN MÚLTIPLES ÁREAS
   const onAreaCheckboxChange = (id) => {
     setAreasSel(prev => {
       if (prev.includes(id)) {
@@ -142,39 +140,14 @@ export default function RegistroAcceso() {
   async function loadCentros() {
     setLoading(true);
     try {
-      const r = await apiFetch(`${API_CENTROS}?size=1000`);
+
+      const r = await apiFetch(API_CENTROS);  // ✅ GET simple
       const json = await r.json();
-      const list = Array.isArray(json) ? json : (json.items ?? []);
-      setCentros(list);
+
+      setCentros(json);
     } catch (error) {
-      console.error("Error cargando centros:", error);
+      console.error("❌ Error cargando centros:", error);
       setCentros([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadCentroDetalle(id) {
-    if (!id) return setCdDetalle(null);
-    try {
-      const r = await apiFetch(`${API_CENTROS}/${id}`);
-      const obj = await r.json();
-      setCdDetalle(obj);
-    } catch (error) {
-      console.error("Error cargando detalle centro:", error);
-      setCdDetalle(null);
-    }
-  }
-
-  async function loadTipoActividad() {
-    setLoading(true);
-    try {
-      const r = await apiFetch(`${API_VISITAS}/tipo_actividad`);
-      const json = await r.json();
-      setTiposActividad(json);
-    } catch (error) {
-      console.error("Error cargando tipos de actividad:", error);
-      setTiposActividad([]);
     } finally {
       setLoading(false);
     }
@@ -193,6 +166,20 @@ export default function RegistroAcceso() {
     } catch (error) {
       console.error("Error cargando áreas:", error);
       setAreas([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadTipoActividad() {
+    setLoading(true);
+    try {
+      const r = await apiFetch(`${API_VISITAS}/tipo_actividad`);
+      const json = await r.json();
+      setTiposActividad(json);
+    } catch (error) {
+      console.error("Error cargando tipos de actividad:", error);
+      setTiposActividad([]);
     } finally {
       setLoading(false);
     }
@@ -293,6 +280,7 @@ export default function RegistroAcceso() {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
 
+  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS (envía area_ids array)
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
@@ -313,16 +301,18 @@ export default function RegistroAcceso() {
 
       const body = {
         persona_id: selected.id,
-        centro_datos_id: Number(cdSel),
+        centro_datos_id: Number(cdSel),        // ← Único (requerido por BD)
+        centro_datos_ids: [Number(cdSel)],     // ← Array (para JSON)
         tipo_actividad_id: tipoActividadId,
-        area_ids: areasSel.map(Number),
+        area_ids: areasSel.map(Number),        // ← Array completo
         descripcion_actividad: formVisita.descripcion_actividad.trim(),
         fecha_programada: new Date().toISOString(),
         autorizado_por: formVisita.autorizado_por?.trim() || null,
         equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
         observaciones: formVisita.observaciones?.trim() || null,
-        estado_id: Number(formVisita.id_estado ?? 1),
-      };
+        estado_id: 1,
+    };
+
 
       const res = await apiFetch(API_VISITAS, {
         method: "POST",
@@ -330,9 +320,24 @@ export default function RegistroAcceso() {
       });
 
       const created = await res.json();
+      alert(`✅ Visita creada exitosamente (Centro: ${centros.find(c => c.id === cdSel)?.nombre}, Áreas: ${areasSel.length})`);
+      
+      // Reset form después de éxito
+      setCdSel(null);
+      setAreasSel([]);
+      setAreas([]);
+      setidTipo_act("");
+      setFormVisita({ 
+        descripcion_actividad: "",
+        autorizado_por: formVisita.autorizado_por,
+        equipos_ingresados: "",
+        observaciones: ""
+      });
+      
       navigate(`/accesos/${created.id}`);
+      
     } catch (e) {
-      console.error(e);
+      console.error("❌ Error:", e);
       alert(`Error al registrar visita: ${e.message}`);
     } finally {
       setPosting(false);
@@ -354,11 +359,12 @@ export default function RegistroAcceso() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px] gap-6">
-          {/* Left side */}
+          {/* Left side - FORMULARIO */}
           <div className="p-8">
             <form className="space-y-5" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
               <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
-              {/* Cédula */}
+              
+              {/* CÉDULA */}
               <div className="space-y-4">
                 <div className="relative">
                   <label className="block text-sm font-medium text-on-surface mb-2">CÉDULA</label>
@@ -395,78 +401,72 @@ export default function RegistroAcceso() {
                   </div>
                 )}
               </div>
-              {/* Datos de visita */}
+
+              {/* DATOS VISITA */}
               {selected && (
                 <>
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
-                    <div className="space-y-4">
-                      {/* Centros de datos */}
-                      <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">
-                          Centro de datos
-                        </label>
-                        <div className="flex w-full gap-4">
-                          {centros.map((c) => (
-                            <label key={c.id} className="cursor-pointer flex-1">
-                              <input
-                                type="checkbox"
-                                className="peer sr-only"
-                                checked={cdSel === c.id}
-                                onChange={() => onCentroCheckboxChange(c.id)}
-                              />
-                              <span
-                                className={`
-                                  flex justify-center items-center flex-1
-                                  px-4 py-2 rounded-full border border-gray-200
-                                  transition shadow text-sm font-medium
-                                  ${
-                                    cdSel === c.id
-                                      ? "bg-[#8ADD64] text-white"
-                                      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                                  }
-                                `}
-                                style={{ width: "100%" }}
-                              >
-                                {c.nombre}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      {/* Áreas */}
-                      <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">
-                          Áreas
-                        </label>
-                        <div className="flex w-full gap-4">
-                          {areas.length === 0 && (
-                            <span className="text-sm text-on-surface-variant">
-                              Seleccione un centro de datos
+                    
+                    {/* ✅ CENTRO DE DATOS - SOLO 1 */}
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">
+                        Centro de datos {cdSel && `(1 seleccionado)`}
+                      </label>
+                      <div className="flex w-full gap-4 flex-wrap">
+                        {centros.map((c) => (
+                          <label key={c.id} className="cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              className="peer sr-only"
+                              checked={cdSel === c.id}  // ← SELECCIÓN ÚNICA
+                              onChange={() => onCentroCheckboxChange(c.id)}
+                            />
+                            <span
+                              className={`
+                                flex justify-center items-center flex-1 px-4 py-3 
+                                rounded-full border-2 border-gray-200 transition-all shadow-sm 
+                                text-sm font-semibold h-14
+                                ${cdSel === c.id 
+                                  ? 'bg-[#8ADD64] text-white border-green-400 shadow-md scale-105' 
+                                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200 hover:border-gray-400 hover:scale-105'
+                                }
+                              `}
+                              style={{ width: '100%' }}
+                            >
+                              {c.nombre}
                             </span>
-                          )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* ✅ ÁREAS - MÚLTIPLES */}
+                    {cdSel && areas.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-on-surface mb-2">
+                          Áreas ({areasSel.length} seleccionada{areasSel.length !== 1 ? 's' : ''})
+                        </label>
+                        <div className="flex w-full gap-3 flex-wrap">
                           {areas.map((a) => (
-                            <label key={a.id} className="cursor-pointer flex-1">
+                            <label key={a.id} className="cursor-pointer flex-1 min-w-[140px]">
                               <input
                                 type="checkbox"
                                 className="peer sr-only"
                                 checked={areasSel.includes(a.id)}
                                 onChange={() => onAreaCheckboxChange(a.id)}
-                                disabled={!cdSel}
                               />
                               <span
                                 className={`
-                                  flex justify-center items-center flex-1
-                                  px-4 py-2 rounded-full border border-gray-200
-                                  transition shadow text-sm font-medium
-                                  ${
-                                    areasSel.includes(a.id)
-                                      ? "bg-[#8ADD64] text-white"
-                                      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                  flex justify-center items-center px-3 py-2 
+                                  rounded-full border-2 border-gray-200 transition-all shadow-sm 
+                                  text-xs font-medium h-12
+                                  ${areasSel.includes(a.id)
+                                    ? 'bg-[#8ADD64] text-white border-green-400 shadow-md'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:border-gray-400'
                                   }
-                                  ${!cdSel ? "opacity-50 pointer-events-none" : ""}
                                 `}
-                                style={{ width: "100%" }}
+                                style={{ width: '100%' }}
                               >
                                 {a.nombre}
                               </span>
@@ -474,109 +474,140 @@ export default function RegistroAcceso() {
                           ))}
                         </div>
                       </div>
-                      {/* Tipo de actividad */}
-                      <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">
-                          Tipo de actividad
-                        </label>
-                        <select
-                          className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                          value={idTipo_act}
-                          onChange={onActividadChange}
-                          required
-                        >
-                          <option value="">Seleccione...</option>
-                          {tiposActividad.map((t) => (
-                            <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
-                              {t.nombre_actividad}
-                            </option>
-                          ))}
-                        </select>
+                    )}
+                    {!cdSel && areas.length === 0 && (
+                      <div className="text-sm text-on-surface-variant p-4 bg-surface-variant/50 rounded-lg">
+                        Seleccione un centro para ver sus áreas disponibles
                       </div>
+                    )}
+
+                    {/* TIPO ACTIVIDAD */}
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">
+                        Tipo de actividad
+                      </label>
+                      <select
+                        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                        value={idTipo_act}
+                        onChange={onActividadChange}
+                        required
+                      >
+                        <option value="">Seleccione...</option>
+                        {tiposActividad.map((t) => (
+                          <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
+                            {t.nombre_actividad}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
+
+                  {/* CAMPOS TEXTO */}
                   <div className="grid grid-cols-1 gap-4">
-                    <FieldEditable
-                      label="Descripción"
-                      name="descripcion_actividad"
-                      value={formVisita.descripcion_actividad}
-                      onChange={onChangeVisita}
-                    />
-                    <FieldEditable
-                      label="Autorizado por"
-                      name="autorizado_por"
-                      value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
-                      onChange={onChangeVisita}
-                      disabled={!!currentUser}
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">Descripción *</label>
+                      <input
+                        name="descripcion_actividad"
+                        value={formVisita.descripcion_actividad}
+                        onChange={onChangeVisita}
+                        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                        placeholder="Describa el motivo de la visita..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">Autorizado por</label>
+                      <input
+                        name="autorizado_por"
+                        value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
+                        onChange={onChangeVisita}
+                        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                        disabled={!!currentUser}
+                      />
+                    </div>
                   </div>
+
                   {requiereEquiposYObs && (
                     <div className="grid grid-cols-1 gap-4">
-                      <FieldEditable
-                        label="Equipos"
-                        name="equipos_ingresados"
-                        value={formVisita.equipos_ingresados}
-                        onChange={onChangeVisita}
-                      />
-                      <FieldEditable
-                        label="Observaciones"
-                        name="observaciones"
-                        value={formVisita.observaciones}
-                        onChange={onChangeVisita}
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-on-surface mb-2">Equipos ingresados</label>
+                        <input
+                          name="equipos_ingresados"
+                          value={formVisita.equipos_ingresados}
+                          onChange={onChangeVisita}
+                          className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                          placeholder="Laptop, celular, documentos..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-on-surface mb-2">Observaciones</label>
+                        <input
+                          name="observaciones"
+                          value={formVisita.observaciones}
+                          onChange={onChangeVisita}
+                          className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                          placeholder="Información adicional..."
+                        />
+                      </div>
                     </div>
                   )}
-                  <div className="flex justify-start pt-4">
+
+                  <div className="flex justify-start pt-6">
                     <button
                       type="button"
-                      className="bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      className="bg-primary text-primary-foreground px-10 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       onClick={onRegistrarAcceso}
-                      disabled={posting || loading || !selected}
+                      disabled={posting || loading || !selected || !cdSel || !idTipo_act}
                     >
-                      {posting ? "Registrando..." : "Registrar acceso"}
+                      {posting 
+                        ? <span>🔄 Registrando...</span> 
+                        : <span>✅ Registrar acceso <span className="ml-1">({cdSel ? 1 : 0} centro)</span></span>
+                      }
                     </button>
                   </div>
                 </>
               )}
             </form>
           </div>
-          {/* Right side */}
+
+          {/* Right side - FOTO */}
           <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
-            <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/90"></div>
+            <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/80"></div>
             <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
               <div className="w-full h-full bg-linear-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
             </div>
-            <div className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
-            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
+            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/20 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
+            
             <div className="text-center relative z-10">
               {selected?.foto ? (
-                <div className="w-64 h-64 mx-auto mb-6 rounded-lg overflow-hidden shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
+                <div className="w-72 h-72 mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
                   <img
                     src={selected.foto}
                     alt={`Foto de ${selected.nombre} ${selected.apellido}`}
-                    className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover"
                   />
                 </div>
               ) : (
-                <div className="w-64 h-64 mx-auto mb-6 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-2xl transform hover:scale-110 transition-all duration-500 hover:rotate-1">
-                  <svg className="w-32 h-32 text-white transform hover:scale-110 transition-transform duration-300" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                <div className="w-72 h-72 mx-auto mb-6 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
+                  <svg className="w-32 h-32 text-white/80" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                   </svg>
                 </div>
               )}
+              
               {selected && (
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-black">{selected.nombre} {selected.apellido}</h3>
-                  <p className="text-black/80">{selected.empresa}</p>
-                  {form.empresa === "SENIAT" && (
-                    <p className="text-black/80">{selected.unidad}</p>
+                  <h3 className="text-2xl font-bold text-gray drop-shadow-lg">{selected.nombre} {selected.apellido}</h3>
+                  <p className="text-white/90 text-lg drop-shadow-md">{selected.empresa}</p>
+                  {form.empresa === "SENIAT" && selected.unidad && (
+                    <p className="text-white/80 text-sm drop-shadow-md">{selected.unidad}</p>
                   )}
                 </div>
               )}
               {!selected && (
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-white">Registro de Acceso</h3>
-                  <p className="text-white/80">Complete el formulario para registrar un nuevo acceso al sistema</p>
+                  <h3 className="text-2xl font-bold text-white drop-shadow-lg">Registro de Acceso</h3>
+                  <p className="text-white/90 text-lg drop-shadow-md">Complete el formulario izquierdo</p>
                 </div>
               )}
             </div>
@@ -587,21 +618,7 @@ export default function RegistroAcceso() {
   );
 }
 
-// Subcomponentes (actualizados)
-function Field({ label, value, disabled = false }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-on-surface mb-3">{label}</label>
-      <input
-        value={value || ""}
-        disabled={disabled}
-        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-        readOnly={disabled}
-      />
-    </div>
-  );
-}
-
+// Subcomponentes (mantener igual)
 function FieldEditable({ label, name, value, onChange, disabled = false }) {
   return (
     <div>
@@ -614,24 +631,5 @@ function FieldEditable({ label, name, value, onChange, disabled = false }) {
         disabled={disabled}
       />
     </div>
-  );
-}
-
-function Info({ label, value, full = false }) {
-  return (
-    <div className={`${full ? 'col-span-full' : ''}`}>
-      <div className="text-sm font-medium text-on-surface-variant">{label}</div>
-      <div className="text-sm text-on-surface">{value ?? "—"}</div>
-    </div>
-  );
-}
-
-function IconImage() {
-  return (
-    <svg width="88" height="88" viewBox="0 0 24 24" fill="none" className="ra-icon">
-      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M7 14l3-3 3 3 4-4 2 2" stroke="currentColor" strokeWidth="1.6" fill="none" />
-      <circle cx="9" cy="8" r="1.5" fill="currentColor" />
-    </svg>
   );
 }
