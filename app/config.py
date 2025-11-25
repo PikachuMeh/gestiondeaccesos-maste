@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     mail_tls: bool = True
     mail_ssl: bool = False
     
+
     # ✅ NUEVO: URL del frontend para links de recuperación
     frontend_url: str = "http://localhost:5173"
 
@@ -48,6 +49,9 @@ class Settings(BaseSettings):
     allowed_methods: list = ["GET", "POST", "PUT", "DELETE", "PATCH"]
     allowed_headers: list = ["*"]
     
+    telegram_bot_token: Optional[str] = None 
+    telegram_chat_id: Optional[str] = None   
+
     # Configuración de rate limiting
     rate_limit_requests: int = 100
     rate_limit_window: int = 60  # segundos
@@ -63,7 +67,7 @@ class Settings(BaseSettings):
 
 # Instancia global de configuración
 settings = Settings()
-
+ 
 # ✅ AGREGAR ESTO TEMPORALMENTE PARA DEBUG
 print("\n" + "="*60)
 print("🔍 DIAGNÓSTICO: Valores cargados en settings")

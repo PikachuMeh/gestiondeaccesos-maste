@@ -17,6 +17,7 @@ from app.schemas import (
     VisitaSalida,
     VisitaTipoActividad,
 )
+from app.utils.telegram import enviar_notificacion_telegram
 from datetime import datetime, date
 import random
 from app.auth.api_permisos import require_operator_or_above, require_admin
@@ -341,6 +342,24 @@ async def create_visita(
         db.add(visita)
         db.commit()
         db.refresh(visita)
+        
+        # 🚀 AQUÍ VA TELEGRAM - DESPUÉS de db.refresh(visita)
+        # Cargar nombre de persona
+        persona_nombre = "N/A"
+        if visita.persona_id:
+            persona = db.query(Persona).filter(Persona.id == visita.persona_id).first()
+            persona_nombre = f"{persona.nombre} {persona.apellido}" if persona else "N/A"
+        
+        # Preparar datos para Telegram
+        visita_data = {
+            "id": visita.id,
+            "codigovisita": visita.codigo_visita
+        }
+        try:
+            await enviar_notificacion_telegram(visita_data, persona_nombre)
+            print("✅ Telegram enviado")
+        except Exception as telegram_error:
+            print(f"⚠️ Telegram falló (visita OK): {telegram_error}")
         
         # Log
         await log_action(
