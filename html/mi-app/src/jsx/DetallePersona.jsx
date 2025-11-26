@@ -3,8 +3,11 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";  // AGREGADO: Para token e isAuthenticated (ajusta path si necesario)
 import "../css/detalle_persona.css";
+import { useApi } from "../context/ApiContext.jsx"; 
 
-const API_BASE = "http://localhost:8000/api/v1/personas";
+const { API_V1 } = useApi();
+
+const API_BASE = `${API_V1}/personas`;
 
 export default function DetallePersonaPage() {
   const { id } = useParams();

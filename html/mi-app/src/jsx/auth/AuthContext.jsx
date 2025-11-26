@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";  // Para navigate en logout y errores
 import { jwtDecode } from "jwt-decode";  // Fix: Import nombrado (no default)
+import { useApi } from "../context/ApiContext.jsx"; 
+
+const { API_V1 } = useApi();
 
 const AuthContext = createContext(null);
 
@@ -54,7 +57,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch("http://172.16.56.102:5050/api/v1/auth/login-json", {
+      const response = await fetch(`${API_V1}/auth/login-json`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

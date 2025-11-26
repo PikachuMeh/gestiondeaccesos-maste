@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";  // Asume que exporta 'user' con {id, ...}
+import { useApi } from "../context/ApiContext.jsx"; 
 
-const API_BASE = "http://localhost:8000/api/v1/usuarios";
+const { API_V1 } = useApi();
+
+const API_BASE = `1${API_V1}/usuarios`;
 
 export default function UsuariosPage() {
   const navigate = useNavigate();

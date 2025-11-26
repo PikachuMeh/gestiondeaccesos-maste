@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../css/login.css";
+import { useApi } from "../context/ApiContext.jsx"; 
+
+const { API_V1 } = useApi();
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +19,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/solicitar_recuperacion", {
+      const response = await fetch(`${API_V1}/auth/solicitar_recuperacion`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { useApi } from "../context/ApiContext.jsx"; 
+
+const { API_V1 } = useApi();
 
 // Helper para fetch con token
 function apiFetch(url, options = {}) {
@@ -75,10 +78,10 @@ export default function RegistroAcceso() {
   const [posting, setPosting] = useState(false);
   const debounceRef = useRef();
 
-  const API_PERSONAS = "http://localhost:8000/api/v1/personas";
-  const API_VISITAS = "http://localhost:8000/api/v1/visitas";
-  const API_CENTROS = "http://localhost:8000/api/v1/visitas/centros-datos"; 
-  const API_AUTH = "http://localhost:8000/api/v1/auth";
+  const API_PERSONAS = `${API_V1}/personas`;
+  const API_VISITAS = `${API_V1}/visitas`;
+  const API_CENTROS = `${API_V1}/visitas/centros-datos`; 
+  const API_AUTH = `${API_V1}/auth`;
 
   async function fetchCurrentUser() {
     try {

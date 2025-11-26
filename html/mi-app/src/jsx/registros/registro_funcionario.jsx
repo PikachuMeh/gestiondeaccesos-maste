@@ -3,7 +3,9 @@ import { useState } from "react";
 import "../../css/registro_persona.css";
 import { useAuth } from "../auth/AuthContext.jsx"; 
 import { useNavigate } from "react-router-dom";
+import { useApi } from "../context/ApiContext.jsx"; 
 
+const { API_V1 } = useApi();
 
 const onlyLetters = (s) => s.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").replace(/\s{2,}/g, " ");
 const onlyDigits = (s) => s.replace(/\D/g, "");
@@ -236,7 +238,7 @@ const onUnidad = (e) => {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/personas/", {
+      const res = await fetch(`${API_V1}/personas/`, {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${token}`,

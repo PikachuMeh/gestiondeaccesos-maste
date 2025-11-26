@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";  // Asegúrate de la ruta
 import { useState } from "react";
 
+
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, isAdmin, isSupervisorOrAbove, isOperatorOrAbove, isAuditor, getCurrentRoleName } = useAuth();  // AGREGADO: isAuditor

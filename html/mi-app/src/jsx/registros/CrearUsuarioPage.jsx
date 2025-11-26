@@ -2,8 +2,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";  // Ajusta la ruta si es necesario
+import { useApi } from "../context/ApiContext.jsx"; 
 
-const API_BASE = "http://localhost:8000/api/v1/usuarios/";  // Trailing slash para evitar redirects 307
+const { API_V1 } = useApi();
+
+const API_BASE = `${API_V1}/usuarios/`;  // Trailing slash para evitar redirects 307
 
 export default function CrearUsuarioPage() {
   const navigate = useNavigate();

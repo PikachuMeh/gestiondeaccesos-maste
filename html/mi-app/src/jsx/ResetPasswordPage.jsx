@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import "../css/login.css";
+import { useApi } from "../context/ApiContext.jsx"; 
+
+const { API_V1 } = useApi();
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -29,7 +32,7 @@ export default function ResetPasswordPage() {
     try {
         // Verificar que coincida con tu ruta del backend
         const response = await fetch(
-        `http://localhost:8000/api/v1/auth/verificar-token-reset?token=${encodeURIComponent(tokenToVerify)}`,
+        `${API_V1}/auth/verificar-token-reset?token=${encodeURIComponent(tokenToVerify)}`,
         {
             method: 'GET',  // Asegurar que sea GET
             headers: {

@@ -2,8 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
+import { useApi } from "../context/ApiContext.jsx"; 
 
-const API_BASE = "http://localhost:8000/api/v1/visitas";
+const { API_V1 } = useApi();
+const API_BASE = `${API_V1}/visitas`;
 const PAGE_SIZE = 10;
 
 export default function AccesosPage() {

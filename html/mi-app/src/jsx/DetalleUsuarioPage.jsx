@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
+import { useApi } from "../context/ApiContext.jsx"; 
 
-const API_BASE = "http://localhost:8000/api/v1/usuarios";
+const { API_V1 } = useApi();
+
+const API_BASE = `${API_V1}/usuarios`;
 
 export default function DetalleUsuarioPage() {
   const { id } = useParams();              // /usuarios/:id

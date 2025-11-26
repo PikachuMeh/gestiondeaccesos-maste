@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext"; // Asume que expone logout()
 import "../../css/perfil.css";
+import { useApi } from "../context/ApiContext.jsx"; 
+
+const { API_V1 } = useApi();
 
 export default function Perfil_persona() {
     const { user, isAuthenticated, logout } = useAuth(); // Agrego logout para 401
@@ -28,7 +31,7 @@ export default function Perfil_persona() {
             }
 
             try {
-                const response = await fetch("http://localhost:8000/api/v1/auth/perfil", {
+                const response = await fetch(`${API_V1}/auth/perfil`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
