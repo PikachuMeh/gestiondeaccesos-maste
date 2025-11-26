@@ -5,6 +5,7 @@ from .persona_service import PersonaService
 from .centro_datos_service import CentroDatosService
 from .visita_service import VisitaService
 from .usuario_service import UsuarioService
+from .email_service import EmailService
 
 __all__ = [
     "BaseService",

@@ -280,105 +280,174 @@ async def create_visita(
     current_user=Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
-    """Crear visita - Compatible con 1 centro + múltiples áreas"""
+    """Crear visita con Telegram + PDF + Email automático"""
     
     # ✅ EXTRAER Y VALIDAR
     persona_id = payload.get('persona_id')
-    centro_datos_id = payload.get('centro_datos_id')  # ← Único requerido
-    centro_datos_ids = payload.get('centro_datos_ids', [centro_datos_id])  # ← Array opcional
+    centro_datos_id = payload.get('centro_datos_id')
+    centro_datos_ids = payload.get('centro_datos_ids', [centro_datos_id])
     tipo_actividad_id = payload.get('tipo_actividad_id')
     area_ids = payload.get('area_ids', [])
     estado_id = payload.get('estado_id', 1)
-    
-    # ✅ SIEMPRE requerido
+
     if not all([persona_id, centro_datos_id, tipo_actividad_id]):
         raise HTTPException(400, detail="Faltan persona_id, centro_datos_id o tipo_actividad_id")
-    
+
     # ✅ VALIDAR FKs
     _ensure_fk_visita(
         db,
         persona_id=persona_id,
-        centro_datos_id=centro_datos_id,      # ← PRIMER centro (requerido)
+        centro_datos_id=centro_datos_id,
         estado_id=estado_id,
         tipo_actividad_id=tipo_actividad_id
     )
     
     area_id = area_ids[0] if area_ids else None
     if area_id:
-        _ensure_fk_visita(
-            db,
-            persona_id=persona_id,
-            centro_datos_id=centro_datos_id,
-            area_id=area_id
-        )
-    
+        _ensure_fk_visita(db, persona_id=persona_id, centro_datos_id=centro_datos_id, area_id=area_id)
+
     try:
-        # ✅ DATA con centro_datos_id SIEMPRE presente
+        # Crear visita
         data = {
             "persona_id": persona_id,
-            "centro_datos_id": centro_datos_id,  # ← NUNCA NULL
+            "centro_datos_id": centro_datos_id,
             "estado_id": estado_id,
             "tipo_actividad_id": tipo_actividad_id,
-            "area_id": area_id,                  # ← Puede ser NULL
+            "area_id": area_id,
             "descripcion_actividad": payload.get('descripcion_actividad', ''),
             "fecha_programada": payload['fecha_programada'],
             "activo": True,
             "codigo_visita": _generar_codigo_9d_unico(db),
         }
         
-        # ✅ Campos JSON opcionales (guardar TODAS las selecciones)
+        # Campos JSON opcionales
         if centro_datos_ids:
             data['centros_datos_ids'] = centro_datos_ids
         if area_ids:
             data['areas_ids'] = area_ids
             
-        # Campos texto opcionales
         for field in ['autorizado_por', 'equipos_ingresados', 'observaciones']:
             if payload.get(field):
-                data[field] = payload[field]
-        
+                data[field] = payload.get(field)
+
         # Crear y guardar
         visita = Visita(**data)
         db.add(visita)
         db.commit()
         db.refresh(visita)
-        
-        # 🚀 AQUÍ VA TELEGRAM - DESPUÉS de db.refresh(visita)
-        # Cargar nombre de persona
+
+        # ✅ CARGAR DATOS POR QUERIES SEPARADOS (100% SEGURO)
+        # 👤 Persona
+        persona = db.query(Persona).filter(Persona.id == visita.persona_id).first()
         persona_nombre = "N/A"
-        if visita.persona_id:
-            persona = db.query(Persona).filter(Persona.id == visita.persona_id).first()
-            persona_nombre = f"{persona.nombre} {persona.apellido}" if persona else "N/A"
+        persona_cedula = "N/A"
+        email_persona = None
+        if persona:
+            persona_nombre = f"{persona.nombre or ''} {persona.apellido or ''}".strip()
+            persona_cedula = getattr(persona, 'cedula', 'N/A') or 'N/A'
+            email_persona = getattr(persona, 'email', None)
+
+        # 🏢 Centro
+        centro_datos = db.query(CentroDatos).filter(CentroDatos.id == visita.centro_datos_id).first()
         
-        # Preparar datos para Telegram
-        visita_data = {
-            "id": visita.id,
-            "codigovisita": visita.codigo_visita
-        }
+        # 📊 Áreas
+        areas_nombres = []
+        if hasattr(visita, 'areas_ids') and visita.areas_ids:
+            areas = db.query(Area).filter(Area.id.in_(visita.areas_ids)).all()
+            areas_nombres = [area.nombre for area in areas]
+        
+        # 📈 Centros múltiples
+        centros_nombres = []
+        if hasattr(visita, 'centros_datos_ids') and visita.centros_datos_ids:
+            centros = db.query(CentroDatos).filter(CentroDatos.id.in_(visita.centros_datos_ids)).all()
+            centros_nombres = [centro.nombre for centro in centros]
+
+        # 🔔 TELEGRAM
         try:
-            await enviar_notificacion_telegram(visita_data, persona_nombre)
+            await enviar_notificacion_telegram({
+                "id": visita.id,
+                "codigovisita": visita.codigo_visita,
+                "centronombre": centros_nombres[0] if centros_nombres else (centro_datos.nombre if centro_datos else "N/A"),
+                "fechaprogramada": visita.fecha_programada.strftime("%d/%m/%Y %H:%M") if visita.fecha_programada else "N/A",
+                "descripcionactividad": visita.descripcion_actividad or "N/A",
+                "areasnombres": areas_nombres
+            }, persona_nombre)
             print("✅ Telegram enviado")
         except Exception as telegram_error:
-            print(f"⚠️ Telegram falló (visita OK): {telegram_error}")
-        
-        # Log
+            print(f"⚠️ Telegram falló: {telegram_error}")
+
+        # 📧 PDF + EMAIL
+        try:
+            from app.utils.pdf_generator import generar_pdf_visita
+            from app.services.email_service import email_service
+            
+            visita_pdf_data = {
+                "id": visita.id,
+                "codigovisita": visita.codigo_visita,
+                "persona_nombre": persona_nombre,
+                "persona_cedula": persona_cedula,
+                "centronombre": centros_nombres[0] if centros_nombres else (centro_datos.nombre if centro_datos else "N/A"),
+                "fechaprogramada": visita.fecha_programada.strftime("%d/%m/%Y %H:%M") if visita.fecha_programada else "N/A",
+                "descripcionactividad": visita.descripcion_actividad or "N/A",
+                "areasnombres": areas_nombres,
+                "estado": "Programada",
+                "autorizadopor": getattr(visita, 'autorizado_por', 'No especificado'),
+                "observaciones": getattr(visita, 'observaciones', 'Ninguna'),
+            }
+            
+            # Generar PDF
+            pdf_bytes = generar_pdf_visita(visita_pdf_data)
+            
+            # Enviar email
+            if email_persona:
+                await email_service.send_email(
+                    email=email_persona,
+                    subject=f"Constancia de Visita SENIAT - {visita.codigo_visita}",
+                    body=f"""
+Estimado/a {persona_nombre},
+
+✅ Se ha registrado exitosamente su visita al sistema SENIAT.
+
+DETALLES:
+• Código: {visita.codigo_visita}
+• Centro: {visita_pdf_data['centronombre']}
+• Fecha/Hora: {visita_pdf_data['fechaprogramada']}
+• Áreas: {', '.join(visita_pdf_data['areasnombres']) if areas_nombres else 'N/A'}
+
+📎 Adjunto encontrará la **Constancia Oficial en PDF**.
+
+Saludos cordiales,
+Sistema de Control de Accesos SENIAT
+                    """,
+                    attachment_bytes=pdf_bytes,
+                    attachment_name=f"constancia_visita_{visita.codigo_visita}.pdf"
+                )
+                print(f"✅ Email+PDF enviado a {email_persona}")
+            else:
+                print("⚠️ Persona sin email - PDF no enviado")
+                
+        except Exception as email_error:
+            print(f"⚠️ Email/PDF falló (visita OK): {email_error}")
+
+        # 📝 LOGGING
         await log_action(
             "crear_visita", "visitas",
             {
-                "visita_id": visita.id,
-                "persona_id": persona_id,
+                "visita_id": visita.id, 
+                "persona_id": persona_id, 
                 "centro_id": centro_datos_id,
-                "centros": centro_datos_ids,
+                "centros": centro_datos_ids, 
                 "areas": area_ids
             },
             request, db, current_user
         )
-        
+
         return visita
-        
+
     except Exception as e:
         db.rollback()
         raise HTTPException(500, f"Error creando visita: {str(e)}")
+
 
 
 @router.put("/{visita_id}", response_model=VisitaResponse)
