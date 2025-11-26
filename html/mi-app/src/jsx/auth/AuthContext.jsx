@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/login-json", {
+      const response = await fetch("http://172.16.56.102:5050/api/v1/auth/login-json", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -2,25 +2,25 @@
 
 services:
   # Base de datos PostgreSQL
-  db:
-    image: postgres:15-alpine
-    container_name: gestion_accesos_db
-    environment:
-      POSTGRES_DB: gestion_accesos
-      POSTGRES_USER: admin01
-      POSTGRES_PASSWORD: juanes321
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql 
-    ports:
-      - "5431:5431"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app_network
+  #  db:
+  # image: postgres:15-alpine
+  # container_name: gestion_accesos_db
+  # environment:
+  #   POSTGRES_DB: gestion_accesos
+  #   POSTGRES_USER: postgres
+  #   POSTGRES_PASSWORD:
+  # volumes:
+  #   - postgres_data:/var/lib/postgresql/data
+  #   - ./init.sql:/docker-entrypoint-initdb.d/init.sql 
+  # ports:
+  #   - "5432:5432"
+  # healthcheck:
+  #   test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #   interval: 10s
+  #   timeout: 5s
+  #   retries: 5
+  # networks:
+  #   - app_network
 
   # Aplicación FastAPI
   app:
@@ -29,15 +29,14 @@ services:
       - .env
     container_name: gestion_accesos_app
     environment:
-      - DATABASE_URL=postgresql://admin01:juanes321@db:5432/gestion_accesos
+      - DATABASE_URL=postgresql://postgres:123456@host.docker.internal:5432/gestion_accesos
       - SECRET_KEY=clave-secreta-para-desarrollo-cambiar-en-produccion
       - DEBUG=true
       - LOG_LEVEL=INFO
     ports:
       - "5050:5050"
-    depends_on:
-      db:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/app
     networks:

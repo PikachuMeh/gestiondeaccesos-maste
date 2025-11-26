@@ -78,13 +78,10 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://localhost:8080"],
+    allow_origins=settings.allowed_origins,   # usa la lista de config.py
     allow_credentials=True,
-    allow_methods=settings.allowed_methods,
-    allow_headers=settings.allowed_headers,
+    allow_methods=settings.allowed_methods,   # ["*"]
+    allow_headers=settings.allowed_headers,   # ["*"]
 )
 
 # Trusted hosts

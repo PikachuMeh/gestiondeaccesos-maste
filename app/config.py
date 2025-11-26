@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Configuración de la base de datos
-    database_url: str = "postgresql://admin01:123456@localhost/gestion_accesos"
+    database_url: str = "postgresql://postgres:123456@gestion_accesos:5432/gestion_accesos"
     database_echo: bool = False
     
     # Configuración de autenticación JWT
@@ -41,12 +41,14 @@ class Settings(BaseSettings):
 
     # Configuración de CORS
     allowed_origins: list = [
-        "http://localhost:3000", 
-        "http://localhost:8080", 
+        "http://localhost:3000",
+        "http://localhost:8080",
         "http://localhost:5173",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:5173",
+        "http://172.16.56.102:3000",
+        "http://172.16.56.102:8080",
     ]
-    allowed_methods: list = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    allowed_methods: list = ["*"]
     allowed_headers: list = ["*"]
     
     telegram_bot_token: Optional[str] = None 
