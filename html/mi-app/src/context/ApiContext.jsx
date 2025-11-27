@@ -2,9 +2,8 @@
 import { createContext, useContext } from "react";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5050";
+  import.meta.env.VITE_API_BASE_URL
 const API_V1 = `${API_BASE_URL}/api/v1`;
-
 const ApiContext = createContext({ API_BASE_URL, API_V1 });
 
 export const ApiProvider = ({ children }) => (

@@ -3,16 +3,16 @@ import { useState } from "react";
 import "../../css/registro_persona.css";
 import { useAuth } from "../auth/AuthContext.jsx"; 
 import { useNavigate } from "react-router-dom";
-import { useApi } from "../context/ApiContext.jsx"; 
+import { useApi } from "../../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
+
 
 const onlyLetters = (s) => s.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").replace(/\s{2,}/g, " ");
 const onlyDigits = (s) => s.replace(/\D/g, "");
 
 
 export default function RegistroPersona() {
-
+  const { API_V1 } = useApi();
   const navigate = useNavigate();  
   const { token, loading, isAuthenticated } = useAuth(); 
 

@@ -5,13 +5,14 @@ import { useAuth } from "./auth/AuthContext.jsx";
 import "../css/audit_panel.css";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
-const API_BASE = `${API_V1}/audit/logs`;
 const PAGE_SIZE = 10;
 const DEBOUNCE_MS = 400;
 
 export default function AuditPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/audit/logs`;
   const navigate = useNavigate();
   const { token } = useAuth();
   const didMount = useRef(false);

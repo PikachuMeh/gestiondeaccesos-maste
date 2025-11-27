@@ -5,11 +5,12 @@ import { useAuth } from "./auth/AuthContext.jsx";  // AGREGADO: Para token e isA
 import "../css/detalle_persona.css";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
-const API_BASE = `${API_V1}/personas`;
 
 export default function DetallePersonaPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/personas`;
   const { id } = useParams();
   const navigate = useNavigate();
   const { token, isAuthenticated } = useAuth();  // AGREGADO: Obtiene token y check auth

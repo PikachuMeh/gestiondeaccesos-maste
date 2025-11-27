@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import "../css/login.css";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
+
 
 export default function ResetPasswordPage() {
+  const { API_V1 } = useApi();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [token, setToken] = useState("");

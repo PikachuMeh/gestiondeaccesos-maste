@@ -1,14 +1,16 @@
 // src/jsx/AccesosPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext.jsx";
-import { useApi } from "../context/ApiContext.jsx"; 
+import { useAuth } from "./auth/AuthContext";
+import { useApi } from "../context/ApiContext";  // ✅ Sin .jsx
 
-const { API_V1 } = useApi();
-const API_BASE = `${API_V1}/visitas`;
 const PAGE_SIZE = 10;
 
 export default function AccesosPage() {
+  // ✅ Hooks/AQUI dentro componente
+  const { API_V1 } = useApi();
+  const API_BASE = `${API_V1}/visitas`;
+  console.log("API_V1 in AccesosPage:", API_V1);
   const didMount = useRef(false);
   const navigate = useNavigate();
   const { token, isAdmin, isOperatorOrAbove, handleApiError } = useAuth();

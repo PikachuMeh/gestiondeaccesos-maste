@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";  // Ajusta la ruta según tu estructura (ej. si está en src/jsx/auth/)
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
-const API_BASE = `${API_V1}/personas`;
 
 export default function EditarPersonaPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/personas`;
   const { id } = useParams();
   const navigate = useNavigate();
   const { token, loading: authLoading, isAuthenticated } = useAuth();  // Obtener token y estado de auth

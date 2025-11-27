@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext"; // Asume que expone logout()
 import "../../css/perfil.css";
-import { useApi } from "../context/ApiContext.jsx"; 
+import { useApi } from "../../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
 export default function Perfil_persona() {
+    
+    const { API_V1 } = useApi();
     const { user, isAuthenticated, logout } = useAuth(); // Agrego logout para 401
     const [perfilData, setPerfilData] = useState(null);
     const [loading, setLoading] = useState(true);

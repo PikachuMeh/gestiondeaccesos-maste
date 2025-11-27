@@ -2,13 +2,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";  // Ajusta la ruta si es necesario
-import { useApi } from "../context/ApiContext.jsx"; 
+import { useApi } from "../../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
-
-const API_BASE = `${API_V1}/usuarios/`;  // Trailing slash para evitar redirects 307
+ 
 
 export default function CrearUsuarioPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/usuarios/`; 
   const navigate = useNavigate();
   const { token, user, isAuthenticated, isAdmin } = useAuth();  // isAdmin: () => user?.rol_id === 1
   

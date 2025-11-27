@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import "../css/login.css";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
 export default function ForgotPasswordPage() {
+  
+  const { API_V1 } = useApi();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");

@@ -4,11 +4,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
-const API_BASE = `${API_V1}/usuarios`;
 
 export default function DetalleUsuarioPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/usuarios`;
   const { id } = useParams();              // /usuarios/:id
   const navigate = useNavigate();
   const { token } = useAuth();

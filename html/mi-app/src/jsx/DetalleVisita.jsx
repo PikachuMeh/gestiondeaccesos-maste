@@ -4,10 +4,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
-const API_BASE = `${API_V1}/visitas`;
+
 
 export default function DetalleVisitaPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/visitas`;
   const { id } = useParams();
   const navigate = useNavigate();
   const { token, isAuthenticated } = useAuth();

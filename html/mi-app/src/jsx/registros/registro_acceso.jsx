@@ -1,13 +1,10 @@
-// src/components/RegistroAcceso.jsx - COMPLETO ✅ 1 CENTRO + MÚLTIPLES ÁREAS
-
+// src/components/RegistroAcceso.jsx - COMPLETO CORREGIDO ✅
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { useApi } from "../context/ApiContext.jsx"; 
+import { useApi } from "../../context/ApiContext.jsx";
 
-const { API_V1 } = useApi();
-
-// Helper para fetch con token
+// ✅ Helper sin hook - recibe token como parámetro
 function apiFetch(url, options = {}) {
   const token = localStorage.getItem('access_token');
   const headers = {
@@ -36,6 +33,7 @@ function apiFetch(url, options = {}) {
 
 export default function RegistroAcceso() {
   const navigate = useNavigate();
+  const { API_V1 } = useApi();  // ✅ Hook top-level componente
 
   // Estados varios
   const [detalleCache, setDetalleCache] = useState(new Map());
@@ -59,9 +57,9 @@ export default function RegistroAcceso() {
 
   // ✅ 1 CENTRO ÚNICO + MÚLTIPLES ÁREAS
   const [centros, setCentros] = useState([]);
-  const [cdSel, setCdSel] = useState(null);           // ← Único centro
-  const [areas, setAreas] = useState([]);             // ← Áreas del centro
-  const [areasSel, setAreasSel] = useState([]);       // ← Múltiples áreas seleccionadas
+  const [cdSel, setCdSel] = useState(null);
+  const [areas, setAreas] = useState([]);
+  const [areasSel, setAreasSel] = useState([]);
   const [tiposActividad, setTiposActividad] = useState([]);
   const [idTipo_act, setidTipo_act] = useState("");
 
@@ -80,7 +78,7 @@ export default function RegistroAcceso() {
 
   const API_PERSONAS = `${API_V1}/personas`;
   const API_VISITAS = `${API_V1}/visitas`;
-  const API_CENTROS = `${API_V1}/visitas/centros-datos`; 
+  const API_CENTROS = `${API_V1}/visitas/centros-datos`;
   const API_AUTH = `${API_V1}/auth`;
 
   async function fetchCurrentUser() {
@@ -101,12 +99,12 @@ export default function RegistroAcceso() {
 
   // ✅ SELECCIÓN CENTRO ÚNICO
   const onCentroCheckboxChange = (id) => {
-    setCdSel(id);                    // ← Solo 1 centro
-    setAreasSel([]);                 // ← Limpiar áreas seleccionadas
+    setCdSel(id);
+    setAreasSel([]);
     if (id) {
-      loadAreasPorCentro(id);        // ← Cargar áreas del centro
+      loadAreasPorCentro(id);
     } else {
-      setAreas([]);                  // ← Limpiar áreas
+      setAreas([]);
     }
   };
 
@@ -143,10 +141,8 @@ export default function RegistroAcceso() {
   async function loadCentros() {
     setLoading(true);
     try {
-
-      const r = await apiFetch(API_CENTROS);  // ✅ GET simple
+      const r = await apiFetch(API_CENTROS);
       const json = await r.json();
-
       setCentros(json);
     } catch (error) {
       console.error("❌ Error cargando centros:", error);
@@ -283,7 +279,7 @@ export default function RegistroAcceso() {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
 
-  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS (envía area_ids array)
+  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
@@ -304,18 +300,17 @@ export default function RegistroAcceso() {
 
       const body = {
         persona_id: selected.id,
-        centro_datos_id: Number(cdSel),        // ← Único (requerido por BD)
-        centro_datos_ids: [Number(cdSel)],     // ← Array (para JSON)
+        centro_datos_id: Number(cdSel),
+        centro_datos_ids: [Number(cdSel)],
         tipo_actividad_id: tipoActividadId,
-        area_ids: areasSel.map(Number),        // ← Array completo
+        area_ids: areasSel.map(Number),
         descripcion_actividad: formVisita.descripcion_actividad.trim(),
         fecha_programada: new Date().toISOString(),
         autorizado_por: formVisita.autorizado_por?.trim() || null,
         equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
         observaciones: formVisita.observaciones?.trim() || null,
         estado_id: 1,
-    };
-
+      };
 
       const res = await apiFetch(API_VISITAS, {
         method: "POST",
@@ -325,7 +320,7 @@ export default function RegistroAcceso() {
       const created = await res.json();
       alert(`✅ Visita creada exitosamente (Centro: ${centros.find(c => c.id === cdSel)?.nombre}, Áreas: ${areasSel.length})`);
       
-      // Reset form después de éxito
+      // Reset form
       setCdSel(null);
       setAreasSel([]);
       setAreas([]);
@@ -411,7 +406,7 @@ export default function RegistroAcceso() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
                     
-                    {/* ✅ CENTRO DE DATOS - SOLO 1 */}
+                    {/* CENTRO DE DATOS - SOLO 1 */}
                     <div>
                       <label className="block text-sm font-medium text-on-surface mb-2">
                         Centro de datos {cdSel && `(1 seleccionado)`}
@@ -422,7 +417,7 @@ export default function RegistroAcceso() {
                             <input
                               type="checkbox"
                               className="peer sr-only"
-                              checked={cdSel === c.id}  // ← SELECCIÓN ÚNICA
+                              checked={cdSel === c.id}
                               onChange={() => onCentroCheckboxChange(c.id)}
                             />
                             <span
@@ -444,7 +439,7 @@ export default function RegistroAcceso() {
                       </div>
                     </div>
 
-                    {/* ✅ ÁREAS - MÚLTIPLES */}
+                    {/* ÁREAS - MÚLTIPLES */}
                     {cdSel && areas.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-on-surface mb-2">
@@ -617,22 +612,6 @@ export default function RegistroAcceso() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// Subcomponentes (mantener igual)
-function FieldEditable({ label, name, value, onChange, disabled = false }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-on-surface mb-3">{label}</label>
-      <input
-        name={name}
-        value={value || ""}
-        onChange={onChange}
-        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-        disabled={disabled}
-      />
     </div>
   );
 }

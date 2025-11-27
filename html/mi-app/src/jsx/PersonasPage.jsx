@@ -4,14 +4,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
-const API_BASE = `${API_V1}/personas`;
 const PAGE_SIZE = 10;
 
 const normDoc = (s) => s.replace(/[^0-9]/g, "");
 
 export default function PersonasPage() {
+  const { API_V1 } = useApi();
+
+  const API_BASE = `${API_V1}/personas`;
   const navigate = useNavigate();
   const didMount = useRef(false);
 

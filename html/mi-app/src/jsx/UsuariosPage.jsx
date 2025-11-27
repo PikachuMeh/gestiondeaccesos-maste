@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";  // Asume que exporta 'user' con {id, ...}
 import { useApi } from "../context/ApiContext.jsx"; 
 
-const { API_V1 } = useApi();
 
-const API_BASE = `1${API_V1}/usuarios`;
 
 export default function UsuariosPage() {
+
+  const { API_V1 } = useApi();
+  const API_BASE = `${API_V1}/usuarios`;
   const navigate = useNavigate();
   const { token, user, isSupervisorOrAbove, isAdmin, getCurrentRoleName } = useAuth();  // AGREGADO: 'user' para current_id
   const [usuarios, setUsuarios] = useState([]);
