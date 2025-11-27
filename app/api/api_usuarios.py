@@ -107,94 +107,174 @@ async def create_user(
     apellidos: str = Form(..., min_length=1, max_length=200),
     foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user=Depends(require_role(1))  # Usuario model, no dict
+    current_user=Depends(require_role(1)),  # Usuario model, no dict
 ):
-    print(f"Received data: username={username}, email={email}, rol_id={rol_id}, type(rol_id)={type(rol_id)}, cedula={cedula}, nombre={nombre}, apellidos={apellidos}")
-    
+    print(
+        f"Received data: username={username}, email={email}, "
+        f"rol_id={rol_id}, type(rol_id)={type(rol_id)}, "
+        f"cedula={cedula}, nombre={nombre}, apellidos={apellidos}"
+    )
+
+    # Protecciones extra por rol (aunque Form ya limita 2-3)
     if rol_id == 1:
-        raise HTTPException(status_code=403, detail="No se puede crear un Administrador desde esta ruta")
+        raise HTTPException(
+            status_code=403,
+            detail="No se puede crear un Administrador desde esta ruta",
+        )
     if rol_id == 4:
-        raise HTTPException(status_code=400, detail="Rol de Auditor no permitido")
-    
+        raise HTTPException(
+            status_code=400,
+            detail="Rol de Auditor no permitido",
+        )
+
     try:
+        print("=== INICIANDO TRY create_user ===")
+
+        # Servicio
+        print("Paso 1: Instanciando UsuarioService")
         usuario_service = UsuarioService(db)
-            
-        # Chequeos pre-add opcionales (servicio los repite, pero para 409 custom)
+        print("✓ UsuarioService OK")
+
+        # Normalización
         username_lower = username.lower().strip()
         email_lower = email.lower().strip()
+
+        # Chequeos de duplicados antes de entrar al servicio
+        print(f"Paso 2: Pre-chequeos username='{username_lower}'")
         if db.query(Usuario).filter(Usuario.username == username_lower).first():
-            raise HTTPException(status_code=409, detail=f"Conflicto en username: '{username_lower}' ya existe")
+            raise HTTPException(
+                status_code=409,
+                detail=f"Conflicto en username: '{username_lower}' ya existe",
+            )
+        print("  ✓ Username libre")
+
+        print(f"Paso 2b: Pre-chequeos email='{email_lower}'")
         if db.query(Usuario).filter(Usuario.email == email_lower).first():
-            raise HTTPException(status_code=409, detail=f"Conflicto en email: '{email_lower}' ya existe")
+            raise HTTPException(
+                status_code=409,
+                detail=f"Conflicto en email: '{email_lower}' ya existe",
+            )
+        print("  ✓ Email libre")
+
+        print(f"Paso 2c: Pre-chequeos cedula='{cedula}'")
         if db.query(Usuario).filter(Usuario.cedula == cedula).first():
-            raise HTTPException(status_code=409, detail=f"Conflicto en cédula: '{cedula}' ya existe")
-            
-        logger.info(f"Pre-chequeos pasados: username={username_lower}, email={email_lower}, cedula={cedula}")
-            
-        # Crea UsuarioCreate full (tu esquema valida min_length, etc.)
+            raise HTTPException(
+                status_code=409,
+                detail=f"Conflicto en cédula: '{cedula}' ya existe",
+            )
+        print("  ✓ Cédula libre")
+
+        logger.info(
+            f"Pre-chequeos pasados: username={username_lower}, "
+            f"email={email_lower}, cedula={cedula}"
+        )
+
+        # Construir esquema de creación
+        print("Paso 3: Construyendo UsuarioCreate")
         create_data = UsuarioCreate(
             username=username_lower,
             email=email_lower,
             cedula=cedula,
-            nombre=nombre.strip().title(),  # Normaliza (ej. "Elza Pato")
-            apellidos=apellidos.strip().title(),  # "perez perejil" → "Perez Perejil"
+            nombre=nombre.strip().title(),
+            apellidos=apellidos.strip().title(),
             password=password,
             rol_id=rol_id,
-            telefono=None,  # Opcional; agrega Form si quieres input
+            telefono=None,
             departamento=None,
-            observaciones=None
+            observaciones=None,
         )
-            
-        # Usa create_user (genérico, acepta UsuarioCreate full con nombre/apellidos)
+        print("✓ UsuarioCreate OK")
+
+        # Crear usuario vía servicio
+        print("Paso 4: Llamando usuario_service.create_user")
         user = usuario_service.create_user(create_data)
-            
-        # Si foto: Maneja upload (ej. guardar en user.foto_path = await save_file(foto))
+        print("✓ usuario_service.create_user OK")
+
+        # Manejo opcional de foto (pendiente implementar)
         if foto:
-            # Ejemplo: user.foto_path = f"uploads/{foto.filename}"
+            # Ejemplo: user.foto_path = await save_file(foto)
             # db.commit()
-            pass  # Implementa si needed
-                
-        db.commit()  # Servicio ya commitea, pero refresh si foto
+            print(f"Foto recibida: {foto.filename}")
+            pass
+
+        # Confirmar en DB y refrescar
+        db.commit()
         db.refresh(user)
-        logger.info(f"Usuario creado: ID={user.id}, username={user.username}, nombre={user.nombre} {user.apellidos}, rol_id={user.rol_id}")
-            
-        # FIX: Log acción – usa atributos de modelo (no .get())
-        log_action(
-            request, 
-            "Crear usuario", 
-            f"Usuario '{user.username}' (ID={user.id}, rol_id={user.rol_id}, nombre='{user.nombre} {user.apellidos}') creado por '{current_user.username}'",  # .username directo
-            current_user.id,  # .id directo
-            db
+
+        logger.info(
+            f"Usuario creado: ID={user.id}, username={user.username}, "
+            f"nombre={user.nombre} {user.apellidos}, rol_id={user.rol_id}"
         )
-        
-        return user  # Serializa con UsuarioResponse (incluye rol)
-        
+
+        # Log de auditoría
+        log_action(
+            request,
+            "Crear usuario",
+            (
+                f"Usuario '{user.username}' "
+                f"(ID={user.id}, rol_id={user.rol_id}, "
+                f"nombre='{user.nombre} {user.apellidos}') "
+                f"creado por '{current_user.username}'"
+            ),
+            current_user.id,
+            db,
+        )
+
+        return user
+
     except ValueError as e:
-        # Servicio lanza ValueError para duplicates/inválidos
+        # Errores de negocio/validación que lanza el servicio
         logger.error(f"ValueError del servicio: {str(e)}")
         if "ya existe" in str(e).lower() or "registrado" in str(e).lower():
             raise HTTPException(status_code=409, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))
+
     except IntegrityError as e:
         db.rollback()
-        orig_error = getattr(e.orig, 'pgcode', 'N/A') if hasattr(e, 'orig') else 'N/A'
-        orig_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        orig_error = getattr(e.orig, "pgcode", "N/A") if hasattr(e, "orig") else "N/A"
+        orig_msg = str(e.orig) if hasattr(e, "orig") else str(e)
         logger.error(f"IntegrityError: Código={orig_error}, Mensaje='{orig_msg}'")
-        
-        if orig_error == '23502':  # NOT NULL (raro ahora, pero si)
-            raise HTTPException(status_code=422, detail=f"Campo requerido faltante: {orig_msg[:100]}")
-        elif orig_error == '23505':  # Unique (DB level, si servicio falla)
-            if any(field in orig_msg.lower() for field in ['username', 'email', 'cedula']):
-                raise HTTPException(status_code=409, detail=f"Duplicado detectado en DB: {orig_msg[:100]}")
+
+        if orig_error == "23502":  # NOT NULL
+            raise HTTPException(
+                status_code=422,
+                detail=f"Campo requerido faltante: {orig_msg[:100]}",
+            )
+        elif orig_error == "23505":  # UNIQUE
+            if any(
+                field in orig_msg.lower()
+                for field in ["username", "email", "cedula"]
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Duplicado detectado en DB: {orig_msg[:100]}",
+                )
             else:
-                raise HTTPException(status_code=409, detail=f"Conflicto en DB: {orig_msg[:100]}")
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Conflicto en DB: {orig_msg[:100]}",
+                )
         else:
-            raise HTTPException(status_code=500, detail=f"Error DB: {orig_msg[:200]}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error DB: {orig_msg[:200]}",
+            )
+
+    except HTTPException:
+        # Relevanta los HTTPException que ya levantaste arriba
+        db.rollback()
+        raise
+
     except Exception as e:
         db.rollback()
-        logger.error(f"Error inesperado: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+        tb = traceback.format_exc()
+        logger.error(f"Error inesperado en create_user: {str(e)}\n{tb}")
+        # No mandar traceback al cliente en producción, solo mensaje genérico
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno: {str(e) or 'Excepción sin mensaje'}",
+        )
 
 @router.put("/{user_id}", response_model=UsuarioResponse)
 async def update_user(

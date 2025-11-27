@@ -77,25 +77,41 @@ async def login_json(
     db: Session = Depends(get_db)
 ):
     if not login_data.username or not login_data.password:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario y contraseña son requeridos")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuario y contraseña son requeridos"
+        )
 
     usuario_service = UsuarioService(db)
+    
+    # Buscar usuario
     user = usuario_service.get_by_username(login_data.username)
     if not user:
-        _raise_404_user_not_found()
+        raise HTTPException(
+            status_code=401,
+            detail="Usuario no existe"
+        )
 
+    # Verificar contraseña
     if not usuario_service.verify_password(login_data.password, user.hashed_password):
-        _raise_401_bad_credentials()
+        raise HTTPException(
+            status_code=401,
+            detail="Contraseña incorrecta"
+        )
+    
+    # Verificar activo
     if not user.activo:
-        _raise_401_bad_credentials()
+        raise HTTPException(
+            status_code=401,
+            detail="Cuenta desactivada"
+        )
 
+    # Actualizar último acceso
     user.ultimo_acceso = datetime.now()
     db.commit()
 
-    # CAMBIO: Definir duración de 4 días aquí también
+    # Generar token (4 días)
     access_token_expires = timedelta(days=4)
-    
-    # CAMBIO: Pasar la duración al handler
     access_token = jwt_handler.create_token_for_user(
         user_id=user.id, 
         username=user.username, 
@@ -103,7 +119,7 @@ async def login_json(
         expires_delta=access_token_expires
     )
 
-    # Logging similar a login
+    # Log exitoso
     ip = request.client.host
     await log_action(
         accion="login_exitoso_json",
@@ -119,6 +135,7 @@ async def login_json(
         "token_type": "bearer",
         "expires_in": int(access_token_expires.total_seconds()),
     }
+
 
 # ... rest of the existing code (endpoints: solicitar_recuperacion, test-email, etc) ...
 # Asegúrate de incluir todo el resto del código original aquí sin cambios

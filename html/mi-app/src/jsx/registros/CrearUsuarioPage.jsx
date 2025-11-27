@@ -47,8 +47,12 @@ export default function CrearUsuarioPage() {
   ];
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError("");  // Limpia error al cambiar
+  const { name, value } = e.target;
+     setFormData(prev => ({
+      ...prev,
+     [name]: name === "rol_id" ? Number(value) : value
+    }));
+   setError("");
   };
 
   const validateForm = () => {
