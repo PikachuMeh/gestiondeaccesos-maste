@@ -35,10 +35,9 @@ class Settings(BaseSettings):
     mail_tls: bool = True
     mail_ssl: bool = False
     
-
     # ✅ NUEVO: URL del frontend para links de recuperación
     frontend_url: str = "http://localhost:5173"
-
+    
     # Configuración de CORS
     allowed_origins: list = [
         "http://localhost:3000",
@@ -51,9 +50,9 @@ class Settings(BaseSettings):
     allowed_methods: list = ["*"]
     allowed_headers: list = ["*"]
     
-    telegram_bot_token: Optional[str] = None 
-    telegram_chat_id: Optional[str] = None   
-
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    
     # Configuración de rate limiting
     rate_limit_requests: int = 100
     rate_limit_window: int = 60  # segundos
@@ -62,14 +61,21 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "json"
     
+    # ========== CONFIGURACIÓN DE UPLOADS DE OPERADORES (NUEVO) ==========
+    upload_operadores_path: str = "../html/mi-app/src/img/operadores/"
+    upload_operadores_url: str = "http://localhost:5173/src/img/operadores/"
+    upload_max_size_mb: int = 5
+    upload_allowed_extensions: str = "jpg,jpeg,png,gif,webp"
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # IMPORTANTE: Ignora variables extra para evitar errores
 
 
 # Instancia global de configuración
 settings = Settings()
- 
+
 # ✅ AGREGAR ESTO TEMPORALMENTE PARA DEBUG
 print("\n" + "="*60)
 print("🔍 DIAGNÓSTICO: Valores cargados en settings")
@@ -79,8 +85,11 @@ print(f"MAIL_PASSWORD: {settings.mail_password}")
 print(f"MAIL_FROM: {settings.mail_from}")
 print(f"DATABASE_URL: {settings.database_url}")
 print(f"FRONTEND_URL: {settings.frontend_url}")
+print(f"UPLOAD_OPERADORES_PATH: {settings.upload_operadores_path}")
+print(f"UPLOAD_OPERADORES_URL: {settings.upload_operadores_url}")
+print(f"UPLOAD_MAX_SIZE_MB: {settings.upload_max_size_mb}")
+print(f"UPLOAD_ALLOWED_EXTENSIONS: {settings.upload_allowed_extensions}")
 print("="*60)
-
 
 # Ruta donde debería estar el .env
 env_path = Path(__file__).parent.parent / ".env"
@@ -102,9 +111,9 @@ if env_path.exists():
     print("-" * 60)
 else:
     print("❌ El archivo .env NO existe en esa ubicación")
-    print("\n📍 Directorio actual de trabajo:")
-    print(f"   {os.getcwd()}")
-    print("\n📍 Ubicación del archivo config.py:")
-    print(f"   {Path(__file__).absolute()}")
 
+print("\n📍 Directorio actual de trabajo:")
+print(f" {os.getcwd()}")
+print("\n📍 Ubicación del archivo config.py:")
+print(f" {Path(__file__).absolute()}")
 print("="*60 + "\n")

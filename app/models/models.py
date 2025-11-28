@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey,Date    
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -9,12 +9,11 @@ SCHEMA = "sistema_gestiones"
 class Area(Base):
     __tablename__ = "area"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id = Column(Integer, primary_key=True)
     nombre = Column(String, nullable=False)
-    # Si las áreas pertenecen a un centro de datos específico, añade FK:
-    id_centro_datos = Column(Integer, ForeignKey("sistema_gestiones.centro_datos.id"), nullable=False)  # CORRECTO
-
+    id_centro_datos = Column(Integer, ForeignKey("sistema_gestiones.centro_datos.id"), nullable=False)
+    
     # Relaciones
     visitas = relationship("Visita", back_populates="area", cascade="all, delete-orphan")
     centro_datos = relationship("CentroDatos", back_populates="areas")
@@ -23,7 +22,7 @@ class Area(Base):
 class Persona(Base):
     __tablename__ = "personas"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False, index=True)
     apellido = Column(String(100), nullable=False, index=True)
@@ -34,12 +33,11 @@ class Persona(Base):
     direccion = Column(Text, nullable=False)
     observaciones = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())  # ← NUEVO
+    fecha_actualizacion = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     foto = Column(String(250), nullable=False)
     departamento = Column(String(100), nullable=True)
     unidad = Column(String(100), nullable=True)
-
-
+    
     # Relaciones
     visitas = relationship("Visita", back_populates="persona", cascade="all, delete-orphan")
 
@@ -47,7 +45,7 @@ class Persona(Base):
 class CentroDatos(Base):
     __tablename__ = "centro_datos"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(200), nullable=False, unique=True, index=True)
     codigo = Column(String(20), nullable=False, unique=True, index=True)
@@ -60,7 +58,7 @@ class CentroDatos(Base):
     observaciones = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
-
+    
     # Relaciones
     visitas = relationship("Visita", back_populates="centro_datos", cascade="all, delete-orphan")
     areas = relationship("Area", back_populates="centro_datos", cascade="all, delete-orphan")
@@ -69,18 +67,17 @@ class CentroDatos(Base):
 class RolUsuario(Base):
     __tablename__ = "roles"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id_rol = Column(Integer, primary_key=True, index=True)
     nombre_rol = Column(String(255), unique=True, nullable=False, index=True)
-
     usuarios = relationship("Usuario", back_populates="rol")
 
 class Usuario(Base):
     __tablename__ = "usuario"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    cedula = Column(Integer, unique=True, nullable=False, index=True)  # ← Cedula como campo único
+    cedula = Column(Integer, unique=True, nullable=False, index=True)
     username = Column(String(255), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     nombre = Column(String(200), nullable=False)
@@ -90,33 +87,32 @@ class Usuario(Base):
     telefono = Column(String(20), nullable=True)
     departamento = Column(String(100), nullable=True)
     observaciones = Column(Text, nullable=True)
-    activo = Column(Boolean, default=True, nullable=False)  # ← AGREGAR este campo
+    # NUEVO: Campo para foto del operador (ruta relativa al proyecto)
+    foto_path = Column(String(500), nullable=True)  # NULL si no tiene foto
+    activo = Column(Boolean, default=True, nullable=False)
     ultimo_acceso = Column(DateTime(timezone=True), nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-
-    controles = relationship("Control", back_populates="usuario", cascade="all, delete-orphan")  # Ajusta "Control" al nombre real del modelo
+    
+    controles = relationship("Control", back_populates="usuario", cascade="all, delete-orphan")
     rol = relationship("RolUsuario", back_populates="usuarios")
-
 
 # Estado de visita
 class EstadoVisita(Base):
     __tablename__ = "estado_visita"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id_estado = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nombre_estado = Column(String(255), nullable=False, unique=True)
-
     visitas = relationship("Visita", back_populates="estado")
 
 # Tipo de actividad
 class TipoActividad(Base):
     __tablename__ = "tipo_actividad"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id_tipo_actividad = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nombre_actividad = Column(String(255), nullable=False, unique=True)
-
     visitas = relationship("Visita", back_populates="actividad")
 
 class CentroAreaVisita(Base):
@@ -135,16 +131,15 @@ class CentroAreaVisita(Base):
 class Visita(Base):
     __tablename__ = "visitas"
     __table_args__ = {"schema": SCHEMA}
-
+    
     id = Column(Integer, primary_key=True, index=True)
     codigo_visita = Column(String(20), unique=True, nullable=False, index=True)
-
     persona_id = Column(Integer, ForeignKey(f"{SCHEMA}.personas.id"), nullable=False, index=True)
     centro_datos_id = Column(Integer, ForeignKey(f"{SCHEMA}.centro_datos.id"), nullable=False, index=True)
     estado_id = Column(Integer, ForeignKey(f"{SCHEMA}.estado_visita.id_estado"), nullable=False, index=True)
     tipo_actividad_id = Column(Integer, ForeignKey(f"{SCHEMA}.tipo_actividad.id_tipo_actividad"), nullable=False, index=True)
     area_id = Column(Integer, ForeignKey(f"{SCHEMA}.area.id"), nullable=True, index=True)
-
+    
     descripcion_actividad = Column(Text, nullable=False)
     fecha_programada = Column(DateTime(timezone=True), nullable=False, index=True)
     fecha_ingreso = Column(DateTime(timezone=True), nullable=True)
@@ -159,44 +154,35 @@ class Visita(Base):
     activo = Column(Boolean, default=True, nullable=False)
     centros_datos_ids = Column(JSON, nullable=True, default=list)
     areas_ids = Column(JSON, nullable=True, default=list)
-    # ← FECHAS CORREGIDAS
+    
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-
+    
     estado = relationship("EstadoVisita", back_populates="visitas")
     actividad = relationship("TipoActividad", back_populates="visitas")
     persona = relationship("Persona", back_populates="visitas")
     centros_areas = relationship(
-        "CentroAreaVisita", 
+        "CentroAreaVisita",
         cascade="all, delete-orphan",
         back_populates="visita"
-        
     )
     centro_datos = relationship("CentroDatos", back_populates="visitas")
     area = relationship("Area", back_populates="visitas")
 
-
-
 class Control(Base):
     __tablename__ = "control"
     __table_args__ = {"schema": SCHEMA}
- 
-
     __table_args__ = (Index('idx_control_fecha_usuario', 'fecha', 'usuario_id'), {})
-
+    
     id = Column(Integer, primary_key=True, index=True)
-    realizado = Column(String(100), nullable=False)  # Acción: 'crear_visita', 'borrar_persona', etc.
+    realizado = Column(String(100), nullable=False)
     fecha = Column(Date, nullable=False, index=True)
-    hora = Column(String(8), nullable=False)  # 'HH:MM:SS'
+    hora = Column(String(8), nullable=False)
     usuario_id = Column(Integer, ForeignKey(f"{SCHEMA}.usuario.id"), nullable=False, index=True)
-    detalles = Column(Text, nullable=True)  # Detalles adicionales de la acción
-    ip_address = Column(String(45), nullable=True)  # IPv4/IPv6
-    user_agent = Column(Text, nullable=True)  # Información del navegador/dispositivo
-    tabla_afectada = Column(String(50), nullable=True)  # 'personas', 'visitas', 'usuario', etc.
-    registro_id = Column(Integer, nullable=True)  # ID del registro afectado
-
-    usuario = relationship("Usuario", back_populates="controles")  # Nueva relación en Usuario
-
-    # Agregar a modelo Usuario:
-    # controles = relationship("Control", back_populates="usuario", cascade="all, delete-orphan")
-
+    detalles = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    tabla_afectada = Column(String(50), nullable=True)
+    registro_id = Column(Integer, nullable=True)
+    
+    usuario = relationship("Usuario", back_populates="controles")
