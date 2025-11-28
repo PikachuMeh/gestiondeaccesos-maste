@@ -319,21 +319,21 @@ export default function RegistroAcceso() {
 
       const created = await res.json();
       alert(`✅ Visita creada exitosamente (Centro: ${centros.find(c => c.id === cdSel)?.nombre}, Áreas: ${areasSel.length})`);
-      
+
       // Reset form
       setCdSel(null);
       setAreasSel([]);
       setAreas([]);
       setidTipo_act("");
-      setFormVisita({ 
+      setFormVisita({
         descripcion_actividad: "",
         autorizado_por: formVisita.autorizado_por,
         equipos_ingresados: "",
         observaciones: ""
       });
-      
+
       navigate(`/accesos/${created.id}`);
-      
+
     } catch (e) {
       console.error("❌ Error:", e);
       alert(`Error al registrar visita: ${e.message}`);
@@ -344,6 +344,9 @@ export default function RegistroAcceso() {
 
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
   const showNoResults = q && !selected && sugerencias.length === 0;
+
+  // ✅ CONSTRUIR URL DE FOTO DESDE API (como en DetallePersonaPage)
+  const fotoUrl = selected?.foto ? `${API_V1}/personas/foto/${selected.foto}` : null;
 
   if (userLoading) {
     return (
@@ -361,7 +364,7 @@ export default function RegistroAcceso() {
           <div className="p-8">
             <form className="space-y-5" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
               <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
-              
+
               {/* CÉDULA */}
               <div className="space-y-4">
                 <div className="relative">
@@ -405,7 +408,7 @@ export default function RegistroAcceso() {
                 <>
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
-                    
+
                     {/* CENTRO DE DATOS - SOLO 1 */}
                     <div>
                       <label className="block text-sm font-medium text-on-surface mb-2">
@@ -422,11 +425,11 @@ export default function RegistroAcceso() {
                             />
                             <span
                               className={`
-                                flex justify-center items-center flex-1 px-4 py-3 
-                                rounded-full border-2 border-gray-200 transition-all shadow-sm 
+                                flex justify-center items-center flex-1 px-4 py-3
+                                rounded-full border-2 border-gray-200 transition-all shadow-sm
                                 text-sm font-semibold h-14
-                                ${cdSel === c.id 
-                                  ? 'bg-[#8ADD64] text-white border-green-400 shadow-md scale-105' 
+                                ${cdSel === c.id
+                                  ? 'bg-[#8ADD64] text-white border-green-400 shadow-md scale-105'
                                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200 hover:border-gray-400 hover:scale-105'
                                 }
                               `}
@@ -456,8 +459,8 @@ export default function RegistroAcceso() {
                               />
                               <span
                                 className={`
-                                  flex justify-center items-center px-3 py-2 
-                                  rounded-full border-2 border-gray-200 transition-all shadow-sm 
+                                  flex justify-center items-center px-3 py-2
+                                  rounded-full border-2 border-gray-200 transition-all shadow-sm
                                   text-xs font-medium h-12
                                   ${areasSel.includes(a.id)
                                     ? 'bg-[#8ADD64] text-white border-green-400 shadow-md'
@@ -556,8 +559,8 @@ export default function RegistroAcceso() {
                       onClick={onRegistrarAcceso}
                       disabled={posting || loading || !selected || !cdSel || !idTipo_act}
                     >
-                      {posting 
-                        ? <span>🔄 Registrando...</span> 
+                      {posting
+                        ? <span>🔄 Registrando...</span>
                         : <span>✅ Registrar acceso <span className="ml-1">({cdSel ? 1 : 0} centro)</span></span>
                       }
                     </button>
@@ -575,14 +578,17 @@ export default function RegistroAcceso() {
             </div>
             <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
             <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/20 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
-            
+
             <div className="text-center relative z-10">
-              {selected?.foto ? (
+              {fotoUrl ? (
                 <div className="w-72 h-72 mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
                   <img
-                    src={selected.foto}
+                    src={fotoUrl}
                     alt={`Foto de ${selected.nombre} ${selected.apellido}`}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='288' height='288' viewBox='0 0 288 288'%3E%3Crect fill='%23e0e0e0' width='288' height='288'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em' font-size='32'%3ESin Foto%3C/text%3E%3C/svg%3E";
+                    }}
                   />
                 </div>
               ) : (
@@ -592,10 +598,10 @@ export default function RegistroAcceso() {
                   </svg>
                 </div>
               )}
-              
+
               {selected && (
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-bold text-gray drop-shadow-lg">{selected.nombre} {selected.apellido}</h3>
+                  <h3 className="text-2xl font-bold text-white drop-shadow-lg">{selected.nombre} {selected.apellido}</h3>
                   <p className="text-white/90 text-lg drop-shadow-md">{selected.empresa}</p>
                   {form.empresa === "SENIAT" && selected.unidad && (
                     <p className="text-white/80 text-sm drop-shadow-md">{selected.unidad}</p>
@@ -615,3 +621,4 @@ export default function RegistroAcceso() {
     </div>
   );
 }
+

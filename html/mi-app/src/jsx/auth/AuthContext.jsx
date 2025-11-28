@@ -1,5 +1,5 @@
-// src/jsx/auth/AuthContext.jsx
-import { createContext, useContext, useState, useEffect } from "react";
+// src/jsx/auth/AuthContext.jsx - CORREGIDO
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { useApi } from "../../context/ApiContext";
@@ -8,50 +8,62 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const { API_V1 } = useApi();
-  console.log("useApi imported in AuthContext");
+  console.log("✓ AuthProvider inicializado, API_V1:", API_V1);
+
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const isTokenValid = (tok) => {
+  // Validar si token es válido
+  const isTokenValid = useCallback((tok) => {
     if (!tok) return false;
     try {
       const decoded = jwtDecode(tok);
       const currentTime = Date.now() / 1000;
       return decoded.exp > currentTime;
     } catch (error) {
-      console.error("Error validando token:", error);
+      console.error("❌ Error validando token:", error);
       return false;
     }
-  };
+  }, []);
 
+  // Cargar token del localStorage al montar
   useEffect(() => {
+    console.log("✓ AuthProvider: leyendo localStorage");
     const savedToken = localStorage.getItem("access_token");
     const savedUser = localStorage.getItem("user");
+
     if (savedToken && savedUser) {
       if (isTokenValid(savedToken)) {
+        console.log("✓ Token válido, restaurando sesión");
         setToken(savedToken);
         try {
           setUser(JSON.parse(savedUser));
         } catch (error) {
-          console.error("Error parseando user:", error);
-          logout();
+          console.error("❌ Error parseando user:", error);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
         }
       } else {
-        logout();
+        console.log("❌ Token expirado");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
       }
     }
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isTokenValid]);
 
+  // Validar token cuando cambia
   useEffect(() => {
     if (token && !isTokenValid(token)) {
-      logout();
+      console.log("❌ Token inválido, haciendo logout");
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, isTokenValid]);
 
   const login = async (username, password) => {
     try {
@@ -61,29 +73,23 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      // Manejo de errores de la API (401, 422, etc.)
       if (!response.ok) {
         let errorDetail = "Error al iniciar sesión";
-
         try {
           const errorData = await response.json();
           console.log("API Error response:", errorData);
 
-          // 1) Caso más común: {"status_code":401,"detail":"Usuario no existe"}
           if (errorData.detail !== undefined) {
             if (typeof errorData.detail === "string") {
               errorDetail = errorData.detail;
             } else if (Array.isArray(errorData.detail)) {
-              // Ej: detail = [{ msg: "...", ... }, ...]
               errorDetail = errorData.detail
                 .map((item) => item.msg || String(item))
                 .join("; ");
             } else {
               errorDetail = String(errorData.detail);
             }
-          }
-          // 2) Otros formatos: { "error": "mensaje" } o { "error": { message: "..." } }
-          else if (errorData.error !== undefined) {
+          } else if (errorData.error !== undefined) {
             if (typeof errorData.error === "string") {
               errorDetail = errorData.error;
             } else if (errorData.error.message) {
@@ -91,34 +97,27 @@ export const AuthProvider = ({ children }) => {
             } else {
               errorDetail = JSON.stringify(errorData.error);
             }
-          }
-          // 3) Formato simple: { "message": "..." }
-          else if (errorData.message) {
+          } else if (errorData.message) {
             errorDetail = errorData.message;
           }
         } catch (parseErr) {
           console.error("Error parsing API error response:", parseErr);
         }
 
-        // Si no se pudo sacar nada más específico, al menos status + texto
         if (!errorDetail) {
-          errorDetail = `Error ${response.status}: ${
-            response.statusText || "No autorizado"
-          }`;
+          errorDetail = `Error ${response.status}: ${response.statusText || "No autorizado"}`;
         }
 
-        // Lanzamos un Error con el mensaje ya limpio
         throw new Error(errorDetail);
       }
 
-      // Si la respuesta es OK, procesamos el login normal
       const data = await response.json();
+      console.log("✓ Login exitoso");
 
       let tokenPayload;
       try {
         tokenPayload = jwtDecode(data.access_token);
       } catch {
-        // Fallback manual si jwtDecode falla
         const base64Url = data.access_token.split(".")[1];
         const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
         const jsonPayload = decodeURIComponent(
@@ -139,6 +138,7 @@ export const AuthProvider = ({ children }) => {
       if (!userData.rol || !userData.rol.id_rol) {
         throw new Error("Rol no válido en el token");
       }
+
       if (!isTokenValid(data.access_token)) {
         throw new Error("Token inválido recibido del servidor");
       }
@@ -147,15 +147,13 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user", JSON.stringify(userData));
+      console.log("✓ Navegando a /accesos");
       navigate("/accesos");
-
       return { success: true };
     } catch (error) {
-      console.error("Error en login:", error);
-
+      console.error("❌ Error en login:", error);
       let finalMessage = error?.message || "Error al iniciar sesión";
 
-      // Por si en algún caso el backend devuelve un JSON como string
       try {
         if (
           typeof finalMessage === "string" &&
@@ -163,7 +161,6 @@ export const AuthProvider = ({ children }) => {
             finalMessage.trim().startsWith("["))
         ) {
           const parsed = JSON.parse(finalMessage);
-
           if (typeof parsed.detail === "string") {
             finalMessage = parsed.detail;
           } else if (parsed.message) {
@@ -173,41 +170,48 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (parseError) {
-        console.error("Error parseando mensaje de error como JSON:", parseError);
+        console.error("Error parseando mensaje de error:", parseError);
       }
 
-      // Devuelves el mensaje listo para mostrar en la UI
       return { success: false, message: finalMessage };
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    console.log("✓ Logout ejecutado");
     setToken(null);
     setUser(null);
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
     navigate("/login", { replace: true });
-  };
+  }, [navigate]);
 
-  const isAuthenticated = () => !!token && !!user && isTokenValid(token);
+  const isAuthenticated = useCallback(() => {
+    const auth = !!token && !!user && isTokenValid(token);
+    console.log("isAuthenticated():", auth);
+    return auth;
+  }, [token, user, isTokenValid]);
 
-  const handleApiError = (error) => {
-    if (error?.status === 401 || error?.message?.includes("401")) {
-      logout();
-    }
-  };
+  const handleApiError = useCallback(
+    (error) => {
+      if (error?.status === 401 || error?.message?.includes("401")) {
+        logout();
+      }
+    },
+    [logout]
+  );
 
-  const hasPermission = (requiredRolId) => {
+  const hasPermission = useCallback((requiredRolId) => {
     if (!user?.rol?.id_rol || typeof user.rol.id_rol !== "number") return false;
     return user.rol.id_rol <= requiredRolId;
-  };
+  }, [user]);
 
-  const isAdmin = () => hasPermission(1);
-  const isSupervisorOrAbove = () => hasPermission(2);
-  const isOperatorOrAbove = () => hasPermission(3);
-  const isAuditor = () => user?.rol.id_rol === 4;
-  const isAuditorOrBelow = () => user?.rol.id_rol >= 4;
-  const getCurrentRoleName = () => user?.rol?.nombre_rol || "Desconocido";
+  const isAdmin = useCallback(() => hasPermission(1), [hasPermission]);
+  const isSupervisorOrAbove = useCallback(() => hasPermission(2), [hasPermission]);
+  const isOperatorOrAbove = useCallback(() => hasPermission(3), [hasPermission]);
+  const isAuditor = useCallback(() => user?.rol.id_rol === 4, [user]);
+  const isAuditorOrBelow = useCallback(() => user?.rol.id_rol >= 4, [user]);
+  const getCurrentRoleName = useCallback(() => user?.rol?.nombre_rol || "Desconocido", [user]);
 
   const value = {
     user,
@@ -227,7 +231,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
@@ -237,4 +243,3 @@ export const useAuth = () => {
     throw new Error("useAuth debe usarse dentro de AuthProvider");
   return context;
 };
-

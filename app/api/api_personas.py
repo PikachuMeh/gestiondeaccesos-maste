@@ -1,4 +1,3 @@
-# app/api/api_personas.py
 from fastapi import APIRouter, Depends, HTTPException, Query, status, File, UploadFile, Form, Request
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -16,14 +15,12 @@ from app.schemas import (
 )
 from app.services.visita_service import VisitaService
 from app.auth.api_permisos import require_operator_or_above, require_supervisor_or_above
-from app.utils.log_utils import log_action  # Logging principal (usa para todo)
-# Removido: from app.services.Control_service import ControlService  # No needed si log_action maneja
+from app.utils.log_utils import log_action
 
 
 router = APIRouter(prefix="/personas", tags=["personas"])
 
-
-FOTO_DIR = Path("html/mi-app/src/img/personas")  # Ajusta si public/ o static/
+FOTO_DIR = Path("html/mi-app/src/img/personas")
 FOTO_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -50,6 +47,7 @@ async def create_persona(
     current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
+    """Crear una nueva persona con foto opcional"""
     # Validaciones
     persona_existente = db.query(Persona).filter(Persona.documento_identidad == documento_identidad).first()
     if persona_existente:
@@ -59,7 +57,6 @@ async def create_persona(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"El correo {email} ya está registrado")
 
     try:
-        foto_path = None
         file_name = None
         if foto and foto.filename:
             doc_limpio = documento_identidad.replace(" ", "_")
@@ -68,7 +65,7 @@ async def create_persona(
             file_path = FOTO_DIR / file_name
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(foto.file, buffer)
-            foto_path = f"img/personas/{file_name}"  # CORREGIDO: Relative consistente (ajusta FE import)
+            print(f"[INFO] Foto guardada: {file_name}")
 
         persona = Persona(
             nombre=nombre,
@@ -80,19 +77,19 @@ async def create_persona(
             direccion=direccion,
             observaciones=observaciones,
             unidad=unidad,
-            foto=foto_path or ""
+            foto=file_name or ""
         )
         db.add(persona)
         db.commit()
         db.refresh(persona)
 
-        # CORREGIDO: Logging post-creación (usa log_action; remueve control_service duplicado)
+        # Logging
         payload_detalles = {
             "nombre": nombre, "apellido": apellido, "documento_identidad": documento_identidad,
             "email": email, "empresa": empresa
         }
         await log_action(
-            accion="crear_persona",  # CORREGIDO: No "borrar"
+            accion="crear_persona",
             tabla_afectada="personas",
             registro_id=persona.id,
             detalles=payload_detalles,
@@ -100,6 +97,7 @@ async def create_persona(
             db=db,
             current_user=current_user
         )
+        print(f"[OK] Persona {persona.id} creada exitosamente")
         return persona
 
     except IntegrityError as exc:
@@ -119,6 +117,7 @@ async def create_persona(
         db.rollback()
         if file_name and os.path.exists(FOTO_DIR / file_name):
             os.remove(FOTO_DIR / file_name)
+        print(f"[ERROR] Creando persona: {str(exc)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creando persona: {exc}")
 
 
@@ -130,9 +129,10 @@ async def list_personas(
     nombre: Optional[str] = Query(None),
     apellido: Optional[str] = Query(None),
     documento: Optional[str] = Query(None),
-    current_user = Depends(require_operator_or_above),  # OK: Resuelto aquí
+    current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
+    """Listar personas con paginación y filtros"""
     q = db.query(Persona)
     if nombre:
         q = q.filter(Persona.nombre.ilike(f"%{nombre}%"))
@@ -149,7 +149,7 @@ async def list_personas(
         response = PersonaListResponse(
             items=items, total=total, page=page, size=size, pages=(total + size - 1) // size
         )
-        # Logging OK (current_user resuelto)
+        # Logging
         filtros_detalles = {"nombre": nombre, "apellido": apellido, "documento": documento, "page": page, "size": size}
         await log_action(
             accion="consultar_lista_personas",
@@ -161,68 +161,103 @@ async def list_personas(
         )
         return response
     except Exception as exc:
+        print(f"[ERROR] Listando personas: {str(exc)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error listando personas: {exc}")
 
 
-@router.get("/cedulas")  # CORREGIDO: Agrega current_user como parámetro
+@router.get("/cedulas")
 async def listar_cedulas(
     request: Request,
     db: Session = Depends(get_db),
-    current_user = Depends(require_operator_or_above),  # AGREGADO: Resuelve Usuario
+    current_user = Depends(require_operator_or_above),
     limit: int = Query(5000, ge=1, le=5000000)
 ):
-    rows = db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido).order_by(Persona.documento_identidad).limit(limit).all()
-    response = [{"id": r.id, "documento_identidad": r.documento_identidad, "nombre": r.nombre, "apellido": r.apellido} for r in rows]
-    # Logging OK (current_user ahora válido)
-    await log_action(
-        accion="consultar_cedulas_personas",
-        tabla_afectada="personas",
-        detalles={"limit": limit},
-        request=request,
-        db=db,
-        current_user=current_user  # CORREGIDO: No Depends aquí
-    )
-    return response
+    """Listar todas las cédulas de personas"""
+    try:
+        rows = db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido).order_by(Persona.documento_identidad).limit(limit).all()
+        response = [{"id": r.id, "documento_identidad": r.documento_identidad, "nombre": r.nombre, "apellido": r.apellido} for r in rows]
+        
+        await log_action(
+            accion="consultar_cedulas_personas",
+            tabla_afectada="personas",
+            detalles={"limit": limit},
+            request=request,
+            db=db,
+            current_user=current_user
+        )
+        return response
+    except Exception as exc:
+        print(f"[ERROR] Listando cédulas: {str(exc)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error listando cédulas: {exc}")
 
 
-@router.get("/search")  # CORREGIDO: Agrega current_user como parámetro
+@router.get("/search")
 async def buscar_personas_por_cedula(
     request: Request,
     q: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
-    current_user = Depends(require_operator_or_above),  # AGREGADO: Resuelve Usuario
+    current_user = Depends(require_operator_or_above),
     size: int = Query(50, ge=1, le=100),
 ):
-    q_digits = "".join(ch for ch in q if ch.isdigit())
-    if not q_digits:
-        return []
-    rows = (
-        db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido)
-        .filter(Persona.documento_identidad.ilike(f"{q_digits}%"))
-        .order_by(Persona.documento_identidad)
-        .limit(size)
-        .all()
-    )
-    response = [{"id": r.id, "documento_identidad": r.documento_identidad, "nombre": r.nombre, "apellido": r.apellido} for r in rows]
-    # Logging OK
-    await log_action(
-        accion="buscar_personas_cedula",
-        tabla_afectada="personas",
-        detalles={"q": q, "size": size},
-        request=request,
-        db=db,
-        current_user=current_user  # CORREGIDO
-    )
-    return response
+    """Buscar personas por cédula"""
+    try:
+        q_digits = "".join(ch for ch in q if ch.isdigit())
+        if not q_digits:
+            return []
+        rows = (
+            db.query(Persona.id, Persona.documento_identidad, Persona.nombre, Persona.apellido)
+            .filter(Persona.documento_identidad.ilike(f"{q_digits}%"))
+            .order_by(Persona.documento_identidad)
+            .limit(size)
+            .all()
+        )
+        response = [{"id": r.id, "documento_identidad": r.documento_identidad, "nombre": r.nombre, "apellido": r.apellido} for r in rows]
+        
+        await log_action(
+            accion="buscar_personas_cedula",
+            tabla_afectada="personas",
+            detalles={"q": q, "size": size},
+            request=request,
+            db=db,
+            current_user=current_user
+        )
+        return response
+    except Exception as exc:
+        print(f"[ERROR] Buscando personas: {str(exc)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error buscando personas: {exc}")
 
 
+# ✅ RUTA ESPECÍFICA PARA FOTOS - DEBE IR ANTES DE /{persona_id}
+@router.get("/foto/{filename}")
+async def get_foto_persona(filename: str):
+    """
+    ✅ ENDPOINT PARA SERVIR FOTOS
+    GET /api/v1/personas/foto/{filename}
+    
+    IMPORTANTE: Esta ruta DEBE estar ANTES de /{persona_id}
+    porque FastAPI procesa rutas en orden de especificidad.
+    """
+    file_path = FOTO_DIR / filename
+    
+    print(f"[DEBUG] Buscando foto: {file_path}")
+    print(f"[DEBUG] Existe: {file_path.exists()}")
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Foto no encontrada: {filename}")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(file_path, media_type="image/jpeg")
+
+
+# ✅ RUTA GENÉRICA - VA DESPUÉS DE RUTAS ESPECÍFICAS
 @router.get("/{persona_id}", response_model=PersonaResponse)
 async def get_persona(
     request: Request,
     persona_id: int,
-    current_user = Depends(require_operator_or_above),  # OK
+    current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
+    """Obtener los detalles de una persona por ID"""
     try:
         persona = _get_persona_or_404(db, persona_id)
         await log_action(
@@ -235,6 +270,7 @@ async def get_persona(
         )
         return persona
     except Exception as exc:
+        print(f"[ERROR] Obteniendo persona: {str(exc)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error obteniendo persona: {exc}")
 
 
@@ -242,56 +278,85 @@ async def get_persona(
 async def update_persona(
     request: Request,
     persona_id: int,
-    nombre: str = Form(...),
-    apellido: str = Form(...),
-    documento_identidad: str = Form(...),
-    email: str = Form(...),
-    empresa: str = Form(...),
-    cargo: str = Form(None),
-    direccion: str = Form(...),
-    observaciones: str = Form(None),
-    unidad: str = Form(None),
+    nombre: Optional[str] = Form(None),
+    apellido: Optional[str] = Form(None),
+    documento_identidad: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    empresa: Optional[str] = Form(None),
+    cargo: Optional[str] = Form(None),
+    direccion: Optional[str] = Form(None),
+    observaciones: Optional[str] = Form(None),
+    unidad: Optional[str] = Form(None),
     foto: UploadFile = File(None),
     current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db)
 ):
+    """
+    ✅ ACTUALIZAR PERSONA - SOLO CAMPOS PROPORCIONADOS
+    Solo actualiza los campos que fueron enviados (no None).
+    La foto se actualiza solo si es proporcionada.
+    """
     persona = _get_persona_or_404(db, persona_id)
 
-    if email != persona.email:
+    # ✅ Solo validar email si fue proporcionado y cambió
+    if email is not None and email != persona.email:
         email_existente = db.query(Persona).filter(Persona.email == email, Persona.id != persona_id).first()
         if email_existente:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"El correo {email} ya está registrado")
 
     try:
-        # Updates
-        persona.nombre = nombre
-        persona.apellido = apellido
-        persona.email = email
-        persona.empresa = empresa
-        persona.cargo = cargo
-        persona.direccion = direccion
-        persona.observaciones = observaciones
-        persona.unidad = unidad
+        # ✅ IMPORTANTE: Solo actualizar campos que NO son None
+        if nombre is not None:
+            persona.nombre = nombre
+        if apellido is not None:
+            persona.apellido = apellido
+        if email is not None:
+            persona.email = email
+        if empresa is not None:
+            persona.empresa = empresa
+        if cargo is not None:
+            persona.cargo = cargo
+        if direccion is not None:
+            persona.direccion = direccion
+        if observaciones is not None:
+            persona.observaciones = observaciones
+        if unidad is not None:
+            persona.unidad = unidad
+
+        # ✅ Procesar foto si fue proporcionada
         if foto and foto.filename:
+            print(f"[INFO] Procesando foto: {foto.filename}")
+            
+            # Eliminar foto anterior si existe
             if persona.foto:
-                foto_anterior = FOTO_DIR / os.path.basename(persona.foto)
+                foto_anterior = FOTO_DIR / persona.foto
                 if os.path.exists(foto_anterior):
                     os.remove(foto_anterior)
-            doc_limpio = documento_identidad.replace(" ", "_")
+                    print(f"[INFO] Foto anterior eliminada: {foto_anterior}")
+            
+            # Guardar nueva foto
+            doc_limpio = documento_identidad.replace(" ", "_") if documento_identidad else persona.documento_identidad.replace(" ", "_")
             file_extension = os.path.splitext(foto.filename)[1]
             file_name = f"{doc_limpio}{file_extension}"
             file_path = FOTO_DIR / file_name
+            
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(foto.file, buffer)
-            persona.foto = f"img/personas/{file_name}"  # CORREGIDO: Consistente
+            
+            persona.foto = file_name  # ✅ Guardar solo el filename
+            print(f"[INFO] Foto guardada: {file_name}")
 
         db.commit()
         db.refresh(persona)
 
         # Logging
         payload_detalles = {
-            "nombre": nombre, "apellido": apellido, "documento_identidad": documento_identidad,
-            "email": email, "empresa": empresa
+            "nombre": persona.nombre,
+            "apellido": persona.apellido,
+            "documento_identidad": persona.documento_identidad,
+            "email": persona.email,
+            "empresa": persona.empresa,
+            "con_foto": bool(foto)
         }
         await log_action(
             accion="actualizar_persona",
@@ -302,9 +367,12 @@ async def update_persona(
             db=db,
             current_user=current_user
         )
+        print(f"[OK] Persona {persona_id} actualizada exitosamente")
         return persona
+        
     except Exception as exc:
         db.rollback()
+        print(f"[ERROR] Actualizando persona: {str(exc)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error actualizando persona: {exc}")
 
 
@@ -315,6 +383,11 @@ async def delete_persona(
     current_user = Depends(require_supervisor_or_above),
     db: Session = Depends(get_db)
 ):
+    """
+    Eliminar una persona y su foto asociada.
+    Solo supervisores y administradores pueden eliminar.
+    No se pueden eliminar personas con visitas activas.
+    """
     persona = _get_persona_or_404(db, persona_id)
 
     visita_service = VisitaService(db)
@@ -325,10 +398,14 @@ async def delete_persona(
     try:
         if persona.empresa == "SENIAT":
             raise HTTPException(status_code=403, detail="No se puede borrar personal interno (SENIAT)")
+        
+        # Eliminar foto si existe
         if persona.foto:
-            foto_file = FOTO_DIR / os.path.basename(persona.foto)
+            foto_file = FOTO_DIR / persona.foto
             if os.path.exists(foto_file):
                 os.remove(foto_file)
+                print(f"[INFO] Foto eliminada: {foto_file}")
+        
         db.delete(persona)
         db.commit()
 
@@ -342,7 +419,10 @@ async def delete_persona(
             db=db,
             current_user=current_user
         )
+        print(f"[OK] Persona {persona_id} eliminada exitosamente")
         return {"detail": "Persona eliminada correctamente"}
     except Exception as exc:
         db.rollback()
+        print(f"[ERROR] Eliminando persona: {str(exc)}")
         raise HTTPException(status_code=500, detail=f"Error eliminando persona: {exc}")
+

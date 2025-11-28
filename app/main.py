@@ -4,16 +4,20 @@ Punto de entrada de la API REST.
 """
 
 from contextlib import asynccontextmanager
-
+from pathlib import Path
 import structlog
+
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from app.api import api_auth, api_centros_datos, api_personas, api_visitas,api_usuarios,api_audit 
+
+from app.api import api_auth, api_centros_datos, api_personas, api_visitas, api_usuarios, api_audit
 from app.config import settings
 from app.database import create_tables
 
@@ -35,10 +39,12 @@ structlog.configure(
     wrapper_class=structlog.stdlib.BoundLogger,
     cache_logger_on_first_use=True,
 )
+
 logger = structlog.get_logger()
 
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,12 +56,14 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Cerrando aplicación de gestión de accesos")
 
-# App
+
+# ✅ PRIMERO: Crea la app
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="""
 ## Sistema de Gestión de Accesos a Centros de Datos
+
 API REST para la gestión de accesos de visitantes a centros de datos.
 
 - Gestión de Personas
@@ -78,17 +86,42 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,   # usa la lista de config.py
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=settings.allowed_methods,   # ["*"]
-    allow_headers=settings.allowed_headers,   # ["*"]
+    allow_methods=settings.allowed_methods,
+    allow_headers=settings.allowed_headers,
 )
 
 # Trusted hosts
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"],  # en producción: lista de hosts
+    allowed_hosts=["*"],
 )
+
+# ✅ SEGUNDO: Monta archivos estáticos (DESPUÉS de crear app)
+app.mount("/src", StaticFiles(directory="/app/src"), name="static")
+
+# ✅ TERCERO: Monta carpetas de imágenes como archivos estáticos
+base_img_path = Path(__file__).parent.parent / "html" / "mi-app" / "src" / "img"
+
+try:
+    app.mount("/imagenes/operadores", StaticFiles(directory=base_img_path / "operadores"), name="operadores")
+    logger.info(f"✓ Montada carpeta operadores: {base_img_path / 'operadores'}")
+except Exception as e:
+    logger.warning(f"⚠ Error montando operadores: {e}")
+
+try:
+    app.mount("/imagenes/personas", StaticFiles(directory=base_img_path / "personas"), name="personas")
+    logger.info(f"✓ Montada carpeta personas: {base_img_path / 'personas'}")
+except Exception as e:
+    logger.warning(f"⚠ Error montando personas: {e}")
+
+try:
+    app.mount("/imagenes/capturas", StaticFiles(directory=base_img_path / "capturas"), name="capturas")
+    logger.info(f"✓ Montada carpeta capturas: {base_img_path / 'capturas'}")
+except Exception as e:
+    logger.warning(f"⚠ Error montando capturas: {e}")
+
 
 @app.get("/", summary="Información de la API")
 async def root():
@@ -100,6 +133,7 @@ async def root():
         "openapi": "/api/v1/openapi.json",
     }
 
+
 @app.get("/health", summary="Estado de salud de la API")
 async def health_check():
     return {
@@ -108,13 +142,15 @@ async def health_check():
         "environment": "development" if settings.debug else "production",
     }
 
-# Routers
+
+# ✅ CUARTO: Routers (después de mounts)
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_personas.router, prefix="/api/v1")
 app.include_router(api_centros_datos.router, prefix="/api/v1")
 app.include_router(api_visitas.router, prefix="/api/v1")
 app.include_router(api_usuarios.router, prefix="/api/v1")
-app.include_router(api_audit.router, prefix="/api/v1") 
+app.include_router(api_audit.router, prefix="/api/v1")
+
 
 # Handlers de error globales
 @app.exception_handler(HTTPException)
@@ -138,6 +174,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         },
     )
 
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     logger.error(
@@ -159,12 +196,14 @@ async def general_exception_handler(request: Request, exc: Exception):
         },
     )
 
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=5050,
         reload=settings.debug,
         log_level=settings.log_level.lower(),
     )
+

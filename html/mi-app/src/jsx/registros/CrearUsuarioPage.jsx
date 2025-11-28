@@ -1,5 +1,4 @@
-// src/jsx/CrearUsuarioPage.jsx (ACTUALIZADO CON FOTO)
-
+// src/jsx/registros/CrearUsuarioPage.jsx - LIMPIO Y SIN GET INNECESARIOS
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -7,8 +6,7 @@ import { useApi } from "../../context/ApiContext.jsx";
 
 export default function CrearUsuarioPage() {
   const { API_V1 } = useApi();
-  const API_BASE = `${API_V1}/usuarios/`;
-  const OPERADORES_IMG_URL = import.meta.env.VITE_OPERADORES_IMG_URL || "http://localhost:5173/src/img/operadores/";
+  const API_BASE = `${API_V1}/usuarios`; // SIN barra final
   
   const navigate = useNavigate();
   const { token, user, isAuthenticated, isAdmin } = useAuth();
@@ -21,27 +19,32 @@ export default function CrearUsuarioPage() {
     cedula: "",
     nombre: "",
     apellidos: "",
-    rol_id: 3, // Default: Operador
-    foto: null, // NUEVO: Archivo de foto
+    rol_id: 3,
+    foto: null,
   });
 
-  const [fotoPreview, setFotoPreview] = useState(null); // NUEVO: Preview de foto
+  const [fotoPreview, setFotoPreview] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Verificar autenticación y rol de admin al montar el componente
+  // SOLO verificación al montar - SIN dependencies que causen loops
   useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate("/login");
-      return;
-    }
-    if (!isAdmin()) {
-      setError("Acceso denegado: Solo administradores pueden crear usuarios.");
-      setTimeout(() => navigate("/dashboard"), 2000);
-      return;
-    }
-  }, [isAuthenticated, isAdmin, navigate]);
+    const checkAccess = () => {
+      if (!isAuthenticated()) {
+        navigate("/login");
+        return false;
+      }
+      if (!isAdmin()) {
+        setError("Acceso denegado: Solo administradores pueden crear usuarios.");
+        const timer = setTimeout(() => navigate("/usuarios"), 2000);
+        return () => clearTimeout(timer);
+      }
+      return true;
+    };
+    
+    checkAccess();
+  }, []); // Array vacío - solo cuando monta
 
   const roles = [
     { id: 2, name: "Supervisor" },
@@ -57,32 +60,27 @@ export default function CrearUsuarioPage() {
     setError("");
   };
 
-  // NUEVO: Manejador para cambio de foto
   const handleFotoChange = (e) => {
-    const file = e.target.files[0];
-    
+    const file = e.target.files?.[0];
+
     if (file) {
-      // Validar tipo de archivo
       const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
       if (!allowedTypes.includes(file.type)) {
         setError("Tipo de archivo no permitido. Usa: JPG, PNG, GIF o WEBP");
         return;
       }
 
-      // Validar tamaño (máximo 5MB)
       const maxSizeMB = 5;
       if (file.size > maxSizeMB * 1024 * 1024) {
         setError(`Archivo demasiado grande. Máximo: ${maxSizeMB}MB`);
         return;
       }
 
-      // Guardar archivo y crear preview
       setFormData((prev) => ({
         ...prev,
         foto: file,
       }));
 
-      // Crear preview de la imagen
       const reader = new FileReader();
       reader.onload = (event) => {
         setFotoPreview(event.target.result);
@@ -93,7 +91,6 @@ export default function CrearUsuarioPage() {
     }
   };
 
-  // NUEVO: Limpiar foto seleccionada
   const handleClearFoto = () => {
     setFormData((prev) => ({
       ...prev,
@@ -147,7 +144,6 @@ export default function CrearUsuarioPage() {
     setSuccess(false);
 
     try {
-      // Usar FormData para soportar archivos
       const formDataToSend = new FormData();
       formDataToSend.append("username", formData.username.trim());
       formDataToSend.append("password", formData.password);
@@ -156,18 +152,16 @@ export default function CrearUsuarioPage() {
       formDataToSend.append("rol_id", formData.rol_id.toString());
       formDataToSend.append("nombre", formData.nombre.trim());
       formDataToSend.append("apellidos", formData.apellidos.trim());
-      
-      // NUEVO: Agregar foto si existe
+
       if (formData.foto) {
         formDataToSend.append("foto", formData.foto);
-        console.log(`Enviando foto: ${formData.foto.name}`);
       }
 
-      const response = await fetch(API_BASE, {
+      // POST a /usuarios/ (con barra final)
+      const response = await fetch(`${API_BASE}/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          // NO agregar Content-Type; browser lo setea para FormData
         },
         body: formDataToSend,
       });
@@ -178,9 +172,14 @@ export default function CrearUsuarioPage() {
 
         if (response.status === 422) {
           if (errData.detail && Array.isArray(errData.detail)) {
-            errorMsg = errData.detail.map((item) => item.msg).join("; ");
+            errorMsg = errData.detail
+              .map((item) => item.msg || item.detail || JSON.stringify(item))
+              .join("; ");
           } else if (errData.detail) {
-            errorMsg = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
+            errorMsg =
+              typeof errData.detail === "string"
+                ? errData.detail
+                : JSON.stringify(errData.detail);
           }
         } else if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("access_token");
@@ -188,7 +187,9 @@ export default function CrearUsuarioPage() {
           errorMsg = "Sesión expirada o sin permisos. Redirigiendo al login.";
           setTimeout(() => navigate("/login"), 1500);
         } else if (response.status === 409) {
-          errorMsg = errData.detail || "Conflicto: Datos duplicados (username, email, cédula, nombre o apellidos)";
+          errorMsg =
+            errData.detail ||
+            "Conflicto: Datos duplicados (username, email, cédula)";
         } else if (response.status === 413) {
           errorMsg = errData.detail || "Archivo de foto demasiado grande";
         } else if (response.status === 415) {
@@ -201,10 +202,8 @@ export default function CrearUsuarioPage() {
         return;
       }
 
-      const data = await response.json();
       setSuccess(true);
 
-      // Limpiar formulario después del éxito
       setFormData({
         username: "",
         password: "",
@@ -218,12 +217,11 @@ export default function CrearUsuarioPage() {
       });
       setFotoPreview(null);
 
-      // Redirige después de 2 segundos
       setTimeout(() => {
         navigate("/usuarios");
       }, 2000);
     } catch (err) {
-      setError("Error de conexión: " + err.message);
+      setError("Error de conexión: " + (err.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -232,14 +230,6 @@ export default function CrearUsuarioPage() {
   const handleCancel = () => {
     navigate("/usuarios");
   };
-
-  if (!isAuthenticated() || loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center py-12 text-gray-500">Cargando...</div>
-      </div>
-    );
-  }
 
   const selectedRol = roles.find((r) => r.id === formData.rol_id);
 
@@ -250,7 +240,9 @@ export default function CrearUsuarioPage() {
           {/* Left side - FORMULARIO */}
           <div className="p-8">
             <form className="space-y-6" autoComplete="off" onSubmit={handleSubmit}>
-              <div className="text-2xl font-semibold text-on-surface mb-8">Crear Nuevo Operador</div>
+              <div className="text-2xl font-semibold text-on-surface mb-8">
+                Crear Nuevo Operador
+              </div>
 
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -260,16 +252,22 @@ export default function CrearUsuarioPage() {
 
               {success && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="text-green-800">✓ Usuario creado exitosamente. Redirigiendo...</div>
+                  <div className="text-green-800">
+                    ✓ Usuario creado exitosamente. Redirigiendo...
+                  </div>
                 </div>
               )}
 
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Información Personal</h3>
+                <h3 className="text-lg font-medium text-on-surface">
+                  Información Personal
+                </h3>
 
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Username</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Username
+                    </label>
                     <input
                       id="username"
                       type="text"
@@ -283,7 +281,9 @@ export default function CrearUsuarioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Email</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Email
+                    </label>
                     <input
                       id="email"
                       type="email"
@@ -297,7 +297,9 @@ export default function CrearUsuarioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Cédula</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Cédula
+                    </label>
                     <input
                       id="cedula"
                       type="text"
@@ -311,7 +313,9 @@ export default function CrearUsuarioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Nombre</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Nombre
+                    </label>
                     <input
                       id="nombre"
                       type="text"
@@ -325,7 +329,9 @@ export default function CrearUsuarioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Apellidos</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Apellidos
+                    </label>
                     <input
                       id="apellidos"
                       type="text"
@@ -341,11 +347,15 @@ export default function CrearUsuarioPage() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Información de Seguridad</h3>
+                <h3 className="text-lg font-medium text-on-surface">
+                  Información de Seguridad
+                </h3>
 
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Contraseña</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Contraseña
+                    </label>
                     <input
                       id="password"
                       type="password"
@@ -358,7 +368,9 @@ export default function CrearUsuarioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Confirmar Contraseña</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Confirmar Contraseña
+                    </label>
                     <input
                       id="confirmPassword"
                       type="password"
@@ -377,7 +389,9 @@ export default function CrearUsuarioPage() {
 
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Rol</label>
+                    <label className="block text-xs font-medium text-on-surface mb-1">
+                      Rol
+                    </label>
                     <select
                       id="rol_id"
                       name="rol_id"
@@ -417,12 +431,24 @@ export default function CrearUsuarioPage() {
 
             {/* Resumen de datos */}
             <div className="mt-8 p-4 bg-surface-variant/50 rounded-lg border border-outline">
-              <h3 className="text-lg font-medium text-on-surface mb-4">Resumen del nuevo usuario:</h3>
+              <h3 className="text-lg font-medium text-on-surface mb-4">
+                Resumen del nuevo usuario:
+              </h3>
               <div className="space-y-2 text-sm text-on-surface">
-                <p><strong>Usuario:</strong> {formData.username || "(sin definir)"}</p>
-                <p><strong>Nombre:</strong> {formData.nombre || "(sin definir)"} {formData.apellidos || "(sin definir)"}</p>
-                <p><strong>Rol:</strong> {selectedRol?.name || "(sin definir)"}</p>
-                <p><strong>Foto:</strong> {fotoPreview ? "✓ Seleccionada" : "No seleccionada"}</p>
+                <p>
+                  <strong>Usuario:</strong> {String(formData.username) || "(sin definir)"}
+                </p>
+                <p>
+                  <strong>Nombre:</strong> {String(formData.nombre) || "(sin definir)"}{" "}
+                  {String(formData.apellidos) || "(sin definir)"}
+                </p>
+                <p>
+                  <strong>Rol:</strong> {selectedRol?.name || "(sin definir)"}
+                </p>
+                <p>
+                  <strong>Foto:</strong>{" "}
+                  {fotoPreview ? "✓ Seleccionada" : "No seleccionada"}
+                </p>
               </div>
             </div>
           </div>
@@ -433,8 +459,14 @@ export default function CrearUsuarioPage() {
             <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
               <div className="w-full h-full bg-linear-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
             </div>
-            <div className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce" style={{animationDuration: '3s'}}></div>
-            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse" style={{animationDelay: '1s'}}></div>
+            <div
+              className="absolute top-10 right-10 w-32 h-32 bg-white/5 rounded-full transform rotate-45 animate-bounce"
+              style={{ animationDuration: "3s" }}
+            ></div>
+            <div
+              className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full transform -rotate-12 animate-pulse"
+              style={{ animationDelay: "1s" }}
+            ></div>
 
             <div className="text-center relative z-10">
               <div className="space-y-4">
@@ -445,28 +477,60 @@ export default function CrearUsuarioPage() {
                     <label className="block cursor-pointer">
                       <div className="w-48 h-48 mx-auto mb-4 rounded-lg overflow-hidden shadow-lg bg-white/20 flex items-center justify-center hover:shadow-xl transition-shadow">
                         {fotoPreview ? (
-                          <img src={fotoPreview} alt="Foto del usuario" className="w-full h-full object-cover" />
+                          <img
+                            src={fotoPreview}
+                            alt="Foto del usuario"
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <div className="text-center">
-                            <svg className="w-16 h-16 text-gray-700 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
+                            <svg
+                              className="w-16 h-16 text-gray-700 mx-auto mb-2"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
                               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                             </svg>
-                            <p className="text-sm text-gray-800">Haz clic para subir foto</p>
+                            <p className="text-sm text-gray-800">
+                              Haz clic para subir foto
+                            </p>
                           </div>
                         )}
                       </div>
-                      <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleFotoChange} />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        className="hidden"
+                        onChange={handleFotoChange}
+                        aria-label="Seleccionar foto del usuario"
+                      />
                     </label>
                   </div>
 
                   <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-2">Formatos permitidos: JPG, PNG, GIF, WEBP</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Formatos permitidos: JPG, PNG, GIF, WEBP
+                    </p>
                     <p className="text-xs text-gray-600">Tamaño máximo: 5MB</p>
                   </div>
+
+                  {fotoPreview && (
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={handleClearFoto}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+                      >
+                        Limpiar Foto
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white/10 border border-white/20 rounded-lg p-4 backdrop-blur-sm">
-                  <h4 className="text-sm font-medium text-gray-400 mb-2">Información Importante</h4>
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">
+                    Información Importante
+                  </h4>
                   <ul className="text-sm text-gray-400 space-y-1">
                     <li>• La foto es opcional</li>
                     <li>• Se recomienda foto de frente y rostro claro</li>
@@ -478,8 +542,14 @@ export default function CrearUsuarioPage() {
 
               {(formData.nombre || formData.apellidos) && (
                 <div className="space-y-2 mt-6">
-                  <h3 className="text-xl font-semibold text-white">{formData.nombre} {formData.apellidos}</h3>
-                  {formData.username && <p className="text-white/90 text-lg">{formData.username}</p>}
+                  <h3 className="text-xl font-semibold text-white">
+                    {String(formData.nombre)} {String(formData.apellidos)}
+                  </h3>
+                  {formData.username && (
+                    <p className="text-white/90 text-lg">
+                      {String(formData.username)}
+                    </p>
+                  )}
                   {selectedRol && <p className="text-white/80">{selectedRol.name}</p>}
                 </div>
               )}
@@ -490,3 +560,4 @@ export default function CrearUsuarioPage() {
     </div>
   );
 }
+

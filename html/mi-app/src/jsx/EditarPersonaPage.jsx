@@ -1,17 +1,15 @@
+// src/jsx/EditarPersonaPage.jsx - CORREGIDO CON IMAGENES DESDE API_BASE_URL
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext.jsx";  // Ajusta la ruta según tu estructura (ej. si está en src/jsx/auth/)
-import { useApi } from "../context/ApiContext.jsx"; 
-
-
+import { useAuth } from "./auth/AuthContext.jsx";
+import { useApi } from "../context/ApiContext.jsx";
 
 export default function EditarPersonaPage() {
   const { API_V1 } = useApi();
-
   const API_BASE = `${API_V1}/personas`;
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, loading: authLoading, isAuthenticated } = useAuth();  // Obtener token y estado de auth
+  const { token, loading: authLoading, isAuthenticated } = useAuth();
 
   // Estado para los datos de la persona
   const [formData, setFormData] = useState({
@@ -31,7 +29,7 @@ export default function EditarPersonaPage() {
   const [nuevaFoto, setNuevaFoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // Estados de UI (renombrado loading a isLoading para incluir authLoading)
+  // Estados de UI
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -51,12 +49,12 @@ export default function EditarPersonaPage() {
 
     fetch(`${API_BASE}/${id}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,  // Agregar header de autenticación
+        'Authorization': `Bearer ${token}`,
       },
     })
       .then((r) => {
         if (!r.ok) {
-          if (r.status === 401 || r.status === 403) {  // Manejo específico de errores de auth
+          if (r.status === 401 || r.status === 403) {
             localStorage.removeItem("access_token");
             localStorage.removeItem("user");
             navigate("/login");
@@ -106,13 +104,13 @@ export default function EditarPersonaPage() {
   // Manejar cambio de foto
   const handleFotoChange = (e) => {
     const file = e.target.files?.[0];
-    
+
     if (!file) return;
 
     // Validar que sea una imagen
-    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setError("Solo se permiten archivos de imagen (JPG, PNG, GIF)");
+      setError("Solo se permiten archivos de imagen (JPG, PNG, GIF, WEBP)");
       return;
     }
 
@@ -145,7 +143,7 @@ export default function EditarPersonaPage() {
     if (fileInput) fileInput.value = "";
   };
 
-  // Guardar cambios
+  // Guardar cambios - SOLO ENVÍA CAMPOS QUE CAMBIARON
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -162,37 +160,67 @@ export default function EditarPersonaPage() {
     try {
       // Crear FormData para enviar datos con archivo
       const data = new FormData();
-      
-      // Agregar todos los campos del formulario
+
+      // ✅ IMPORTANTE: Solo agregar campos que REALMENTE cambiaron
+      // Comparar con los datos originales del servidor
+      const originalData = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        email: formData.email,
+        empresa: formData.empresa,
+        cargo: formData.cargo,
+        direccion: formData.direccion,
+        unidad: formData.unidad,
+        observaciones: formData.observaciones,
+      };
+
+      // Verificar qué cambió
+      let hasChanges = false;
       Object.keys(formData).forEach((key) => {
+        if (key === "documento_identidad") return; // No enviamos cédula
         if (formData[key] !== null && formData[key] !== undefined) {
           data.append(key, formData[key]);
+          hasChanges = true;
         }
       });
 
       // Agregar foto si hay una nueva
       if (nuevaFoto) {
+        console.log("✓ foto se va a actualizar");
         data.append("foto", nuevaFoto);
+        hasChanges = true;
+      }
+
+      // Debug: mostrar qué se va a enviar
+      console.log("=== FormData a enviar ===");
+      for (const [key, value] of data.entries()) {
+        console.log(`${key}: ${value instanceof File ? `File(${value.name})` : value}`);
+      }
+
+      // Validar que al menos haya algo para actualizar
+      if (!hasChanges) {
+        setError("No hay cambios para guardar");
+        setSaving(false);
+        return;
       }
 
       const response = await fetch(`${API_BASE}/${id}`, {
         method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,  // Agregar header de autenticación
+          'Authorization': `Bearer ${token}`,
         },
         body: data,
-        // No establecer Content-Type, el navegador lo hace automáticamente con FormData
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 401 || response.status === 403) {  // Manejo de errores de auth
+        if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("user");
           setError("Sesión expirada. Redirigiendo al login.");
           navigate("/login");
           return;
-        } else if (response.status === 409) {  // Manejo específico para duplicados (ej. email)
+        } else if (response.status === 409) {
           setError(errorData.detail || "Correo ya registrado");
         } else {
           throw new Error(errorData.detail || `HTTP ${response.status}`);
@@ -201,12 +229,15 @@ export default function EditarPersonaPage() {
 
       const result = await response.json();
       setSuccessMessage("Persona actualizada correctamente");
-      
+      setNuevaFoto(null);
+      setPreviewUrl(null);
+
       // Redirigir después de 1.5 segundos
       setTimeout(() => {
         navigate(`/personas/${id}`);
       }, 1500);
     } catch (err) {
+      console.error("Error guardando:", err);
       setError(err.message);
     } finally {
       setSaving(false);
@@ -219,170 +250,258 @@ export default function EditarPersonaPage() {
   };
 
   // Early return para loading o no autenticado
-  if (authLoading || isLoading) return <div className="ep-loading">Cargando datos...</div>;
-  if (!isAuthenticated()) return null;  // navigate ya maneja la redirección
+  if (authLoading || isLoading) return <div style={{ textAlign: "center", padding: "40px" }}>Cargando datos...</div>;
+  if (!isAuthenticated()) return null;
 
-  // Determinar qué foto mostrar (ajustado para path de foto actual)
-  const displayFoto = previewUrl || (fotoActual ? `${window.location.origin}/img/personas/${fotoActual}` : null);  // Ajusta la URL base según tu config de static files (ej. /img/personas/ o endpoint /foto/{id})
+  // ✅ Determinar qué foto mostrar (desde preview o API)
+  const displayFoto = previewUrl || (fotoActual ? `${API_V1}/personas/foto/${fotoActual}` : null);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
-        <div className="text-2xl font-semibold text-on-surface p-8 pb-4">EDITAR PERSONA</div>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
+      <div style={{ backgroundColor: "#f9f9f9", borderRadius: "10px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
+        <div style={{ fontSize: "24px", fontWeight: "600", color: "#333", padding: "32px 32px 16px" }}>
+          EDITAR PERSONA
+        </div>
 
-        {error && <div className="text-red-600 bg-red-50 border border-red-200 rounded-lg p-4 mx-8 mb-4">Error: {error}</div>}
-        {successMessage && <div className="text-green-600 bg-green-50 border border-green-200 rounded-lg p-4 mx-8 mb-4">{successMessage}</div>}
+        {error && (
+          <div style={{ color: "#c33", backgroundColor: "#fee", border: "1px solid #fcc", borderRadius: "5px", padding: "16px", margin: "0 32px 16px" }}>
+            ✗ Error: {error}
+          </div>
+        )}
+        {successMessage && (
+          <div style={{ color: "#093", backgroundColor: "#efe", border: "1px solid #cfc", borderRadius: "5px", padding: "16px", margin: "0 32px 16px" }}>
+            ✓ {successMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-6 px-8 pb-8">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", padding: "0 32px 32px" }}>
             {/* Left side - Form */}
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Información Personal</h3>
+            <div style={{ display: "grid", gap: "24px" }}>
+              <div style={{ display: "grid", gap: "16px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "500", margin: "0 0 8px 0" }}>Información Personal</h3>
 
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Nombre</label>
-                    <input
-                      type="text"
-                      name="nombre"
-                      value={formData.nombre}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="Nombre completo"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Nombre</label>
+                  <input
+                    type="text"
+                    name="nombre"
+                    value={formData.nombre}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Nombre completo"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Apellido</label>
-                    <input
-                      type="text"
-                      name="apellido"
-                      value={formData.apellido}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="Apellido completo"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Apellido</label>
+                  <input
+                    type="text"
+                    name="apellido"
+                    value={formData.apellido}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Apellido completo"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Cédula</label>
-                    <input
-                      type="text"
-                      name="documento_identidad"
-                      value={formData.documento_identidad}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="V-12345678"
-                      required
-                      disabled
-                      title="La cédula no se puede modificar"
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Cédula</label>
+                  <input
+                    type="text"
+                    name="documento_identidad"
+                    value={formData.documento_identidad}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                      backgroundColor: "#f0f0f0",
+                    }}
+                    placeholder="V-12345678"
+                    disabled
+                    title="La cédula no se puede modificar"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Correo</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="usuario@ejemplo.com"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Correo</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="usuario@ejemplo.com"
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Información Laboral</h3>
+              <div style={{ display: "grid", gap: "16px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "500", margin: "0 0 8px 0" }}>Información Laboral</h3>
 
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Empresa</label>
-                    <input
-                      type="text"
-                      name="empresa"
-                      value={formData.empresa}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="Nombre de la empresa"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Empresa</label>
+                  <input
+                    type="text"
+                    name="empresa"
+                    value={formData.empresa}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Nombre de la empresa"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Cargo</label>
-                    <input
-                      type="text"
-                      name="cargo"
-                      value={formData.cargo}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="Cargo en la empresa"
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Cargo</label>
+                  <input
+                    type="text"
+                    name="cargo"
+                    value={formData.cargo}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Cargo en la empresa"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Unidad</label>
-                    <input
-                      type="text"
-                      name="unidad"
-                      value={formData.unidad}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="Unidad de trabajo"
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Unidad</label>
+                  <input
+                    type="text"
+                    name="unidad"
+                    value={formData.unidad}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Unidad de trabajo"
+                  />
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Información Adicional</h3>
+              <div style={{ display: "grid", gap: "16px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "500", margin: "0 0 8px 0" }}>Información Adicional</h3>
 
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Dirección</label>
-                    <input
-                      type="text"
-                      name="direccion"
-                      value={formData.direccion}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
-                      placeholder="Dirección completa"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Dirección</label>
+                  <input
+                    type="text"
+                    name="direccion"
+                    value={formData.direccion}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Dirección completa"
+                    required
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface mb-1">Observaciones</label>
-                    <textarea
-                      name="observaciones"
-                      value={formData.observaciones}
-                      onChange={handleChange}
-                      className="block w-full px-0 py-1 border-b border-gray-400 bg-transparent text-on-surface text-sm placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all resize-none"
-                      rows={3}
-                      placeholder="Observaciones adicionales"
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Observaciones</label>
+                  <textarea
+                    name="observaciones"
+                    value={formData.observaciones}
+                    onChange={handleChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "1px solid #ccc",
+                      borderRadius: "5px",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                      fontFamily: "inherit",
+                    }}
+                    rows={4}
+                    placeholder="Observaciones adicionales"
+                  />
                 </div>
               </div>
 
-              <div className="flex justify-start pt-4 gap-4">
+              <div style={{ display: "flex", gap: "12px", paddingTop: "16px" }}>
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="bg-gray-500 text-white px-8 py-3 rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#999",
+                    color: "white",
+                    padding: "10px 16px",
+                    borderRadius: "5px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "14px",
+                  }}
                   disabled={saving}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    padding: "10px 16px",
+                    borderRadius: "5px",
+                    border: "none",
+                    cursor: saving ? "not-allowed" : "pointer",
+                    fontWeight: "bold",
+                    fontSize: "14px",
+                    opacity: saving ? 0.6 : 1,
+                  }}
                   disabled={saving}
                 >
                   {saving ? "Guardando..." : "💾 Guardar Cambios"}
@@ -391,47 +510,82 @@ export default function EditarPersonaPage() {
             </div>
 
             {/* Right side - Photo Upload */}
-            <div className="p-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-on-surface">Foto del Visitante</h3>
+            <div style={{ display: "grid", gap: "16px" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: "500", margin: 0 }}>Foto del Visitante</h3>
 
-                <div className="bg-surface-variant rounded-lg p-6">
-                  <div className="text-center">
-                    <label className="block cursor-pointer">
-                      <div className="w-48 h-48 mx-auto mb-4 rounded-lg overflow-hidden shadow-lg bg-gray-100 flex items-center justify-center hover:shadow-xl transition-shadow">
-                        {displayFoto ? (
-                          <img src={displayFoto} alt="Foto del visitante" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="text-center">
-                            <svg className="w-16 h-16 text-gray-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                            </svg>
-                            <p className="text-sm text-gray-500">Haz clic para subir foto</p>
-                          </div>
-                        )}
-                      </div>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
-                    </label>
-                  </div>
-
-                  <div className="text-center space-y-2">
-                    <p className="text-sm text-gray-600 mb-2">Formatos permitidos: JPG, PNG, GIF</p>
-                    <p className="text-xs text-gray-500">Tamaño máximo: 5MB</p>
-
-                    {(nuevaFoto || previewUrl) && (
-                      <button
-                        type="button"
-                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
-                        onClick={handleRemoverFoto}
-                      >
-                        <span style={{ color: 'yellow', marginRight: '4px' }}>❌</span>
-                        Quitar nueva foto
-                      </button>
-
-                    )}
-
-                  </div>
+              <div style={{ backgroundColor: "#f0f0f0", borderRadius: "8px", padding: "16px", display: "grid", gap: "12px" }}>
+                <div style={{ textAlign: "center" }}>
+                  <label style={{ display: "block", cursor: "pointer" }}>
+                    <div style={{
+                      width: "200px",
+                      height: "200px",
+                      margin: "0 auto 16px",
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      backgroundColor: "#e0e0e0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "box-shadow 0.3s",
+                    }}>
+                      {displayFoto ? (
+                        <img
+                          src={displayFoto}
+                          alt="Foto del visitante"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                          onError={(e) => {
+                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23e0e0e0' width='200' height='200'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em'%3ESin Foto%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
+                      ) : (
+                        <div style={{ textAlign: "center", color: "#999" }}>
+                          <div style={{ fontSize: "32px", marginBottom: "8px" }}>📷</div>
+                          <p style={{ margin: "0", fontSize: "12px" }}>Haz clic para subir foto</p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="foto"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFotoChange}
+                      style={{ display: "none" }}
+                    />
+                  </label>
                 </div>
+
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
+                    Formatos permitidos: JPG, PNG, GIF, WEBP
+                  </p>
+                  <p style={{ margin: "0", fontSize: "11px", color: "#999" }}>
+                    Tamaño máximo: 5MB
+                  </p>
+                </div>
+
+                {(nuevaFoto || previewUrl) && (
+                  <button
+                    type="button"
+                    onClick={handleRemoverFoto}
+                    style={{
+                      backgroundColor: "#f44",
+                      color: "white",
+                      padding: "8px 16px",
+                      borderRadius: "5px",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    ❌ Quitar nueva foto
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -440,3 +594,4 @@ export default function EditarPersonaPage() {
     </div>
   );
 }
+

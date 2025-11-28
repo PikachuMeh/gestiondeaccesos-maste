@@ -317,6 +317,8 @@ async def update_user(
 ):
     """
     Actualizar usuario (solo admin).
+    IMPORTANTE: Solo actualiza los campos que fueron proporcionados.
+    Si un campo es None, NO se actualiza.
     """
     
     if rol_id == 1:
@@ -333,57 +335,104 @@ async def update_user(
     try:
         usuario_service = UsuarioService(db)
         
+        print(f"\n=== UPDATE USER {user_id} ===")
+        print(f"Received: username={username}, email={email}, cedula={cedula}, rol_id={rol_id}, activo={activo}, foto={'Sí' if foto else 'No'}")
+        
         # Procesar foto si fue proporcionada
         if foto:
-            print("Actualizando foto del usuario...")
+            print("Procesando foto...")
             if existing_user.foto_path:
                 delete_operador_foto(existing_user.foto_path)
             existing_user.foto_path = await save_operador_foto(foto)
             print(f"✓ Foto actualizada: {existing_user.foto_path}")
         
-        # Crear UsuarioUpdate instance
-        update_data = UsuarioUpdate(
-            username=username.lower() if username else None,
-            email=email.lower() if email else None,
-            cedula=cedula if cedula else None,
-            rol_id=rol_id,
-            activo=activo
-        )
+        # ✅ IMPORTANTE: Solo actualizar campos que NO son None
+        # Construir diccionario con solo los campos que cambiaron
+        update_dict = {}
         
-        # Si password, hashea y actualiza
-        if password:
+        if username is not None:
+            print(f"Actualizando username: {username}")
+            update_dict["username"] = username.lower().strip()
+        
+        if email is not None:
+            print(f"Actualizando email: {email}")
+            update_dict["email"] = email.lower().strip()
+        
+        if cedula is not None:
+            print(f"Actualizando cedula: {cedula}")
+            update_dict["cedula"] = cedula
+        
+        if rol_id is not None:
+            print(f"Actualizando rol_id: {rol_id}")
+            update_dict["rol_id"] = rol_id
+        
+        if activo is not None:
+            print(f"Actualizando activo: {activo}")
+            update_dict["activo"] = activo
+        
+        if password is not None:
+            print(f"Actualizando password")
             hashed = usuario_service.get_password_hash(password)
-            existing_user.hashed_password = hashed
-            db.commit()
-            db.refresh(existing_user)
+            update_dict["hashed_password"] = hashed
         
-        user = usuario_service.update_user(user_id, update_data)
+        print(f"Update dict: {update_dict}")
         
-        if not user:
-            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        # Si no hay nada para actualizar, retornar el usuario sin cambios
+        if not update_dict and not foto:
+            print("⚠️ No hay cambios para guardar")
+            return existing_user
+        
+        # Actualizar usuario con solo los campos que proporcionaron
+        for key, value in update_dict.items():
+            setattr(existing_user, key, value)
+        
+        db.commit()
+        db.refresh(existing_user)
+        
+        print(f"✓ Usuario actualizado exitosamente")
         
         # Log de auditoría
         await log_action(
             accion="actualizar_usuario",
             tabla_afectada="usuario",
-            registro_id=user.id,
+            registro_id=existing_user.id,
             detalles={
-                "username": user.username,
-                "cambios": "foto" if foto else "otros datos"
+                "username": existing_user.username,
+                "campos_actualizados": list(update_dict.keys()),
+                "con_foto": bool(foto)
             },
             request=request,
             db=db,
             current_user=current_user,
         )
         
-        return user
+        return existing_user
         
     except ValueError as e:
+        db.rollback()
+        logger.error(f"ValueError: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    
+    except IntegrityError as e:
+        db.rollback()
+        orig_error = getattr(e.orig, "pgcode", "N/A") if hasattr(e, "orig") else "N/A"
+        orig_msg = str(e.orig) if hasattr(e, "orig") else str(e)
+        logger.error(f"IntegrityError: Código={orig_error}, Mensaje='{orig_msg}'")
+        
+        if orig_error == "23505":  # UNIQUE violation
+            if any(field in orig_msg.lower() for field in ["username", "email", "cedula"]):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Duplicado ya existe: {orig_msg[:100]}",
+                )
+        
+        raise HTTPException(status_code=500, detail=f"Error BD: {orig_msg[:200]}")
+        
     except Exception as e:
         db.rollback()
+        tb = traceback.format_exc()
+        logger.error(f"Error inesperado en update_user: {str(e)}\n{tb}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
 
 # ============================================================================
 # DELETE - Eliminar usuario

@@ -1,14 +1,14 @@
-// src/jsx/DetalleUsuarioPage.jsx - ACTUALIZADO CON FOTO
-
+// src/jsx/DetalleUsuarioPage.jsx - CORREGIDO (solo envía campos modificados)
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
+import { useImages } from "../context/ImageContext.jsx";
 
 export default function DetalleUsuarioPage() {
   const { API_V1 } = useApi();
+  const { getImageUrl } = useImages();
   const API_BASE = `${API_V1}/usuarios`;
-  const OPERADORES_IMG_URL = import.meta.env.VITE_OPERADORES_IMG_URL || "http://localhost:5173/src/img/operadores/";
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -63,17 +63,15 @@ export default function DetalleUsuarioPage() {
 
   // Manejador para cambio de foto
   const handleFotoChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
 
     if (file) {
-      // Validar tipo
       const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
       if (!allowedTypes.includes(file.type)) {
         setError("Tipo de archivo no permitido. Usa: JPG, PNG, GIF o WEBP");
         return;
       }
 
-      // Validar tamaño (máximo 5MB)
       const maxSizeMB = 5;
       if (file.size > maxSizeMB * 1024 * 1024) {
         setError(`Archivo demasiado grande. Máximo: ${maxSizeMB}MB`);
@@ -82,7 +80,6 @@ export default function DetalleUsuarioPage() {
 
       setFotoFile(file);
 
-      // Crear preview
       const reader = new FileReader();
       reader.onload = (event) => {
         setFotoPreview(event.target.result);
@@ -99,7 +96,7 @@ export default function DetalleUsuarioPage() {
     setFotoPreview(null);
   };
 
-  // Guardar cambios
+  // Guardar cambios - SOLO ENVÍA CAMPOS QUE CAMBIARON
   const handleSave = async () => {
     if (!isAdmin()) {
       setError("Solo administradores pueden editar usuarios");
@@ -112,23 +109,55 @@ export default function DetalleUsuarioPage() {
     try {
       const formData = new FormData();
 
-      // Agregar campos del formulario
+      // ✅ IMPORTANTE: Solo agregar al FormData los campos que REALMENTE cambiaron
+      // Comparar con el usuario original para saber qué cambió
+
       if (editForm.username && editForm.username !== usuario.username) {
+        console.log(`✓ username cambió: ${usuario.username} → ${editForm.username}`);
         formData.append("username", editForm.username);
-      }
-      if (editForm.email && editForm.email !== usuario.email) {
-        formData.append("email", editForm.email);
-      }
-      if (editForm.cedula && editForm.cedula !== usuario.cedula) {
-        formData.append("cedula", editForm.cedula);
-      }
-      if (editForm.rol_id && editForm.rol_id !== usuario.rol_id) {
-        formData.append("rol_id", editForm.rol_id);
+      } else if (editForm.username) {
+        console.log(`✗ username NO cambió, no se envía`);
       }
 
-      // Agregar foto si fue seleccionada
+      if (editForm.email && editForm.email !== usuario.email) {
+        console.log(`✓ email cambió: ${usuario.email} → ${editForm.email}`);
+        formData.append("email", editForm.email);
+      } else if (editForm.email) {
+        console.log(`✗ email NO cambió, no se envía`);
+      }
+
+      if (editForm.cedula && editForm.cedula !== usuario.cedula) {
+        console.log(`✓ cedula cambió: ${usuario.cedula} → ${editForm.cedula}`);
+        formData.append("cedula", editForm.cedula);
+      } else if (editForm.cedula) {
+        console.log(`✗ cedula NO cambió, no se envía`);
+      }
+
+      if (editForm.rol_id && editForm.rol_id !== usuario.rol_id) {
+        console.log(`✓ rol_id cambió: ${usuario.rol_id} → ${editForm.rol_id}`);
+        formData.append("rol_id", editForm.rol_id);
+      } else if (editForm.rol_id) {
+        console.log(`✗ rol_id NO cambió, no se envía`);
+      }
+
+      // Foto
       if (fotoFile) {
+        console.log(`✓ foto se va a actualizar`);
         formData.append("foto", fotoFile);
+      }
+
+      // Debug: mostrar qué se va a enviar
+      console.log("=== FormData a enviar ===");
+      for (const [key, value] of formData.entries()) {
+        console.log(`${key}: ${value instanceof File ? `File(${value.name})` : value}`);
+      }
+
+      // Validar que al menos haya algo para actualizar
+      const hasChanges = Array.from(formData.keys()).length > 0;
+      if (!hasChanges) {
+        setError("No hay cambios para guardar");
+        setUpdating(false);
+        return;
       }
 
       const response = await fetch(`${API_BASE}/${id}`, {
@@ -153,6 +182,7 @@ export default function DetalleUsuarioPage() {
 
       alert("Usuario actualizado exitosamente");
     } catch (err) {
+      console.error("Error guardando:", err);
       setError(`Error guardando cambios: ${err.message}`);
     } finally {
       setUpdating(false);
@@ -218,14 +248,14 @@ export default function DetalleUsuarioPage() {
     );
   }
 
-  // URL de la foto
-  const fotoUrl = fotoPreview || (usuario.foto_path ? `${OPERADORES_IMG_URL}${usuario.foto_path}` : null);
+  // ✅ Usar getImageUrl para obtener la URL de la foto del operador
+  const fotoUrl = fotoPreview || getImageUrl('operador', usuario.foto_path);
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
-        <h1>Detalle del Usuario</h1>
+        <h1 style={{ margin: 0 }}>Detalle del Usuario</h1>
         <button
           onClick={handleBack}
           style={{
@@ -235,6 +265,7 @@ export default function DetalleUsuarioPage() {
             border: "none",
             borderRadius: "5px",
             cursor: "pointer",
+            fontSize: "14px",
           }}
         >
           ← Volver
@@ -250,15 +281,17 @@ export default function DetalleUsuarioPage() {
             padding: "15px",
             borderRadius: "5px",
             marginBottom: "20px",
+            border: "1px solid #fcc",
           }}
         >
           ✗ {error}
         </div>
       )}
 
-      {/* Contenedor principal */}
+      {/* Contenedor principal - Grid 2 columnas */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "30px", alignItems: "start" }}>
-        {/* Columna izquierda - Foto */}
+
+        {/* ===== COLUMNA IZQUIERDA - FOTO ===== */}
         <div
           style={{
             display: "flex",
@@ -271,9 +304,11 @@ export default function DetalleUsuarioPage() {
             border: "1px solid #ddd",
           }}
         >
-          <h3 style={{ margin: "0 0 10px 0" }}>Foto del Operador</h3>
+          <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold" }}>
+            Foto del Operador
+          </h3>
 
-          {/* Foto */}
+          {/* Foto - Mostrar preview o URL de la API */}
           {fotoUrl ? (
             <img
               src={fotoUrl}
@@ -284,6 +319,9 @@ export default function DetalleUsuarioPage() {
                 borderRadius: "10px",
                 objectFit: "cover",
                 border: "2px solid #ccc",
+              }}
+              onError={(e) => {
+                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23e0e0e0' width='200' height='200'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em'%3ESin Foto%3C/text%3E%3C/svg%3E";
               }}
             />
           ) : (
@@ -299,13 +337,14 @@ export default function DetalleUsuarioPage() {
                 border: "2px solid #ccc",
                 color: "#999",
                 fontSize: "14px",
+                fontWeight: "bold",
               }}
             >
               Sin foto
             </div>
           )}
 
-          {/* Botón editar foto (solo admin) */}
+          {/* Botón editar (solo admin) */}
           {isAdmin() && (
             <div style={{ width: "100%" }}>
               {!isEditing ? (
@@ -319,6 +358,8 @@ export default function DetalleUsuarioPage() {
                     border: "none",
                     borderRadius: "5px",
                     cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
                   Editar Información
@@ -335,6 +376,8 @@ export default function DetalleUsuarioPage() {
                     borderRadius: "5px",
                     cursor: "pointer",
                     textAlign: "center",
+                    fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
                   Cambiar Foto
@@ -362,6 +405,7 @@ export default function DetalleUsuarioPage() {
                 borderRadius: "5px",
                 cursor: "pointer",
                 fontSize: "12px",
+                fontWeight: "bold",
               }}
             >
               Cancelar cambio de foto
@@ -369,7 +413,7 @@ export default function DetalleUsuarioPage() {
           )}
         </div>
 
-        {/* Columna derecha - Información */}
+        {/* ===== COLUMNA DERECHA - INFORMACIÓN ===== */}
         <div
           style={{
             padding: "20px",
@@ -379,12 +423,12 @@ export default function DetalleUsuarioPage() {
           }}
         >
           {isEditing ? (
-            // Modo edición
+            // MODO EDICIÓN
             <div style={{ display: "grid", gap: "15px" }}>
-              <h3>Editar Usuario</h3>
+              <h3 style={{ margin: "0 0 15px 0", fontSize: "18px" }}>Editar Usuario</h3>
 
               <div>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
                   Username:
                 </label>
                 <input
@@ -397,12 +441,13 @@ export default function DetalleUsuarioPage() {
                     border: "1px solid #ccc",
                     borderRadius: "5px",
                     fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
                   Email:
                 </label>
                 <input
@@ -415,12 +460,13 @@ export default function DetalleUsuarioPage() {
                     border: "1px solid #ccc",
                     borderRadius: "5px",
                     fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
                   Cédula:
                 </label>
                 <input
@@ -433,12 +479,13 @@ export default function DetalleUsuarioPage() {
                     border: "1px solid #ccc",
                     borderRadius: "5px",
                     fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
                   Rol:
                 </label>
                 <select
@@ -450,6 +497,7 @@ export default function DetalleUsuarioPage() {
                     border: "1px solid #ccc",
                     borderRadius: "5px",
                     fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
                 >
                   <option value={2}>Supervisor</option>
@@ -457,7 +505,7 @@ export default function DetalleUsuarioPage() {
                 </select>
               </div>
 
-              {/* Botones */}
+              {/* Botones de guardar/cancelar */}
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 <button
                   onClick={handleSave}
@@ -471,6 +519,8 @@ export default function DetalleUsuarioPage() {
                     borderRadius: "5px",
                     cursor: updating ? "not-allowed" : "pointer",
                     opacity: updating ? 0.6 : 1,
+                    fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
                   {updating ? "Guardando..." : "Guardar"}
@@ -486,6 +536,8 @@ export default function DetalleUsuarioPage() {
                     border: "none",
                     borderRadius: "5px",
                     cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
                   Cancelar
@@ -493,55 +545,55 @@ export default function DetalleUsuarioPage() {
               </div>
             </div>
           ) : (
-            // Modo vista
+            // MODO VISTA
             <div style={{ display: "grid", gap: "15px" }}>
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Username:</p>
-                <p style={{ margin: "0", color: "#666" }}>{usuario.username}</p>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Username:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.username}</p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Nombre Completo:</p>
-                <p style={{ margin: "0", color: "#666" }}>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Nombre Completo:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
                   {usuario.nombre} {usuario.apellidos}
                 </p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Email:</p>
-                <p style={{ margin: "0", color: "#666" }}>{usuario.email}</p>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Email:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.email}</p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Cédula:</p>
-                <p style={{ margin: "0", color: "#666" }}>{usuario.cedula}</p>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Cédula:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.cedula}</p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Rol:</p>
-                <p style={{ margin: "0", color: "#666" }}>{usuario.rol?.nombre_rol || "N/A"}</p>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Rol:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.rol?.nombre_rol || "N/A"}</p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Teléfono:</p>
-                <p style={{ margin: "0", color: "#666" }}>{usuario.telefono || "N/A"}</p>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Teléfono:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.telefono || "N/A"}</p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Departamento:</p>
-                <p style={{ margin: "0", color: "#666" }}>{usuario.departamento || "N/A"}</p>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Departamento:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.departamento || "N/A"}</p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Estado:</p>
-                <p style={{ margin: "0", color: usuario.activo ? "green" : "red" }}>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Estado:</p>
+                <p style={{ margin: "0", color: usuario.activo ? "green" : "red", fontSize: "14px", fontWeight: "bold" }}>
                   {usuario.activo ? "✓ Activo" : "✗ Inactivo"}
                 </p>
               </div>
 
               <div>
-                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>Fecha de Creación:</p>
-                <p style={{ margin: "0", color: "#666" }}>
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Fecha de Creación:</p>
+                <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
                   {usuario.fecha_creacion ? new Date(usuario.fecha_creacion).toLocaleDateString() : "N/A"}
                 </p>
               </div>
@@ -551,7 +603,7 @@ export default function DetalleUsuarioPage() {
                 <button
                   onClick={() => setIsEditing(true)}
                   style={{
-                    marginTop: "10px",
+                    marginTop: "15px",
                     padding: "10px 20px",
                     backgroundColor: "#4CAF50",
                     color: "white",
@@ -559,6 +611,8 @@ export default function DetalleUsuarioPage() {
                     borderRadius: "5px",
                     cursor: "pointer",
                     width: "100%",
+                    fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
                   Editar
@@ -571,3 +625,4 @@ export default function DetalleUsuarioPage() {
     </div>
   );
 }
+

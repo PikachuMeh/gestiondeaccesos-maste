@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../jsx/auth/AuthContext";
+import { useApi } from "../context/ApiContext";  // ← Importa
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import "../css/login.css";
 
@@ -9,9 +10,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
+  const { API_BASE_URL } = useApi();  // ← Extrae la URL
   const navigate = useNavigate();
 
-  // Si ya está autenticado, redirigir
   if (isAuthenticated()) {
     return <Navigate to="/accesos" replace />;
   }
@@ -43,7 +44,7 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="login-header">
           <img
-            src="/src/img/seniat_logo.png"
+            src={`${API_BASE_URL}/src/img/seniat_logo.png`}  // ← Así
             alt="SENIAT"
             className="login-logo"
           />

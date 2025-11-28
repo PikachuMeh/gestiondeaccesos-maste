@@ -1,8 +1,8 @@
-// PersonasPage.jsx (actualizado: con bordes solo bottom en inputs búsqueda)
+// PersonasPage.jsx (actualizado: SIN botón de eliminar)
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
-import { useApi } from "../context/ApiContext.jsx"; 
+import { useApi } from "../context/ApiContext.jsx";
 
 
 const PAGE_SIZE = 10;
@@ -16,8 +16,7 @@ export default function PersonasPage() {
   const navigate = useNavigate();
   const didMount = useRef(false);
 
-  const { token, isSupervisorOrAbove, isOperatorOrAbove } = useAuth();
-  const canDelete = isSupervisorOrAbove();
+  const { token, isOperatorOrAbove } = useAuth();
   const canEdit = isOperatorOrAbove();
 
   const [rows, setRows] = useState([]);
@@ -33,7 +32,7 @@ export default function PersonasPage() {
 
   const [debQ, setDebQ] = useState(q);
   const [debDoc, setDebDoc] = useState(doc);
-  
+
   useEffect(() => {
     const id = setTimeout(() => setDebQ(q), 300);
     return () => clearTimeout(id);
@@ -103,50 +102,12 @@ export default function PersonasPage() {
     navigate(`/personas/${id}/editar`);
   };
 
-  const handleDeletePersona = async (personaId, personaNombre) => {
-    if (!canDelete) {
-      setError("No tienes permiso para eliminar personas");
-      return;
-    }
-    if (!window.confirm(`¿Eliminar a "${personaNombre}"? Esta acción no se puede deshacer (se eliminará foto si existe).`)) {
-      return;
-    }
-    try {
-      const response = await fetch(`${API_BASE}/${personaId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        const detail = errData.detail || `HTTP ${response.status}`;
-        if (detail.includes("SENIAT") || detail.includes("visitas")) {
-          setError(`No se puede eliminar: ${detail}`);
-        } else if (detail.includes("Rol insuficiente")) {
-          setError("Permiso denegado: Solo SUPERVISOR o ADMIN pueden borrar");
-        } else {
-          setError(`Error: ${detail}`);
-        }
-        return;
-      }
-      setRows(prev => prev.filter(p => p.id !== personaId));
-      setTotal(prev => Math.max(0, prev - 1));
-      setError(null);
-      alert("Persona eliminada correctamente");
-    } catch (err) {
-      setError(`Error eliminando persona: ${err.message}`);
-      console.error("Delete error:", err);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto">
       <div className="bg-surface rounded-lg shadow-sm p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">
-            Personas {canDelete ? "(Gestión Completa)" : "(Solo Consulta)"}
+            Personas
           </h1>
         </div>
 
@@ -261,45 +222,19 @@ export default function PersonasPage() {
                       >
                         <div className="flex items-center gap-2">
                           {canEdit && (
-                            <>
-                              <button
-                                className="text-yellow-600 hover:text-yellow-700 p-2 rounded-md hover:bg-yellow-50 transition-colors"
-                                onClick={() => onEditarPersona(p.id)}
-                                title="Editar persona"
+                            <button
+                              className="text-yellow-600 hover:text-yellow-700 p-2 rounded-md hover:bg-yellow-50 transition-colors"
+                              onClick={() => onEditarPersona(p.id)}
+                              title="Editar persona"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
                               >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                </svg>
-                              </button>
-                              {canDelete && (
-                                <button
-                                  className="text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50 transition-colors"
-                                  onClick={() =>
-                                    handleDeletePersona(p.id, `${p.nombre} ${p.apellido}`)
-                                  }
-                                  title="Eliminar persona"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </button>
-                              )}
-                              {!canDelete && (
-                                <span className="text-gray-200 text-sm">Sin acciones</span>
-                              )}
-                            </>
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                            </button>
                           )}
                           {!canEdit && <span className="text-gray-400 text-sm">Sin acciones</span>}
                         </div>
@@ -394,3 +329,4 @@ export default function PersonasPage() {
     </div>
   );
 }
+

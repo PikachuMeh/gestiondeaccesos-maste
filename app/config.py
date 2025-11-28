@@ -63,7 +63,12 @@ class Settings(BaseSettings):
     
     # ========== CONFIGURACIÓN DE UPLOADS DE OPERADORES (NUEVO) ==========
     upload_operadores_path: str = "../html/mi-app/src/img/operadores/"
-    upload_operadores_url: str = "http://localhost:5173/src/img/operadores/"
+    upload_personas_path: str = "../html/mi-app/src/img/personas/"
+    upload_capturas_path: str = "../html/mi-app/src/img/capturas/"
+    
+    upload_operadores_url: str = "http://172.16.56.102:5050/imagenes/operadores/"
+    upload_personas_url: str = "http://172.16.56.102:5050/imagenes/personas/"
+    upload_capturas_url: str = "http://172.16.56.102:5050/imagenes/capturas/"
     upload_max_size_mb: int = 5
     upload_allowed_extensions: str = "jpg,jpeg,png,gif,webp"
     

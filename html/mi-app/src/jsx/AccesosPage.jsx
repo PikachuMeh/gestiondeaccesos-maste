@@ -1,80 +1,164 @@
-// src/jsx/AccesosPage.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+// src/jsx/AccesosPage.jsx - CORREGIDO: Usar 'id' en lugar de 'id_visita'
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
-import { useApi } from "../context/ApiContext";  // ✅ Sin .jsx
+import { useApi } from "../context/ApiContext";
 
 const PAGE_SIZE = 10;
 
+// ✅ TOAST NOTIFICATIONS
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
+  return (
+    <div
+      className={`fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300 z-50`}
+    >
+      {message}
+    </div>
+  );
+}
+
+// ✅ COMPONENTE MODAL DE CONFIRMACIÓN
+function ConfirmDeleteModal({ isOpen, title, message, onConfirm, onCancel, isLoading }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-300">
+        {/* Icono */}
+        <div className="flex justify-center mb-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4v2m0-12a9 9 0 110 18 9 9 0 010-18z"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Contenido */}
+        <h2 className="text-xl font-bold text-gray-900 text-center mb-2">{title}</h2>
+        <p className="text-gray-600 text-center mb-6">{message}</p>
+
+        {/* Botones */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Borrando...
+              </>
+            ) : (
+              "Sí, borrar"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AccesosPage() {
-  // ✅ Hooks/AQUI dentro componente
   const { API_V1 } = useApi();
   const API_BASE = `${API_V1}/visitas`;
-  console.log("API_V1 in AccesosPage:", API_V1);
-  const didMount = useRef(false);
-  const navigate = useNavigate();
-  const { token, isAdmin, isOperatorOrAbove, handleApiError } = useAuth();
 
-  // Datos de tabla
+  const navigate = useNavigate();
+  const { token, isAdmin, loading: authLoading } = useAuth();
+
+  const didMount = useRef(false);
+
+  // Estado
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [tiposActividad, setTiposActividad] = useState([]);
 
-  // Filtros (estado por id y actividad por id)
+  // Filtros
   const [estadoId, setEstadoId] = useState("");
   const [tipoActividadId, setTipoActividadId] = useState("");
   const [q, setQ] = useState("");
 
-  // Catálogo de actividades
-  const [tiposActividad, setTiposActividad] = useState([]);
+  // Modal
+  const [showModal, setShowModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletePersona, setDeletePersona] = useState(null);
 
-  // Estado UI
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Toast
+  const [toast, setToast] = useState(null);
 
-  // Cargar catálogo de tipos de actividad desde /visitas/tipo_actividad
+  // ✅ Cargar tipos de actividad
   useEffect(() => {
     if (!token) return;
 
     const ctrl = new AbortController();
-
     fetch(`${API_BASE}/tipo_actividad`, {
       signal: ctrl.signal,
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     })
       .then((r) => {
-        if (!r.ok) {
-          if (r.status === 401) {
-            handleApiError({ status: 401 });
-            return;
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((json) => {
-        if (Array.isArray(json)) {
-          setTiposActividad(json);
-        } else {
-          setTiposActividad([]);
-        }
+        setTiposActividad(Array.isArray(json) ? json : []);
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
-          console.error("Error cargando tipos de actividad:", err);
+          console.error("❌ Error cargando tipos de actividad:", err);
         }
       });
 
     return () => ctrl.abort();
-  }, [token, handleApiError]);
+  }, [token, API_BASE]);
 
-  // Cargar visitas desde backend (usa skip/limit)
+  // ✅ Cargar visitas
   useEffect(() => {
     if (!didMount.current) didMount.current = true;
+
     if (!token) return;
 
     const ctrl = new AbortController();
@@ -89,399 +173,320 @@ export default function AccesosPage() {
       limit: String(limit),
     });
 
-    // Filtro de estado por id_estado (estado_id en query)
-    if (estadoId) {
-      params.append("estado_id", String(estadoId));
-    }
+    if (estadoId) params.append("estado_id", String(estadoId));
+    if (tipoActividadId) params.append("tipo_actividad_id", String(tipoActividadId));
 
-    // Filtro de tipo de actividad
-    if (tipoActividadId) {
-      params.append("tipo_actividad_id", String(tipoActividadId));
-    }
+    const url = `${API_BASE}?${params.toString()}`;
 
-    fetch(`${API_BASE}?${params.toString()}`, {
+    fetch(url, {
       signal: ctrl.signal,
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     })
       .then((r) => {
-        if (!r.ok) {
-          if (r.status === 401) {
-            handleApiError({ status: 401 });
-            return;
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((json) => {
-        const items = json.items ?? [];
-        setRows(items);
+        setRows(json.items ?? []);
         setPages(json.pages ?? 1);
-        setTotal(json.total ?? items.length);
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
-          if (err.message.includes("401")) {
-            handleApiError({ status: 401 });
-          } else {
-            setError(err.message || "Error al cargar accesos");
-          }
+          console.error("❌ Error cargando visitas:", err);
+          setError(err.message || "Error al cargar accesos");
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+      });
 
     return () => ctrl.abort();
-  }, [page, estadoId, tipoActividadId, token, handleApiError]);
+  }, [page, estadoId, tipoActividadId, token, API_BASE]);
 
-  // Filtro rápido local
-  const filtered = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return rows;
-    return rows.filter((v) => {
-      const persona = v.persona?.nombre || "";
-      const cedula = v.persona?.documento_identidad || "";
-      const empresa = v.persona?.empresa || "";
-      const unidad = v.persona?.unidad || "";
-      const estado = v.estado?.nombre_estado || v.estado?.nombre || v.estado?.estado || "";
-      const actividad = v.actividad?.nombre_actividad || v.actividad?.id_tipo_actividad || "";
-      const centro = v.centro_datos?.nombre || "";
-      const asunto = v.asunto || v.descripcion || v.descripcion_actividad || "";
-      const fecha = v.fecha_programada || v.fecha || "";
-      return [
-        persona,
-        cedula,
-        empresa,
-        unidad,
-        estado,
-        actividad,
-        centro,
-        asunto,
-        fecha,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(t);
-    });
-  }, [q, rows]);
+  // ✅ Filtro local
+  const filtered = rows.filter((v) => {
+    if (!q.trim()) return true;
+    const searchText = [
+      v.persona?.nombre || "",
+      v.persona?.documento_identidad || "",
+      v.persona?.empresa || "",
+      v.actividad?.nombre_actividad || "",
+      v.centro_datos?.nombre || "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return searchText.includes(q.toLowerCase());
+  });
 
-  const pageSafe = Math.min(page, Math.max(1, pages));
   const onPrev = () => setPage((p) => Math.max(1, p - 1));
   const onNext = () => setPage((p) => Math.min(pages, p + 1));
 
-  // Handlers de filtros
-  const onEstado = (e) => {
-    setEstadoId(e.target.value);
-    setPage(1);
-  };
-  const onActividad = (e) => {
-    setTipoActividadId(e.target.value);
-    setPage(1);
+  // ✅ ABRIR MODAL - SIMPLE
+  const openDeleteModal = (id, nombre) => {
+    console.log("📌 openDeleteModal - id:", id, "nombre:", nombre);
+    setDeleteTarget(id);
+    setDeletePersona(nombre);
+    setShowModal(true);
   };
 
-  const goToDetail = (id) => {
-    if (!isOperatorOrAbove) {
-      setError("Permiso denegado para ver detalles");
+  // ✅ CERRAR MODAL
+  const closeModal = () => {
+    setShowModal(false);
+    setDeleteTarget(null);
+    setDeletePersona(null);
+    setDeleteLoading(false);
+  };
+
+  // ✅ CONFIRMAR Y BORRAR
+  const handleConfirmDelete = async () => {
+    console.log("🗑️ handleConfirmDelete - deleteTarget:", deleteTarget);
+
+    if (!deleteTarget) {
+      console.error("❌ deleteTarget es null/undefined");
+      setToast({ message: "❌ Error: ID de visita no válido", type: "error" });
       return;
     }
-    navigate(`/accesos/${id}`);
-  };
 
-  const handleNuevoAcceso = () => {
-    if (!isOperatorOrAbove) {
-      setError("Permiso denegado para crear accesos");
-      return;
-    }
-    navigate("/accesos/nuevo");
-  };
+    console.log("✅ Iniciando DELETE");
+    setDeleteLoading(true);
 
-  const handleDelete = (id) => {
-    if (!isAdmin) return;
-    if (window.confirm("¿Borrar esta visita?")) {
-      fetch(`${API_BASE}/${id}`, {
+    const deleteUrl = `${API_BASE}/${deleteTarget}`;
+    console.log("📍 URL DELETE:", deleteUrl);
+
+    try {
+      const response = await fetch(deleteUrl, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => {
-          if (!r.ok) {
-            if (r.status === 401) {
-              handleApiError({ status: 401 });
-              return;
-            }
-            throw new Error(`HTTP ${r.status}`);
-          }
-          return r;
-        })
-        .then(() => setPage(1))
-        .catch((err) => {
-          if (err.message.includes("401")) {
-            handleApiError({ status: 401 });
-          } else {
-            setError("Error al borrar");
-          }
-        });
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("📊 Respuesta status:", response.status);
+
+      const responseText = await response.text();
+      console.log("📊 Respuesta texto:", responseText);
+
+      if (!response.ok) {
+        throw new Error(
+          `HTTP ${response.status}: ${responseText || "Error desconocido"}`
+        );
+      }
+
+      console.log("✅ Respuesta exitosa!");
+
+      // ✅ ACTUALIZACIÓN AUTOMÁTICA - ELIMINA LA FILA
+      // Usar 'id' en lugar de 'id_visita'
+      setRows((prevRows) => {
+        const newRows = prevRows.filter((r) => r.id !== deleteTarget);
+        console.log("📌 Filas antes:", prevRows.length, "Filas después:", newRows.length);
+        return newRows;
+      });
+
+      // ✅ Mostrar toast de éxito
+      setToast({ message: "✅ Visita eliminada exitosamente", type: "success" });
+
+      // ✅ Cerrar modal
+      closeModal();
+
+    } catch (err) {
+      console.error("❌ Error al borrar:", err.message);
+
+      // ✅ Mostrar toast de error
+      setToast({
+        message: `❌ Error: ${err.message}`,
+        type: "error",
+      });
+
+      setDeleteLoading(false);
     }
   };
 
+  // Esperar a que se cargue la autenticación
+  if (authLoading) {
+    return <div style={{ padding: "20px" }}>⏳ Cargando autenticación...</div>;
+  }
+
+  if (!token) {
+    return <div style={{ padding: "20px" }}>❌ No autenticado</div>;
+  }
+
+  // Mostrar contenido
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="bg-surface rounded-lg shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Accesos / Visitas</h1>
+    <div style={{ padding: "20px" }}>
+      <h1>📋 Accesos y Visitas</h1>
+
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fee",
+            color: "#c33",
+            padding: "12px",
+            borderRadius: "6px",
+            marginBottom: "15px",
+            border: "1px solid #fcc",
+          }}
+        >
+          ❌ {error}
         </div>
+      )}
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="h-5 w-5 text-gray-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <input
-                type="text"
-                className="block w-full px-12 py-2 border-b border-gray-200 bg-white focus:outline-none focus:ring-0 focus:border-gray-200"
-                placeholder="Buscar por persona, cédula, empresa, estado, actividad…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-
-            {/* Filtro por actividad (tipo_actividad_id) */}
-            <select
-              className="block w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#00378B] focus:border-[#00378B]"
-              value={tipoActividadId}
-              onChange={onActividad}
-            >
-              <option value="">Actividad: Todas</option>
-              {tiposActividad.map((t) => (
-                <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
-                  {t.nombre_actividad}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="text-sm text-gray-600 mb-4">{total} resultados</div>
+      {/* Filtros */}
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <input
+          type="text"
+          placeholder="Buscar..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          style={{ padding: "8px", flex: 1, minWidth: "200px" }}
+        />
+        <select
+          value={estadoId}
+          onChange={(e) => setEstadoId(e.target.value)}
+          style={{ padding: "8px" }}
+        >
+          <option value="">Todos los estados</option>
+          <option value="1">Activo</option>
+          <option value="2">Inactivo</option>
+        </select>
+        <select
+          value={tipoActividadId}
+          onChange={(e) => setTipoActividadId(e.target.value)}
+          style={{ padding: "8px" }}
+        >
+          <option value="">Todos los tipos</option>
+          {tiposActividad.map((tipo) => (
+            <option key={tipo.id_tipo_actividad} value={tipo.id_tipo_actividad}>
+              {tipo.nombre_actividad}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {loading && (
-        <div className="text-center py-12 text-gray-500">Cargando…</div>
-      )}
-      {error && !loading && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 mb-4">
-          Error: {error}
-        </div>
-      )}
-
-      {!loading && !error && (
+      {/* Tabla */}
+      {loading ? (
+        <div style={{ padding: "20px" }}>⏳ Cargando... ({rows.length} datos)</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ padding: "20px" }}>Sin resultados (Total: {rows.length})</div>
+      ) : (
         <>
-          <div className="bg-surface rounded-lg shadow-sm overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-variant">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Persona
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Cédula
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Empresa
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Actividad
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Area
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Centro de Datos
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-surface divide-y  divide-gray-200">
-                {filtered.map((v, i) => {
-                  const persona = v.persona || {};
-                  const area = v.area || {};
-                  const actividad = v.actividad || {};
-                  const cd = v.centro_datos || {};
-                  return (
-                    <tr
-                      key={v.id ?? i}
-                      className="hover:bg-surface-variant cursor-pointer"
-                      onClick={() => goToDetail(v.id)}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {fmtFecha(v.fecha_programada || v.fecha)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {persona.nombre ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {persona.documento_identidad ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {persona.empresa ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {actividad.nombre_actividad ?? actividad.id_tipo_actividad ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {area.nombre ?? area.id ?? "—"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface text-center truncate max-w-xs">
-                        {cd.nombre ?? "—"}
-                      </td>
-                      <td
-                        className="px-6 py-4 whitespace-nowrap text-sm font-medium"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center gap-2">
-                          {isAdmin && (
-                            <button
-                              className="text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50 transition-colors"
-                              onClick={() => handleDelete(v.id)}
-                              title="Eliminar acceso"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Sin resultados
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="bg-surface px-4 py-3 flex items-center justify-between border-t border-outline sm:px-6 rounded-b-lg">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={onPrev}
-                disabled={pageSafe === 1}
-              >
-                Anterior
-              </button>
-              <button
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                onClick={onNext}
-              >
-                Siguiente
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Página <span className="font-medium">{pageSafe}</span> de{" "}
-                  <span className="font-medium">{pages}</span>
-                </p>
-              </div>
-              <div>
-                <nav
-                  className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                  aria-label="Pagination"
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid #ccc", backgroundColor: "#f5f5f5" }}>
+                <th style={{ textAlign: "left", padding: "10px" }}>Fecha</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Persona</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Cédula</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Empresa</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Actividad</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Centro</th>
+                {isAdmin() && <th style={{ textAlign: "center", padding: "10px" }}>Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((v) => (
+                <tr
+                  key={v.id}
+                  style={{
+                    borderBottom: "1px solid #ddd",
+                    transition: "background-color 0.2s ease",
+                  }}
                 >
-                  <button
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={onPrev}
-                    disabled={pageSafe === 1}
-                  >
-                    <span className="sr-only">Anterior</span>
-                    <svg
-                      className="h-5 w-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                    {pageSafe}
-                  </span>
-                  <button
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={onNext}
-                    disabled={pageSafe === pages}
-                  >
-                    <span className="sr-only">Siguiente</span>
-                    <svg
-                      className="h-5 w-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </nav>
-              </div>
-            </div>
+                  <td style={{ padding: "10px" }}>
+                    {v.fecha_programada ? v.fecha_programada.slice(0, 10) : "—"}
+                  </td>
+                  <td style={{ padding: "10px" }}>{v.persona?.nombre || "—"}</td>
+                  <td style={{ padding: "10px" }}>
+                    {v.persona?.documento_identidad || "—"}
+                  </td>
+                  <td style={{ padding: "10px" }}>{v.persona?.empresa || "—"}</td>
+                  <td style={{ padding: "10px" }}>
+                    {v.actividad?.nombre_actividad || "—"}
+                  </td>
+                  <td style={{ padding: "10px" }}>{v.centro_datos?.nombre || "—"}</td>
+                  {isAdmin() && (
+                    <td style={{ textAlign: "center", padding: "10px" }}>
+                      <button
+                        onClick={() =>
+                          openDeleteModal(
+                            v.id,
+                            `${v.persona?.nombre || "Visitante"} (${v.persona?.documento_identidad})`
+                          )
+                        }
+                        style={{
+                          padding: "6px 12px",
+                          backgroundColor: "#ff6b6b",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          transition: "background-color 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => (e.target.style.backgroundColor = "#ff5252")}
+                        onMouseLeave={(e) => (e.target.style.backgroundColor = "#ff6b6b")}
+                      >
+                        🗑️ Borrar
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Paginación */}
+          <div style={{ marginTop: "20px", display: "flex", gap: "10px", justifyContent: "center" }}>
+            <button
+              onClick={onPrev}
+              disabled={page === 1}
+              style={{
+                padding: "8px 16px",
+                cursor: page === 1 ? "default" : "pointer",
+                opacity: page === 1 ? 0.5 : 1,
+              }}
+            >
+              ← Anterior
+            </button>
+            <span style={{ alignSelf: "center" }}>
+              Página {page} de {pages}
+            </span>
+            <button
+              onClick={onNext}
+              disabled={page === pages}
+              style={{
+                padding: "8px 16px",
+                cursor: page === pages ? "default" : "pointer",
+                opacity: page === pages ? 0.5 : 1,
+              }}
+            >
+              Siguiente →
+            </button>
           </div>
         </>
       )}
+
+      {/* ✅ MODAL DE CONFIRMACIÓN */}
+      <ConfirmDeleteModal
+        isOpen={showModal}
+        title="Eliminar Visita"
+        message={`¿Está seguro de que desea borrar la visita de ${deletePersona}? Esta acción no se puede deshacer.`}
+        onConfirm={handleConfirmDelete}
+        onCancel={closeModal}
+        isLoading={deleteLoading}
+      />
+
+      {/* ✅ TOAST NOTIFICATIONS */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
-}
-
-// Función auxiliar para formatear fecha
-function fmtFecha(s) {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return s;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
 }
