@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { useApi } from "../context/ApiContext";
+import { useImage } from "../context/ImageContext";
 
 const PAGE_SIZE = 10;
 
@@ -34,9 +35,11 @@ function Toast({ message, type, onClose }) {
   );
 }
 
+
+
 export default function AccesosPage() {
   const navigate = useNavigate();
-  const { API_V1 } = useApi();
+  const { API_V1, api } = useApi();
   const { token, isAuthenticated } = useAuth();
   const [accesos, setAccesos] = useState([]);
   const [page, setPage] = useState(1);
@@ -47,6 +50,75 @@ export default function AccesosPage() {
   const toastRef = useRef(null);
 
   // Función para cargar accesos
+  
+const downloadPdf = async (visitaId) => {
+  try {
+    setLoading(true);
+    console.log(`📥 Iniciando descarga de PDF para visita ${visitaId}...`);
+
+    const response = await fetch(
+      `${API_V1}/visitas/${visitaId}/download-pdf`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Respuesta error PDF:", errText);
+      throw new Error(
+        `Error al descargar PDF: ${response.status} ${response.statusText}`
+      );
+    }
+
+    // Obtener blob del PDF
+    const blob = await response.blob();
+
+    // Nombre de archivo desde Content-Disposition (si existe)
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = `constancia_visita_${visitaId}.pdf`;
+
+    if (contentDisposition) {
+      const match = contentDisposition.match(
+        /filename[^;=\n]*=(?:(['"]).*?\1|[^;\n]*)/
+      );
+      if (match && match[0]) {
+        filename = match[0].replace(/filename=/, "").replace(/['"]/g, "");
+      }
+    }
+
+    // Crear URL temporal y lanzar descarga
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+
+    setToast({ message: `✅ PDF descargado: ${filename}`, type: "success" });
+    console.log("✅ Descarga completada");
+  } catch (error) {
+    console.error("❌ Error descargando PDF:", error);
+    setToast({
+      message: `❌ ${error.message || "Error al descargar PDF"}`,
+      type: "error",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  
+
   const loadAccesos = async () => {
     if (!isAuthenticated()) {
       navigate("/login");
@@ -288,6 +360,29 @@ export default function AccesosPage() {
                       >
                         🗑️ Eliminar
                       </button>
+                    </td>
+                  )}
+                  {isAdmin() && (
+                    <td
+                      style={{ padding: "12px" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                    onClick={() => downloadPdf(v.id)}   // ← antes decía downloadPDF
+                    disabled={loading}
+                    style={{
+                      padding: "6px 12px",
+                      background: "#3498db",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    📥 PDF
+                  </button>
                     </td>
                   )}
                 </tr>

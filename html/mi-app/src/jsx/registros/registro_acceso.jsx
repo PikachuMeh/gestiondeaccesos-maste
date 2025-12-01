@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApi } from "../../context/ApiContext.jsx";
+import { useImages } from "../../context/ImageContext.jsx";
 
 // ✅ Helper sin hook - recibe token como parámetro
 function apiFetch(url, options = {}) {
