@@ -1,4 +1,5 @@
-// src/jsx/DetallePersonaPage.jsx - CORREGIDO CON IMAGENES DESDE API_BASE_URL
+// src/jsx/DetallePersona.jsx - CORREGIDO CON IMAGEN FUNCIONANDO
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
@@ -7,16 +8,19 @@ import { useApi } from "../context/ApiContext.jsx";
 export default function DetallePersonaPage() {
   const { API_V1 } = useApi();
   const API_BASE = `${API_V1}/personas`;
-
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token, isAuthenticated } = useAuth();
 
+  const { token, isAuthenticated, loading: authLoading } = useAuth();
   const [persona, setPersona] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (!isAuthenticated()) {
       setError("Sesión expirada. Redirigiendo a login...");
       setTimeout(() => navigate("/login"), 2000);
@@ -24,7 +28,7 @@ export default function DetallePersonaPage() {
     }
 
     const ctrl = new AbortController();
-    setLoading(true);
+    setPageLoading(true);
     setError(null);
 
     const headers = {
@@ -38,8 +42,10 @@ export default function DetallePersonaPage() {
     })
       .then((r) => {
         if (!r.ok) {
-          if (r.status === 403) throw new Error("Acceso denegado: Verifica tu sesión.");
-          if (r.status === 401) throw new Error("No autenticado: Redirigiendo...");
+          if (r.status === 403)
+            throw new Error("Acceso denegado: Verifica tu sesión.");
+          if (r.status === 401)
+            throw new Error("No autenticado: Redirigiendo...");
           throw new Error(`HTTP ${r.status}`);
         }
         return r.json();
@@ -56,371 +62,291 @@ export default function DetallePersonaPage() {
           }
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => setPageLoading(false));
 
     return () => ctrl.abort();
-  }, [id, token, isAuthenticated, navigate]);
+  }, [id, token, isAuthenticated, navigate, authLoading]);
+
+  const handleBack = () => {
+    navigate("/personas");
+  };
+
+  const handleVerAccesos = () => {
+    navigate(`/accesos?persona_id=${id}`);
+  };
+
+  // ✅ Función para construir URL de imagen (igual que EditarPersona)
+  const getImageUrl = (fotoPath) => {
+    if (!fotoPath) return null;
+    if (fotoPath.startsWith("http")) return fotoPath;
+    return `${API_V1}/files/${fotoPath}`;
+  };
 
   // Estados de carga
-  if (loading) {
+  if (authLoading || pageLoading) {
     return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <p>Cargando persona...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-        <div
-          style={{
-            backgroundColor: "#fee",
-            color: "#c33",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "15px",
-            border: "1px solid #fcc",
-          }}
-        >
-          ✗ {error}
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <p className="text-gray-600">Cargando persona...</p>
         </div>
-        <button
-          onClick={() => navigate("/personas")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#999",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          Volver
-        </button>
       </div>
     );
   }
 
   if (!persona) {
     return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <p>Persona no encontrada</p>
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow p-8">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">
+              {error || "Persona no encontrada"}
+            </p>
+            <button
+              onClick={handleBack}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              ← Volver a Personas
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // ✅ Construir URL de foto desde API_V1 (igual que en LoginPage)
-  // persona.foto contiene el filename de la foto
-  const fotoUrl = persona.foto ? `${API_V1}/personas/foto/${persona.foto}` : null;
-
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "30px",
-        }}
-      >
-        <h1 style={{ margin: 0 }}>Detalle de Persona</h1>
-        <button
-          onClick={() => navigate("/personas")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#999",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
-          ← Volver
-        </button>
-      </div>
-
-      {/* Contenedor principal - Grid 2 columnas */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 2fr",
-          gap: "30px",
-          alignItems: "start",
-        }}
-      >
-
-        {/* ===== COLUMNA IZQUIERDA - FOTO ===== */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "15px",
-            padding: "20px",
-            backgroundColor: "#f9f9f9",
-            borderRadius: "10px",
-            border: "1px solid #ddd",
-          }}
-        >
-          <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold" }}>
-            Foto de Identificación
-          </h3>
-
-          {/* Foto - Mostrar desde API o placeholder */}
-          {fotoUrl ? (
-            <img
-              src={fotoUrl}
-              alt={`${persona.nombre} ${persona.apellido}`}
-              style={{
-                width: "200px",
-                height: "200px",
-                borderRadius: "10px",
-                objectFit: "cover",
-                border: "2px solid #ccc",
-              }}
-              onError={(e) => {
-                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23e0e0e0' width='200' height='200'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em'%3ESin Foto%3C/text%3E%3C/svg%3E";
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: "200px",
-                height: "200px",
-                borderRadius: "10px",
-                backgroundColor: "#e0e0e0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "2px solid #ccc",
-                color: "#999",
-                fontSize: "14px",
-                fontWeight: "bold",
-              }}
-            >
-              Sin foto
-            </div>
-          )}
-
-          {/* Nombre visible bajo la foto */}
-          <div style={{ textAlign: "center", marginTop: "10px" }}>
-            <p style={{ margin: "0", fontSize: "16px", fontWeight: "bold" }}>
-              {persona.nombre} {persona.apellido}
-            </p>
-            <p style={{ margin: "5px 0 0 0", fontSize: "13px", color: "#666" }}>
-              {persona.cargo || "Sin cargo"}
-            </p>
-          </div>
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-lg">
+          ❌ {error}
         </div>
+      )}
 
-        {/* ===== COLUMNA DERECHA - INFORMACIÓN ===== */}
-        <div
-          style={{
-            padding: "20px",
-            backgroundColor: "#f9f9f9",
-            borderRadius: "10px",
-            border: "1px solid #ddd",
-          }}
-        >
-          <div style={{ display: "grid", gap: "15px" }}>
-            {/* Fila 1 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Documento de Identidad:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                V-{persona.documento_identidad || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 2 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Email:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.email || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 3 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Empresa:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.empresa || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 4 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Cargo:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.cargo || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 5 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Dirección:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.direccion || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 6 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Unidad:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.unidad || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 7 - Observaciones (full width) */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Observaciones:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.observaciones || "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 8 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Fecha de Creación:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.fecha_creacion
-                  ? new Date(persona.fecha_creacion).toLocaleDateString()
-                  : "N/A"}
-              </p>
-            </div>
-
-            {/* Fila 9 */}
-            <div>
-              <p
-                style={{
-                  margin: "0 0 5px 0",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                }}
-              >
-                Última Actualización:
-              </p>
-              <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
-                {persona.fecha_actualizacion
-                  ? new Date(persona.fecha_actualizacion).toLocaleDateString()
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Botones de acción */}
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginTop: "30px",
-          justifyContent: "flex-start",
-        }}
-      >
-        <button
-          onClick={() => navigate(`/personas/${id}/editar`)}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#4CAF50",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            fontSize: "14px",
-          }}
-        >
-          ✏️ Editar
-        </button>
-
-        {isAuthenticated() && (
+      <div className="bg-white rounded-lg shadow p-8">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            {persona.nombre} {persona.apellido}
+          </h1>
           <button
-            onClick={() => navigate(`/accesos?persona=${id}`)}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: "14px",
-            }}
+            onClick={handleBack}
+            className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition-colors"
           >
-            📋 Ver Accesos
+            ← Volver
           </button>
-        )}
+        </div>
+
+        {/* Contenido Principal */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Lado Izquierdo - Imagen */}
+          <div className="md:col-span-1">
+            <div className="bg-gray-100 rounded-lg overflow-hidden">
+              {persona.foto ? (
+                <img
+                  src={getImageUrl(persona.foto)}
+                  alt={`${persona.nombre} ${persona.apellido}`}
+                  className="w-full h-auto object-cover aspect-square"
+                  onError={(e) => {
+                    e.target.src =
+                      "https://via.placeholder.com/300?text=Sin+Foto";
+                  }}
+                />
+              ) : (
+                <div className="w-full aspect-square flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                  <div className="text-center">
+                    <div className="text-6xl mb-2">👤</div>
+                    <p className="text-gray-600 text-sm">Sin foto</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Información Rápida */}
+            <div className="mt-6 space-y-3">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <p className="text-sm text-blue-600 font-medium">Cédula</p>
+                <p className="text-lg font-semibold text-blue-900">
+                  V-{persona.documento_identidad || "N/A"}
+                </p>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <p className="text-sm text-green-600 font-medium">Empresa</p>
+                <p className="text-lg font-semibold text-green-900">
+                  {persona.empresa || "N/A"}
+                </p>
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <p className="text-sm text-purple-600 font-medium">Cargo</p>
+                <p className="text-lg font-semibold text-purple-900">
+                  {persona.cargo || "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Lado Derecho - Información Detallada */}
+          <div className="md:col-span-2">
+            {/* Información de Contacto */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b">
+                📞 Información de Contacto
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Email
+                  </label>
+                  <p className="text-gray-900 mt-1">
+                    {persona.email ? (
+                      <a
+                        href={`mailto:${persona.email}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {persona.email}
+                      </a>
+                    ) : (
+                      "N/A"
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Teléfono
+                  </label>
+                  <p className="text-gray-900 mt-1">
+                    {persona.telefono ? (
+                      <a
+                        href={`tel:${persona.telefono}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {persona.telefono}
+                      </a>
+                    ) : (
+                      "N/A"
+                    )}
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-gray-600">
+                    Dirección
+                  </label>
+                  <p className="text-gray-900 mt-1">
+                    {persona.direccion || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Información Organizacional */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b">
+                🏢 Información Organizacional
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Empresa
+                  </label>
+                  <p className="text-gray-900 mt-1">{persona.empresa || "N/A"}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Unidad
+                  </label>
+                  <p className="text-gray-900 mt-1">{persona.unidad || "N/A"}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Cargo
+                  </label>
+                  <p className="text-gray-900 mt-1">{persona.cargo || "N/A"}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Departamento
+                  </label>
+                  <p className="text-gray-900 mt-1">
+                    {persona.departamento || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Observaciones */}
+            {persona.observaciones && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b">
+                  📝 Observaciones
+                </h2>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-gray-900 whitespace-pre-wrap">
+                    {persona.observaciones}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Fechas */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b">
+                📅 Información de Registro
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Fecha de Creación
+                  </label>
+                  <p className="text-gray-900 mt-1">
+                    {persona.fecha_creacion
+                      ? new Date(persona.fecha_creacion).toLocaleDateString(
+                          "es-ES"
+                        )
+                      : "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Última Actualización
+                  </label>
+                  <p className="text-gray-900 mt-1">
+                    {persona.fecha_actualizacion
+                      ? new Date(persona.fecha_actualizacion).toLocaleDateString(
+                          "es-ES"
+                        )
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Botones de Acción */}
+        <div className="border-t pt-6 flex gap-3 justify-end">
+          <button
+            onClick={handleBack}
+            className="bg-gray-400 text-white px-6 py-2 rounded-lg hover:bg-gray-500 transition-colors font-medium"
+          >
+            ← Volver
+          </button>
+          <button
+            onClick={handleVerAccesos}
+            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+          >
+            <span>📋</span> Ver Accesos
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-

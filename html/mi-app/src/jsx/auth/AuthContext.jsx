@@ -1,4 +1,5 @@
-// src/jsx/auth/AuthContext.jsx - CORREGIDO
+// src/jsx/auth/AuthContext.jsx - COMPLETO CON REDIRECCIÓN POR ROL
+
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -51,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("user");
       }
     }
+
     setLoading(false);
   }, [isTokenValid]);
 
@@ -147,8 +149,21 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user", JSON.stringify(userData));
-      console.log("✓ Navegando a /accesos");
-      navigate("/accesos");
+
+      // ✅ CAMBIO: Redirigir según rol ANTES de retornar
+      const roleId = userData.rol.id_rol;
+
+      if (roleId === 4) {
+        console.log("✓ Auditor logueado → /auditoria");
+        navigate("/auditoria");
+      } else if (roleId === 2) {
+        console.log("✓ Supervisor logueado → /usuarios");
+        navigate("/usuarios");
+      } else {
+        console.log("✓ Usuario logueado → /accesos");
+        navigate("/accesos");
+      }
+
       return { success: true };
     } catch (error) {
       console.error("❌ Error en login:", error);
@@ -207,11 +222,23 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const isAdmin = useCallback(() => hasPermission(1), [hasPermission]);
+
   const isSupervisorOrAbove = useCallback(() => hasPermission(2), [hasPermission]);
+
   const isOperatorOrAbove = useCallback(() => hasPermission(3), [hasPermission]);
-  const isAuditor = useCallback(() => user?.rol.id_rol === 4, [user]);
-  const isAuditorOrBelow = useCallback(() => user?.rol.id_rol >= 4, [user]);
-  const getCurrentRoleName = useCallback(() => user?.rol?.nombre_rol || "Desconocido", [user]);
+
+  const isAuditor = useCallback(() => user?.rol?.id_rol === 4, [user]);
+
+  const isAuditorOrBelow = useCallback(() => user?.rol?.id_rol >= 4, [user]);
+
+  const getCurrentRoleName = useCallback(
+    () => user?.rol?.nombre_rol || "Desconocido",
+    [user]
+  );
+
+  const getRoleIdNumber = useCallback(() => {
+    return user?.rol?.id_rol || null;
+  }, [user]);
 
   const value = {
     user,
@@ -228,6 +255,7 @@ export const AuthProvider = ({ children }) => {
     isAuditor,
     isAuditorOrBelow,
     getCurrentRoleName,
+    getRoleIdNumber,
   };
 
   return (

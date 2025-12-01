@@ -1,4 +1,4 @@
-# app/schemas/esquema_usuario.py (ACTUALIZADO CON FOTO)
+# app/schemas/esquema_usuario.py (ACTUALIZADO CON CÉDULA 10 DÍGITOS)
 
 from pydantic import BaseModel, EmailStr, validator, Field, computed_field
 from typing import Optional
@@ -8,6 +8,7 @@ from datetime import datetime
 class RolUsuarioSchema(BaseModel):
     id_rol: int
     nombre_rol: str
+
     model_config = {"from_attributes": True}
 
 class UsuarioBase(BaseModel):
@@ -18,7 +19,7 @@ class UsuarioBase(BaseModel):
     telefono: Optional[str] = Field(None, max_length=20)
     departamento: Optional[str] = Field(None, max_length=100)
     observaciones: Optional[str] = None
-    
+
     @validator('username')
     def validate_username(cls, v):
         if not v.replace('_', '').replace('-', '').isalnum():
@@ -26,7 +27,7 @@ class UsuarioBase(BaseModel):
         if ' ' in v:
             raise ValueError('El nombre de usuario no puede contener espacios')
         return v.lower()
-    
+
     @validator('telefono')
     def validate_telefono(cls, v):
         if v is not None:
@@ -36,7 +37,7 @@ class UsuarioBase(BaseModel):
         return v
 
 class UsuarioCreate(UsuarioBase):
-    cedula: int = Field(..., description="Cédula de identidad")
+    cedula: str = Field(..., min_length=7, max_length=10, description="Cédula de identidad (7-10 dígitos)")
     password: str = Field(..., min_length=8)
     rol_id: int = Field(default=1, description="ID del rol del modelo RolUsuario")
 
@@ -50,7 +51,7 @@ class UsuarioUpdate(BaseModel):
     departamento: Optional[str] = Field(None, max_length=100)
     observaciones: Optional[str] = None
     activo: Optional[bool] = None
-    
+
     @validator('username')
     def validate_username(cls, v):
         if v is not None:
@@ -63,7 +64,7 @@ class UsuarioUpdate(BaseModel):
 
 class UsuarioResponse(BaseModel):
     id: int
-    cedula: int
+    cedula: str
     username: str
     email: EmailStr
     nombre: str
@@ -72,18 +73,20 @@ class UsuarioResponse(BaseModel):
     telefono: Optional[str] = None
     departamento: Optional[str] = None
     observaciones: Optional[str] = None
+
     # NUEVO: Campo de foto
     foto_path: Optional[str] = None
+
     activo: bool
     ultimo_acceso: Optional[datetime] = None
     fecha_creacion: datetime
     fecha_actualizacion: Optional[datetime] = None
-    
+
     @computed_field
     @property
     def nombre_completo(self) -> str:
         return f"{self.nombre} {self.apellidos}"
-    
+
     model_config = {"from_attributes": True}
 
 # Perfil con campos de Persona opcionales para defaults
@@ -94,6 +97,7 @@ class PerfilResponse(UsuarioResponse):
     direccion: Optional[str] = "N/A"
     foto: Optional[str] = "/src/img/default-profile.png"
     unidad: Optional[str] = None
+
     model_config = {"from_attributes": True}
 
 class UsuarioLogin(BaseModel):
@@ -120,6 +124,7 @@ class TokenData(BaseModel):
 class RolResponse(BaseModel):
     id_rol: int
     nombre_rol: str
+
     model_config = {"from_attributes": True}
 
 class SolicitudRecuperacionPassword(BaseModel):

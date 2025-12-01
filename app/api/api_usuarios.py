@@ -68,7 +68,7 @@ async def create_user(
     username: str = Form(..., min_length=3, max_length=50),
     password: str = Form(..., min_length=6),
     email: str = Form(..., regex=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"),
-    cedula: str = Form(..., min_length=7, max_length=8),
+    cedula: str = Form(..., min_length=7, max_length=10),
     rol_id: int = Form(..., ge=2, le=3),
     nombre: str = Form(..., min_length=1, max_length=200),
     apellidos: str = Form(..., min_length=1, max_length=200),

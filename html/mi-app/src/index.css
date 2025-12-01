@@ -5,6 +5,10 @@
 @tailwind utilities; */
 
 @layer base {
+  html, body {
+    background-color: hsl(var(--background));
+  }
+
   :root {
     /* Material Design 3 Color Tokens */
     --primary: 262.1 83.3% 57.8%;
@@ -27,7 +31,7 @@
     --error-container: 0 84.2% 96.1%;
     --on-error-container: 0 84.2% 10%;
 
-    --background: 0 0% 100%;
+    --background: 0 0% 95%;
     --on-background: 0 0% 9%;
     --surface: 0 0% 100%;
     --on-surface: 0 0% 9%;

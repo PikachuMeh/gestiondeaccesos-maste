@@ -228,7 +228,7 @@ async def buscar_personas_por_cedula(
 
 
 # ✅ RUTA ESPECÍFICA PARA FOTOS - DEBE IR ANTES DE /{persona_id}
-@router.get("/foto/{filename}")
+@router.get("/files/{filename}")
 async def get_foto_persona(filename: str):
     """
     ✅ ENDPOINT PARA SERVIR FOTOS

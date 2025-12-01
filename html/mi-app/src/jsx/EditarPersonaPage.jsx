@@ -1,4 +1,5 @@
-// src/jsx/EditarPersonaPage.jsx - CORREGIDO CON IMAGENES DESDE API_BASE_URL
+// src/jsx/EditarPersonaPage.jsx - FOTO EN MISMO NIVEL QUE FORMULARIO (COMO ORIGINAL)
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
@@ -9,6 +10,7 @@ export default function EditarPersonaPage() {
   const API_BASE = `${API_V1}/personas`;
   const { id } = useParams();
   const navigate = useNavigate();
+
   const { token, loading: authLoading, isAuthenticated } = useAuth();
 
   // Estado para los datos de la persona
@@ -21,6 +23,7 @@ export default function EditarPersonaPage() {
     cargo: "",
     direccion: "",
     unidad: "",
+    departamento: "",
     observaciones: "",
   });
 
@@ -35,21 +38,26 @@ export default function EditarPersonaPage() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // ✅ Construir URL de imagen desde API_BASE_URL (COMO EN EL ORIGINAL)
+  const getImageUrl = (fotoPath) => {
+    if (!fotoPath) return null;
+    return `${API_V1}/files/${fotoPath}`;
+  };
+
   // Cargar datos de la persona al montar el componente
   useEffect(() => {
-    // Verificar autenticación antes de hacer el fetch
     if (!isAuthenticated()) {
       navigate("/login");
       return;
     }
 
     if (authLoading) {
-      return;  // Esperar a que el Context cargue
+      return;
     }
 
     fetch(`${API_BASE}/${id}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
       .then((r) => {
@@ -74,6 +82,7 @@ export default function EditarPersonaPage() {
           cargo: data.cargo || "",
           direccion: data.direccion || "",
           unidad: data.unidad || "",
+          departamento: data.departamento || "",
           observaciones: data.observaciones || "",
         });
         setFotoActual(data.foto || null);
@@ -104,7 +113,6 @@ export default function EditarPersonaPage() {
   // Manejar cambio de foto
   const handleFotoChange = (e) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
     // Validar que sea una imagen
@@ -138,16 +146,15 @@ export default function EditarPersonaPage() {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-    // Resetear el input de archivo
+
     const fileInput = document.getElementById("foto");
     if (fileInput) fileInput.value = "";
   };
 
-  // Guardar cambios - SOLO ENVÍA CAMPOS QUE CAMBIARON
+  // Guardar cambios
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Verificar autenticación antes de enviar
     if (!isAuthenticated()) {
       navigate("/login");
       return;
@@ -158,56 +165,25 @@ export default function EditarPersonaPage() {
     setSuccessMessage("");
 
     try {
-      // Crear FormData para enviar datos con archivo
       const data = new FormData();
 
-      // ✅ IMPORTANTE: Solo agregar campos que REALMENTE cambiaron
-      // Comparar con los datos originales del servidor
-      const originalData = {
-        nombre: formData.nombre,
-        apellido: formData.apellido,
-        email: formData.email,
-        empresa: formData.empresa,
-        cargo: formData.cargo,
-        direccion: formData.direccion,
-        unidad: formData.unidad,
-        observaciones: formData.observaciones,
-      };
-
-      // Verificar qué cambió
-      let hasChanges = false;
+      // Agregar todos los campos
       Object.keys(formData).forEach((key) => {
-        if (key === "documento_identidad") return; // No enviamos cédula
-        if (formData[key] !== null && formData[key] !== undefined) {
+        if (key === "documento_identidad") return;
+        if (formData[key]) {
           data.append(key, formData[key]);
-          hasChanges = true;
         }
       });
 
-      // Agregar foto si hay una nueva
+      // ✅ Agregar foto SOLO si hay una nueva
       if (nuevaFoto) {
-        console.log("✓ foto se va a actualizar");
         data.append("foto", nuevaFoto);
-        hasChanges = true;
-      }
-
-      // Debug: mostrar qué se va a enviar
-      console.log("=== FormData a enviar ===");
-      for (const [key, value] of data.entries()) {
-        console.log(`${key}: ${value instanceof File ? `File(${value.name})` : value}`);
-      }
-
-      // Validar que al menos haya algo para actualizar
-      if (!hasChanges) {
-        setError("No hay cambios para guardar");
-        setSaving(false);
-        return;
       }
 
       const response = await fetch(`${API_BASE}/${id}`, {
         method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: data,
       });
@@ -227,12 +203,10 @@ export default function EditarPersonaPage() {
         }
       }
 
-      const result = await response.json();
       setSuccessMessage("Persona actualizada correctamente");
       setNuevaFoto(null);
       setPreviewUrl(null);
 
-      // Redirigir después de 1.5 segundos
       setTimeout(() => {
         navigate(`/personas/${id}`);
       }, 1500);
@@ -249,40 +223,74 @@ export default function EditarPersonaPage() {
     navigate(`/personas/${id}`);
   };
 
-  // Early return para loading o no autenticado
-  if (authLoading || isLoading) return <div style={{ textAlign: "center", padding: "40px" }}>Cargando datos...</div>;
-  if (!isAuthenticated()) return null;
-
-  // ✅ Determinar qué foto mostrar (desde preview o API)
-  const displayFoto = previewUrl || (fotoActual ? `${API_V1}/personas/foto/${fotoActual}` : null);
+  // Loading state
+  if (authLoading || isLoading) {
+    return (
+      <div style={{ padding: "20px", textAlign: "center" }}>
+        <p>Cargando datos...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
-      <div style={{ backgroundColor: "#f9f9f9", borderRadius: "10px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
-        <div style={{ fontSize: "24px", fontWeight: "600", color: "#333", padding: "32px 32px 16px" }}>
-          EDITAR PERSONA
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fee",
+            border: "1px solid #fcc",
+            color: "#c33",
+            padding: "15px",
+            marginBottom: "20px",
+            borderRadius: "5px",
+          }}
+        >
+          ❌ {error}
         </div>
+      )}
 
-        {error && (
-          <div style={{ color: "#c33", backgroundColor: "#fee", border: "1px solid #fcc", borderRadius: "5px", padding: "16px", margin: "0 32px 16px" }}>
-            ✗ Error: {error}
-          </div>
-        )}
-        {successMessage && (
-          <div style={{ color: "#093", backgroundColor: "#efe", border: "1px solid #cfc", borderRadius: "5px", padding: "16px", margin: "0 32px 16px" }}>
-            ✓ {successMessage}
-          </div>
-        )}
+      {successMessage && (
+        <div
+          style={{
+            backgroundColor: "#efe",
+            border: "1px solid #cfc",
+            color: "#3c3",
+            padding: "15px",
+            marginBottom: "20px",
+            borderRadius: "5px",
+          }}
+        >
+          ✅ {successMessage}
+        </div>
+      )}
+
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "30px",
+          borderRadius: "8px",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h1 style={{ margin: "0 0 10px 0", fontSize: "24px", fontWeight: "bold" }}>
+          EDITAR PERSONA
+        </h1>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", padding: "0 32px 32px" }}>
-            {/* Left side - Form */}
-            <div style={{ display: "grid", gap: "24px" }}>
-              <div style={{ display: "grid", gap: "16px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: "500", margin: "0 0 8px 0" }}>Información Personal</h3>
+          {/* Contenedor principal con 2 columnas */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px", marginBottom: "20px" }}>
+            {/* Columna Izquierda - Formulario */}
+            <div>
+              {/* Información Personal */}
+              <div style={{ marginBottom: "30px" }}>
+                <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "15px" }}>
+                  Información Personal
+                </h2>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Nombre</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Nombre
+                  </label>
                   <input
                     type="text"
                     name="nombre"
@@ -290,19 +298,19 @@ export default function EditarPersonaPage() {
                     onChange={handleChange}
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
-                    placeholder="Nombre completo"
                     required
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Apellido</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Apellido
+                  </label>
                   <input
                     type="text"
                     name="apellido"
@@ -310,40 +318,39 @@ export default function EditarPersonaPage() {
                     onChange={handleChange}
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
-                    placeholder="Apellido completo"
                     required
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Cédula</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Cédula
+                  </label>
                   <input
                     type="text"
-                    name="documento_identidad"
                     value={formData.documento_identidad}
+                    disabled
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      backgroundColor: "#f5f5f5",
+                      color: "#999",
                       fontSize: "14px",
-                      boxSizing: "border-box",
-                      backgroundColor: "#f0f0f0",
                     }}
-                    placeholder="V-12345678"
-                    disabled
-                    title="La cédula no se puede modificar"
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Correo</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Correo
+                  </label>
                   <input
                     type="email"
                     name="email"
@@ -351,23 +358,26 @@ export default function EditarPersonaPage() {
                     onChange={handleChange}
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
-                    placeholder="usuario@ejemplo.com"
                     required
                   />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gap: "16px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: "500", margin: "0 0 8px 0" }}>Información Laboral</h3>
+              {/* Información Laboral */}
+              <div style={{ marginBottom: "30px" }}>
+                <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "15px" }}>
+                  Información Laboral
+                </h2>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Empresa</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Empresa
+                  </label>
                   <input
                     type="text"
                     name="empresa"
@@ -375,19 +385,18 @@ export default function EditarPersonaPage() {
                     onChange={handleChange}
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
-                    placeholder="Nombre de la empresa"
-                    required
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Cargo</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Cargo
+                  </label>
                   <input
                     type="text"
                     name="cargo"
@@ -395,18 +404,18 @@ export default function EditarPersonaPage() {
                     onChange={handleChange}
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
-                    placeholder="Cargo en la empresa"
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Unidad</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Unidad
+                  </label>
                   <input
                     type="text"
                     name="unidad"
@@ -414,184 +423,203 @@ export default function EditarPersonaPage() {
                     onChange={handleChange}
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
-                    placeholder="Unidad de trabajo"
                   />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gap: "16px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: "500", margin: "0 0 8px 0" }}>Información Adicional</h3>
+              {/* Información Adicional */}
+              <div>
+                <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "15px" }}>
+                  Información Adicional
+                </h2>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Dirección</label>
-                  <input
-                    type="text"
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Dirección
+                  </label>
+                  <textarea
                     name="direccion"
                     value={formData.direccion}
                     onChange={handleChange}
+                    rows="2"
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
+                      fontFamily: "inherit",
                     }}
-                    placeholder="Dirección completa"
-                    required
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Observaciones</label>
+                  <label style={{ display: "block", marginBottom: "5px", fontSize: "14px", fontWeight: "500" }}>
+                    Observaciones
+                  </label>
                   <textarea
                     name="observaciones"
                     value={formData.observaciones}
                     onChange={handleChange}
+                    rows="3"
                     style={{
                       width: "100%",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "5px",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                       fontFamily: "inherit",
                     }}
-                    rows={4}
-                    placeholder="Observaciones adicionales"
                   />
                 </div>
               </div>
-
-              <div style={{ display: "flex", gap: "12px", paddingTop: "16px" }}>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#999",
-                    color: "white",
-                    padding: "10px 16px",
-                    borderRadius: "5px",
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                  disabled={saving}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#4CAF50",
-                    color: "white",
-                    padding: "10px 16px",
-                    borderRadius: "5px",
-                    border: "none",
-                    cursor: saving ? "not-allowed" : "pointer",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    opacity: saving ? 0.6 : 1,
-                  }}
-                  disabled={saving}
-                >
-                  {saving ? "Guardando..." : "💾 Guardar Cambios"}
-                </button>
-              </div>
             </div>
 
-            {/* Right side - Photo Upload */}
-            <div style={{ display: "grid", gap: "16px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: "500", margin: 0 }}>Foto del Visitante</h3>
+            {/* Columna Derecha - Foto */}
+            <div>
+              <h2 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "15px" }}>
+                Foto del Visitante
+              </h2>
 
-              <div style={{ backgroundColor: "#f0f0f0", borderRadius: "8px", padding: "16px", display: "grid", gap: "12px" }}>
-                <div style={{ textAlign: "center" }}>
-                  <label style={{ display: "block", cursor: "pointer" }}>
-                    <div style={{
-                      width: "200px",
-                      height: "200px",
-                      margin: "0 auto 16px",
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                      backgroundColor: "#e0e0e0",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transition: "box-shadow 0.3s",
-                    }}>
-                      {displayFoto ? (
-                        <img
-                          src={displayFoto}
-                          alt="Foto del visitante"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                          onError={(e) => {
-                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23e0e0e0' width='200' height='200'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em'%3ESin Foto%3C/text%3E%3C/svg%3E";
-                          }}
-                        />
-                      ) : (
-                        <div style={{ textAlign: "center", color: "#999" }}>
-                          <div style={{ fontSize: "32px", marginBottom: "8px" }}>📷</div>
-                          <p style={{ margin: "0", fontSize: "12px" }}>Haz clic para subir foto</p>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      id="foto"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFotoChange}
-                      style={{ display: "none" }}
-                    />
-                  </label>
-                </div>
-
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#666" }}>
-                    Formatos permitidos: JPG, PNG, GIF, WEBP
-                  </p>
-                  <p style={{ margin: "0", fontSize: "11px", color: "#999" }}>
-                    Tamaño máximo: 5MB
-                  </p>
-                </div>
-
-                {(nuevaFoto || previewUrl) && (
-                  <button
-                    type="button"
-                    onClick={handleRemoverFoto}
-                    style={{
-                      backgroundColor: "#f44",
-                      color: "white",
-                      padding: "8px 16px",
-                      borderRadius: "5px",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      fontWeight: "bold",
+              {/* Preview de imagen */}
+              <div
+                style={{
+                  backgroundColor: "#f5f5f5",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  minHeight: "250px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "15px",
+                  overflow: "hidden",
+                }}
+              >
+                {previewUrl ? (
+                  // Nueva foto seleccionada
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : fotoActual ? (
+                  // Foto actual (construcción de URL correcta)
+                  console.log("Foto actual:", fotoActual),
+                  <img
+                    src={getImageUrl(fotoActual)}
+                    alt="Foto actual"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/300?text=Sin+Foto";
                     }}
-                  >
-                    ❌ Quitar nueva foto
-                  </button>
+                  />
+                ) : (
+                  // Sin foto
+                  <div style={{ textAlign: "center", color: "#999" }}>
+                    <div style={{ fontSize: "48px", marginBottom: "10px" }}>📸</div>
+                    <p>Sin foto</p>
+                  </div>
                 )}
               </div>
+
+              {/* Selector de archivo */}
+              <div
+                style={{
+                  border: "2px dashed #ccc",
+                  borderRadius: "8px",
+                  padding: "20px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  backgroundColor: "#fafafa",
+                  marginBottom: "10px",
+                }}
+              >
+                <input
+                  type="file"
+                  id="foto"
+                  accept="image/*"
+                  onChange={handleFotoChange}
+                  style={{ display: "none" }}
+                />
+                <label htmlFor="foto" style={{ cursor: "pointer", display: "block" }}>
+                  <div style={{ fontSize: "32px", marginBottom: "8px" }}>📷</div>
+                  <p style={{ fontWeight: "500", margin: "0 0 5px 0" }}>Seleccionar foto</p>
+                  <p style={{ fontSize: "12px", color: "#999", margin: 0 }}>
+                    Formatos permitidos: JPG, PNG, GIF, WEBP
+                  </p>
+                  <p style={{ fontSize: "12px", color: "#999", margin: "5px 0 0 0" }}>
+                    Tamaño máximo: 5MB
+                  </p>
+                </label>
+              </div>
+
+              {(previewUrl || nuevaFoto) && (
+                <button
+                  type="button"
+                  onClick={handleRemoverFoto}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                  }}
+                >
+                  🗑️ Eliminar foto
+                </button>
+              )}
             </div>
+          </div>
+
+          {/* Botones de acción */}
+          <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "30px" }}>
+            <button
+              type="button"
+              onClick={handleCancel}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                opacity: saving ? 0.6 : 1,
+              }}
+              disabled={saving}
+            >
+              {saving ? "Guardando..." : "Guardar"}
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
 }
-

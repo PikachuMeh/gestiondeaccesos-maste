@@ -1,4 +1,5 @@
-// src/main.jsx - PROVIDERS CON RUTAS ANIDADAS
+// src/main.jsx - VERSIÓN CORRECTA (ESTRUCTURA ORIGINAL RESTAURADA)
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -56,12 +57,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               >
                 {/* OPERADOR+ (rol <= 3) */}
                 <Route path="/accesos" element={<AccesosPage />} />
+                <Route path="/accesos/:id" element={<DetalleVisitaPage />} />
                 <Route path="/personas" element={<PersonasPage />} />
                 <Route path="/personas/:id" element={<DetallePersonaPage />} />
                 <Route path="/personas/:id/editar" element={<EditarPersonaPage />} />
-                <Route path="/registrar/acceso" element={<CrearAccesoPage />} />
-                <Route path="/registrar/visitante" element={<CrearVisitante />} />
-                <Route path="/visita/:id" element={<DetalleVisitaPage />} />
+                <Route path="/registro/acceso" element={<CrearAccesoPage />} />
+                <Route path="/registro/visitante" element={<CrearVisitante />} />
                 <Route path="/perfil" element={<Perfil_persona />} />
 
                 {/* SUPERVISOR+ (rol <= 2) */}
@@ -86,4 +87,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>
 );
-

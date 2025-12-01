@@ -1,18 +1,22 @@
-// src/jsx/DetalleUsuarioPage.jsx - CORREGIDO (solo envía campos modificados)
+// src/jsx/DetalleUsuarioPage.jsx - CORREGIDO (handleChange para rol + foto funcionando)
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
 import { useImages } from "../context/ImageContext.jsx";
 
+
 export default function DetalleUsuarioPage() {
   const { API_V1 } = useApi();
   const { getImageUrl } = useImages();
   const API_BASE = `${API_V1}/usuarios`;
 
+
   const { id } = useParams();
   const navigate = useNavigate();
   const { token, isAdmin } = useAuth();
+
 
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +27,7 @@ export default function DetalleUsuarioPage() {
   const [fotoFile, setFotoFile] = useState(null);
   const [updating, setUpdating] = useState(false);
 
+
   // Cargar usuario
   useEffect(() => {
     if (!token) {
@@ -30,6 +35,7 @@ export default function DetalleUsuarioPage() {
       setLoading(false);
       return;
     }
+
 
     const fetchUsuario = async () => {
       try {
@@ -41,10 +47,12 @@ export default function DetalleUsuarioPage() {
           },
         });
 
+
         if (!resp.ok) {
           const errData = await resp.json().catch(() => ({}));
           throw new Error(errData.detail || `HTTP ${resp.status}`);
         }
+
 
         const data = await resp.json();
         setUsuario(data);
@@ -58,12 +66,29 @@ export default function DetalleUsuarioPage() {
       }
     };
 
+
     fetchUsuario();
   }, [id, token]);
+
+
+  // ✅ MANEJADOR DE CAMBIOS - CONVIERTE rol_id A NÚMERO
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // ✅ IMPORTANTE: Convertir rol_id a número porque los selects devuelven strings
+    const finalValue = name === "rol_id" ? Number(value) : value;
+
+    setEditForm((prev) => ({
+      ...prev,
+      [name]: finalValue,
+    }));
+  };
+
 
   // Manejador para cambio de foto
   const handleFotoChange = (e) => {
     const file = e.target.files?.[0];
+
 
     if (file) {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -72,13 +97,16 @@ export default function DetalleUsuarioPage() {
         return;
       }
 
+
       const maxSizeMB = 5;
       if (file.size > maxSizeMB * 1024 * 1024) {
         setError(`Archivo demasiado grande. Máximo: ${maxSizeMB}MB`);
         return;
       }
 
+
       setFotoFile(file);
+
 
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -86,15 +114,18 @@ export default function DetalleUsuarioPage() {
       };
       reader.readAsDataURL(file);
 
+
       setError(null);
     }
   };
+
 
   // Limpiar foto
   const handleClearFoto = () => {
     setFotoFile(null);
     setFotoPreview(null);
   };
+
 
   // Guardar cambios - SOLO ENVÍA CAMPOS QUE CAMBIARON
   const handleSave = async () => {
@@ -103,14 +134,18 @@ export default function DetalleUsuarioPage() {
       return;
     }
 
+
     setUpdating(true);
     setError(null);
+
 
     try {
       const formData = new FormData();
 
+
       // ✅ IMPORTANTE: Solo agregar al FormData los campos que REALMENTE cambiaron
       // Comparar con el usuario original para saber qué cambió
+
 
       if (editForm.username && editForm.username !== usuario.username) {
         console.log(`✓ username cambió: ${usuario.username} → ${editForm.username}`);
@@ -119,12 +154,14 @@ export default function DetalleUsuarioPage() {
         console.log(`✗ username NO cambió, no se envía`);
       }
 
+
       if (editForm.email && editForm.email !== usuario.email) {
         console.log(`✓ email cambió: ${usuario.email} → ${editForm.email}`);
         formData.append("email", editForm.email);
       } else if (editForm.email) {
         console.log(`✗ email NO cambió, no se envía`);
       }
+
 
       if (editForm.cedula && editForm.cedula !== usuario.cedula) {
         console.log(`✓ cedula cambió: ${usuario.cedula} → ${editForm.cedula}`);
@@ -133,12 +170,15 @@ export default function DetalleUsuarioPage() {
         console.log(`✗ cedula NO cambió, no se envía`);
       }
 
+
+      // ✅ AHORA FUNCIONA PORQUE rol_id ES UN NÚMERO EN AMBOS LADOS
       if (editForm.rol_id && editForm.rol_id !== usuario.rol_id) {
         console.log(`✓ rol_id cambió: ${usuario.rol_id} → ${editForm.rol_id}`);
         formData.append("rol_id", editForm.rol_id);
       } else if (editForm.rol_id) {
-        console.log(`✗ rol_id NO cambió, no se envía`);
+        console.log(`✗ rol_id NO cambió (${editForm.rol_id} === ${usuario.rol_id}), no se envía`);
       }
+
 
       // Foto
       if (fotoFile) {
@@ -146,11 +186,13 @@ export default function DetalleUsuarioPage() {
         formData.append("foto", fotoFile);
       }
 
+
       // Debug: mostrar qué se va a enviar
       console.log("=== FormData a enviar ===");
       for (const [key, value] of formData.entries()) {
         console.log(`${key}: ${value instanceof File ? `File(${value.name})` : value}`);
       }
+
 
       // Validar que al menos haya algo para actualizar
       const hasChanges = Array.from(formData.keys()).length > 0;
@@ -160,6 +202,7 @@ export default function DetalleUsuarioPage() {
         return;
       }
 
+
       const response = await fetch(`${API_BASE}/${id}`, {
         method: "PUT",
         headers: {
@@ -168,10 +211,12 @@ export default function DetalleUsuarioPage() {
         body: formData,
       });
 
+
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.detail || `Error: ${response.status}`);
       }
+
 
       const updated = await response.json();
       setUsuario(updated);
@@ -179,6 +224,7 @@ export default function DetalleUsuarioPage() {
       setFotoFile(null);
       setFotoPreview(null);
       setIsEditing(false);
+
 
       alert("Usuario actualizado exitosamente");
     } catch (err) {
@@ -189,6 +235,7 @@ export default function DetalleUsuarioPage() {
     }
   };
 
+
   const handleCancel = () => {
     setIsEditing(false);
     setEditForm(usuario);
@@ -196,9 +243,11 @@ export default function DetalleUsuarioPage() {
     setFotoPreview(null);
   };
 
+
   const handleBack = () => {
     navigate("/usuarios");
   };
+
 
   // Estados de carga
   if (loading) {
@@ -208,6 +257,7 @@ export default function DetalleUsuarioPage() {
       </div>
     );
   }
+
 
   if (error && !usuario) {
     return (
@@ -240,6 +290,7 @@ export default function DetalleUsuarioPage() {
     );
   }
 
+
   if (!usuario) {
     return (
       <div style={{ textAlign: "center", padding: "40px" }}>
@@ -248,8 +299,10 @@ export default function DetalleUsuarioPage() {
     );
   }
 
-  // ✅ Usar getImageUrl para obtener la URL de la foto del operador
+
+  // ✅ Usar getImageUrl correctamente - CON DOS PARÁMETROS
   const fotoUrl = fotoPreview || getImageUrl('operador', usuario.foto_path);
+
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
@@ -272,6 +325,7 @@ export default function DetalleUsuarioPage() {
         </button>
       </div>
 
+
       {/* Mensaje de error */}
       {error && (
         <div
@@ -288,8 +342,10 @@ export default function DetalleUsuarioPage() {
         </div>
       )}
 
+
       {/* Contenedor principal - Grid 2 columnas */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "30px", alignItems: "start" }}>
+
 
         {/* ===== COLUMNA IZQUIERDA - FOTO ===== */}
         <div
@@ -307,6 +363,7 @@ export default function DetalleUsuarioPage() {
           <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold" }}>
             Foto del Operador
           </h3>
+
 
           {/* Foto - Mostrar preview o URL de la API */}
           {fotoUrl ? (
@@ -343,6 +400,7 @@ export default function DetalleUsuarioPage() {
               Sin foto
             </div>
           )}
+
 
           {/* Botón editar (solo admin) */}
           {isAdmin() && (
@@ -392,6 +450,7 @@ export default function DetalleUsuarioPage() {
             </div>
           )}
 
+
           {/* Limpiar foto si está en preview */}
           {fotoPreview && (
             <button
@@ -413,6 +472,7 @@ export default function DetalleUsuarioPage() {
           )}
         </div>
 
+
         {/* ===== COLUMNA DERECHA - INFORMACIÓN ===== */}
         <div
           style={{
@@ -427,14 +487,16 @@ export default function DetalleUsuarioPage() {
             <div style={{ display: "grid", gap: "15px" }}>
               <h3 style={{ margin: "0 0 15px 0", fontSize: "18px" }}>Editar Usuario</h3>
 
+
               <div>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
                   Username:
                 </label>
                 <input
                   type="text"
+                  name="username"
                   value={editForm.username || ""}
-                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                  onChange={handleChange}
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -445,6 +507,7 @@ export default function DetalleUsuarioPage() {
                   }}
                 />
               </div>
+
 
               <div>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
@@ -452,8 +515,9 @@ export default function DetalleUsuarioPage() {
                 </label>
                 <input
                   type="email"
+                  name="email"
                   value={editForm.email || ""}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  onChange={handleChange}
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -464,6 +528,7 @@ export default function DetalleUsuarioPage() {
                   }}
                 />
               </div>
+
 
               <div>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
@@ -471,8 +536,9 @@ export default function DetalleUsuarioPage() {
                 </label>
                 <input
                   type="text"
+                  name="cedula"
                   value={editForm.cedula || ""}
-                  onChange={(e) => setEditForm({ ...editForm, cedula: e.target.value })}
+                  onChange={handleChange}
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -484,13 +550,15 @@ export default function DetalleUsuarioPage() {
                 />
               </div>
 
+
               <div>
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold", fontSize: "13px" }}>
                   Rol:
                 </label>
                 <select
-                  value={editForm.rol_id || 3}
-                  onChange={(e) => setEditForm({ ...editForm, rol_id: Number(e.target.value) })}
+                  name="rol_id"
+                  value={editForm.rol_id || ""}
+                  onChange={handleChange}
                   style={{
                     width: "100%",
                     padding: "8px",
@@ -500,10 +568,12 @@ export default function DetalleUsuarioPage() {
                     boxSizing: "border-box",
                   }}
                 >
-                  <option value={2}>Supervisor</option>
-                  <option value={3}>Operador</option>
+                  <option value="">Seleccionar rol...</option>
+                  <option value="3">Supervisor</option>
+                  <option value="2">Operador</option>
                 </select>
               </div>
+
 
               {/* Botones de guardar/cancelar */}
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
@@ -552,6 +622,7 @@ export default function DetalleUsuarioPage() {
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.username}</p>
               </div>
 
+
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Nombre Completo:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
@@ -559,30 +630,36 @@ export default function DetalleUsuarioPage() {
                 </p>
               </div>
 
+
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Email:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.email}</p>
               </div>
+
 
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Cédula:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.cedula}</p>
               </div>
 
+
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Rol:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.rol?.nombre_rol || "N/A"}</p>
               </div>
+
 
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Teléfono:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.telefono || "N/A"}</p>
               </div>
 
+
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Departamento:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>{usuario.departamento || "N/A"}</p>
               </div>
+
 
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Estado:</p>
@@ -591,12 +668,14 @@ export default function DetalleUsuarioPage() {
                 </p>
               </div>
 
+
               <div>
                 <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontSize: "13px" }}>Fecha de Creación:</p>
                 <p style={{ margin: "0", color: "#666", fontSize: "14px" }}>
                   {usuario.fecha_creacion ? new Date(usuario.fecha_creacion).toLocaleDateString() : "N/A"}
                 </p>
               </div>
+
 
               {/* Botón editar */}
               {isAdmin() && (
@@ -625,4 +704,3 @@ export default function DetalleUsuarioPage() {
     </div>
   );
 }
-

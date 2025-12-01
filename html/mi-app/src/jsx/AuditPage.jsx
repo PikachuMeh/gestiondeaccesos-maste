@@ -1,50 +1,193 @@
-// src/jsx/AuditPage.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
-import "../css/audit_panel.css";
-import { useApi } from "../context/ApiContext.jsx"; 
-
+import { useApi } from "../context/ApiContext.jsx";
 
 const PAGE_SIZE = 10;
 const DEBOUNCE_MS = 400;
 
+// Acciones disponibles (normalizar búsqueda)
+const ACCIONES_DISPONIBLES = [
+  { value: "crear", label: "Crear" },
+  { value: "editar", label: "Editar" },
+  { value: "borrar", label: "Borrar" },
+  { value: "consultar", label: "Consultar" },
+  { value: "ingreso", label: "Ingreso (Visita)" },
+  { value: "salida", label: "Salida (Visita)" },
+];
+
+// Funciones helper memoizadas (fuera del componente para no recrearse)
+const fmtFecha = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("es-VE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+const getAccionDisplay = (realizado) => {
+  if (!realizado) return "N/A";
+  const r = realizado.toLowerCase();
+  if (r.includes("borrar") || r.includes("delete")) return "Borrado";
+  if (r.includes("crear") || r.includes("create")) return "Creación";
+  if (r.includes("editar") || r.includes("update")) return "Edición";
+  if (r.includes("consultar") || r.includes("get")) return "Consulta";
+  if (r.includes("ingreso")) return "Ingreso";
+  if (r.includes("salida")) return "Salida";
+  return realizado.charAt(0).toUpperCase() + realizado.slice(1);
+};
+
+const getAccionClass = (realizado) => {
+  const r = realizado?.toLowerCase() || "";
+  if (r.includes("borrar") || r.includes("delete"))
+    return "bg-red-100 text-red-800 border-red-300";
+  if (r.includes("crear") || r.includes("create"))
+    return "bg-green-100 text-green-800 border-green-300";
+  if (r.includes("editar") || r.includes("update"))
+    return "bg-blue-100 text-blue-800 border-blue-300";
+  if (r.includes("consultar") || r.includes("get"))
+    return "bg-yellow-100 text-yellow-800 border-yellow-300";
+  if (r.includes("ingreso"))
+    return "bg-purple-100 text-purple-800 border-purple-300";
+  if (r.includes("salida"))
+    return "bg-orange-100 text-orange-800 border-orange-300";
+  return "bg-gray-100 text-gray-800 border-gray-300";
+};
+
+const getEntidadDisplay = (tabla) => {
+  if (!tabla) return "N/A";
+  const entities = {
+    usuarios: "Usuarios",
+    personas: "Personas",
+    visitas: "Visitas",
+    centros_datos: "Centros de datos",
+    control: "Auditoría",
+  };
+  return entities[tabla] || tabla.charAt(0).toUpperCase() + tabla.slice(1);
+};
+
+const buildHumanMessage = (log) => {
+  const { realizado, tabla_afectada, registro_id, detalles, usuario } = log || {};
+  const actor = usuario?.username || "Usuario desconocido";
+
+  let parsed = null;
+  if (detalles && typeof detalles === "string") {
+    try {
+      parsed = JSON.parse(detalles);
+    } catch {
+      // ignorar
+    }
+  } else if (typeof detalles === "object" && detalles !== null) {
+    parsed = detalles;
+  }
+
+  const entityName = getEntidadDisplay(tabla_afectada);
+  let sujeto = "";
+
+  if (parsed?.usuario_afectado) {
+    const u = parsed.usuario_afectado;
+    sujeto = `${u.nombre_completo || u.username || "usuario"} (ID ${u.id ?? "?"})`;
+  } else if (parsed?.entidad) {
+    const e = parsed.entidad;
+    sujeto = `${e.nombre || e.descripcion || entityName} (ID ${registro_id ?? e.id ?? "?"})`;
+  } else if (registro_id) {
+    sujeto = `${entityName} con ID ${registro_id}`;
+  } else {
+    sujeto = entityName;
+  }
+
+  const r = (realizado || "").toLowerCase();
+
+  if (tabla_afectada === "usuarios") {
+    if (r.includes("crear"))
+      return `${actor} creó el usuario ${sujeto}.`;
+    if (r.includes("editar") || r.includes("update"))
+      return `${actor} actualizó los datos del usuario ${sujeto}.`;
+    if (r.includes("borrar") || r.includes("delete") || r.includes("desactivar"))
+      return `${actor} eliminó o desactivó al usuario ${sujeto}.`;
+  }
+
+  if (tabla_afectada === "personas") {
+    if (r.includes("crear"))
+      return `${actor} registró la persona ${sujeto}.`;
+    if (r.includes("editar") || r.includes("update"))
+      return `${actor} modificó los datos de la persona ${sujeto}.`;
+    if (r.includes("borrar") || r.includes("delete"))
+      return `${actor} eliminó el registro de la persona ${sujeto}.`;
+  }
+
+  if (tabla_afectada === "visitas") {
+    if (r.includes("crear"))
+      return `${actor} creó un nuevo acceso/visita para ${sujeto}.`;
+    if (r.includes("editar") || r.includes("update"))
+      return `${actor} modificó la visita asociada a ${sujeto}.`;
+    if (r.includes("borrar") || r.includes("delete"))
+      return `${actor} eliminó la visita de ${sujeto}.`;
+    if (r.includes("ingreso"))
+      return `${actor} registró el ingreso de la visita ${sujeto}.`;
+    if (r.includes("salida"))
+      return `${actor} registró la salida de la visita ${sujeto}.`;
+  }
+
+  const accionLabel = getAccionDisplay(realizado);
+  if (accionLabel === "Consulta") {
+    return `${actor} consultó información de ${sujeto}.`;
+  }
+
+  return `${actor} realizó una acción de ${accionLabel.toLowerCase()} sobre ${sujeto}.`;
+};
+
 export default function AuditPage() {
   const { API_V1 } = useApi();
-
   const API_BASE = `${API_V1}/audit/logs`;
   const navigate = useNavigate();
   const { token } = useAuth();
+
   const didMount = useRef(false);
   const debounceTimer = useRef(null);
 
+  // Estados
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // error específico de fechas
   const [dateError, setDateError] = useState("");
 
-  // Filtros
+  // Filtros (SIN usuario_id)
   const [realizado, setRealizado] = useState("");
   const [tablaAfectada, setTablaAfectada] = useState("");
-  const [usuarioId, setUsuarioId] = useState("");
-
   const [actorUsername, setActorUsername] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
 
-  // Hoy en formato yyyy-mm-dd para usar en max del input date
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  const fetchLogs = async () => {
-    if (!token) return;
+  // Validar fechas con useCallback para evitar recreaciones
+  const validateDates = useCallback(
+    (from, to) => {
+      let msg = "";
+      if (to && to > todayStr) {
+        msg = "La fecha 'hasta' no puede ser posterior a hoy.";
+      } else if (from && to && from > to) {
+        msg = "La fecha 'desde' no puede ser mayor que la fecha 'hasta'.";
+      }
+      setDateError(msg);
+      return msg === "";
+    },
+    [todayStr]
+  );
 
-    // Si hay error de fechas, no llamamos a la API
-    if (dateError) return;
+  // Fetch optimizado con useCallback
+  const fetchLogs = useCallback(async () => {
+    if (!token || dateError) return;
 
     setLoading(true);
     setError(null);
@@ -55,18 +198,15 @@ export default function AuditPage() {
         size: String(PAGE_SIZE),
       });
 
-      if (realizado.trim()) params.append("realizado", realizado.trim());
+      if (realizado.trim()) params.append("realizado", realizado.trim().toLowerCase());
       if (tablaAfectada.trim()) params.append("tabla_afectada", tablaAfectada.trim());
-      if (usuarioId.trim()) params.append("usuario_id", usuarioId.trim());
-
-      if (actorUsername.trim()) params.append("usuario_username", actorUsername.trim());
+      if (actorUsername.trim())
+        params.append("usuario_username", actorUsername.trim());
       if (fechaDesde.trim()) params.append("fecha_desde", fechaDesde.trim());
       if (fechaHasta.trim()) params.append("fecha_hasta", fechaHasta.trim());
 
       const response = await fetch(`${API_BASE}?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {
@@ -89,340 +229,303 @@ export default function AuditPage() {
     } finally {
       if (didMount.current) setLoading(false);
     }
-  };
+  }, [
+    token,
+    dateError,
+    page,
+    realizado,
+    tablaAfectada,
+    actorUsername,
+    fechaDesde,
+    fechaHasta,
+    API_BASE,
+  ]);
 
-  // Valida que fechaDesde <= fechaHasta y que fechaHasta <= hoy
-  const validateDates = (from, to) => {
-    // Siempre limpiamos error y luego lo fijamos si algo está mal
-    let msg = "";
-
-    if (to && to > todayStr) {
-      msg = "La fecha 'hasta' no puede ser posterior a hoy.";
-    } else if (from && to && from > to) {
-      msg = "La fecha 'desde' no puede ser mayor que la fecha 'hasta'.";
-    }
-
-    setDateError(msg);
-    return msg === "";
-  };
-
+  // Debounce effect mejorado
   useEffect(() => {
     didMount.current = true;
 
-    // Validar fechas antes de programar fetch
-    const ok = validateDates(fechaDesde, fechaHasta);
-
-    if (!ok) {
-      // si el rango es inválido, no lanzamos fetch; solo limpiamos timer
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+    const isValidDates = validateDates(fechaDesde, fechaHasta);
+    if (!isValidDates) {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
       return () => {
         didMount.current = false;
-        if (debounceTimer.current) {
-          clearTimeout(debounceTimer.current);
-        }
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
       };
     }
 
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     debounceTimer.current = setTimeout(() => {
       fetchLogs();
     }, DEBOUNCE_MS);
 
     return () => {
-      didMount.current = false;
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, realizado, tablaAfectada, usuarioId, actorUsername, fechaDesde, fechaHasta]);
+  }, [
+    page,
+    realizado,
+    tablaAfectada,
+    actorUsername,
+    fechaDesde,
+    fechaHasta,
+    validateDates,
+    fetchLogs,
+  ]);
 
-  // ==== Helpers de presentación ====
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      didMount.current = false;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
-  const fmtFecha = (iso) => {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString("es-VE", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
+  // Handlers con useCallback
+  const handlePreviousPage = useCallback(() => {
+    setPage((p) => Math.max(1, p - 1));
+  }, []);
 
-  const getAccionDisplay = (realizado) => {
-    if (!realizado) return "N/A";
-    const r = realizado.toLowerCase();
-    if (r.includes("borrar") || r.includes("delete")) return "Borrado";
-    if (r.includes("crear") || r.includes("create")) return "Creación";
-    if (r.includes("editar") || r.includes("update")) return "Edición";
-    if (r.includes("consultar") || r.includes("get")) return "Consulta";
-    return realizado.charAt(0).toUpperCase() + realizado.slice(1);
-  };
+  const handleNextPage = useCallback(() => {
+    setPage((p) => (p < pages ? p + 1 : p));
+  }, [pages]);
 
-  const getAccionClass = (realizado) => {
-    const r = realizado?.toLowerCase() || "";
-    if (r.includes("borrar") || r.includes("delete")) return "ap-action-borrado";
-    if (r.includes("crear") || r.includes("create")) return "ap-action-creacion";
-    if (r.includes("editar") || r.includes("update")) return "ap-action-edicion";
-    if (r.includes("consultar") || r.includes("get")) return "ap-action-consulta";
-    return "ap-action-default";
-  };
-
-  const getEntidadDisplay = (tabla) => {
-    if (!tabla) return "N/A";
-    switch (tabla) {
-      case "usuarios":
-        return "Usuarios";
-      case "personas":
-        return "Personas";
-      case "visitas":
-        return "Visitas";
-      case "centros_datos":
-        return "Centros de datos";
-      case "control":
-        return "Auditoría";
-      default:
-        return tabla.charAt(0).toUpperCase() + tabla.slice(1);
-    }
-  };
-
-  const buildHumanMessage = (log) => {
-    const { realizado, tabla_afectada, registro_id, detalles, usuario } = log || {};
-    const actor = usuario?.username || "Usuario desconocido";
-
-    let parsed = null;
-    if (detalles && typeof detalles === "string") {
-      try {
-        parsed = JSON.parse(detalles);
-      } catch {
-        // ignorar
-      }
-    } else if (typeof detalles === "object" && detalles !== null) {
-      parsed = detalles;
-    }
-
-    const entityName = getEntidadDisplay(tabla_afectada);
-
-    let sujeto = "";
-    if (parsed && parsed.usuario_afectado) {
-      const u = parsed.usuario_afectado;
-      sujeto = `${u.nombre_completo || u.username || "usuario"} (ID ${u.id ?? "?"})`;
-    } else if (parsed && parsed.entidad) {
-      const e = parsed.entidad;
-      sujeto = `${e.nombre || e.descripcion || entityName} (ID ${registro_id ?? e.id ?? "?"})`;
-    } else if (registro_id) {
-      sujeto = `${entityName} con ID ${registro_id}`;
-    } else {
-      sujeto = entityName;
-    }
-
-    const accionLabel = getAccionDisplay(realizado);
-    const r = (realizado || "").toLowerCase();
-
-    if (tabla_afectada === "usuarios") {
-      if (r.includes("crear")) {
-        return `${actor} creó el usuario ${sujeto}.`;
-      }
-      if (r.includes("editar") || r.includes("update")) {
-        return `${actor} actualizó los datos del usuario ${sujeto}.`;
-      }
-      if (r.includes("borrar") || r.includes("delete") || r.includes("desactivar")) {
-        return `${actor} eliminó o desactivó al usuario ${sujeto}.`;
-      }
-    }
-
-    if (tabla_afectada === "personas") {
-      if (r.includes("crear")) {
-        return `${actor} registró la persona ${sujeto}.`;
-      }
-      if (r.includes("editar") || r.includes("update")) {
-        return `${actor} modificó los datos de la persona ${sujeto}.`;
-      }
-      if (r.includes("borrar") || r.includes("delete")) {
-        return `${actor} eliminó el registro de la persona ${sujeto}.`;
-      }
-    }
-
-    if (tabla_afectada === "visitas") {
-      if (r.includes("crear")) {
-        return `${actor} creó un nuevo acceso/visita para ${sujeto}.`;
-      }
-      if (r.includes("editar") || r.includes("update")) {
-        return `${actor} modificó la visita asociada a ${sujeto}.`;
-      }
-      if (r.includes("borrar") || r.includes("delete")) {
-        return `${actor} eliminó la visita de ${sujeto}.`;
-      }
-      if (r.includes("ingreso")) {
-        return `${actor} registró el ingreso de la visita ${sujeto}.`;
-      }
-      if (r.includes("salida")) {
-        return `${actor} registró la salida de la visita ${sujeto}.`;
-      }
-    }
-
-    if (accionLabel === "Consulta") {
-      return `${actor} consultó información de ${sujeto}.`;
-    }
-
-    return `${actor} realizó una acción de ${accionLabel.toLowerCase()} sobre ${sujeto}.`;
-  };
-
-  if (loading) {
-    return <div className="ap-loading">Cargando logs de auditoría...</div>;
-  }
-
-  if (error) {
-    return <div className="ap-error">Error: {error}</div>;
-  }
+  const handleClearFilters = useCallback(() => {
+    setRealizado("");
+    setTablaAfectada("");
+    setActorUsername("");
+    setFechaDesde("");
+    setFechaHasta("");
+    setPage(1);
+  }, []);
 
   return (
-    <div className="ap-container">
-      <h1 className="ap-title">Gestión avanzada - Auditoría</h1>
-      <p className="ap-subtitle">
-        Vista resumida de las acciones realizadas por los usuarios del sistema.
-      </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Auditoría del Sistema</h1>
+          <p className="text-slate-400">
+            Vista resumida de las acciones realizadas por los usuarios del sistema.
+          </p>
+        </div>
 
-      {/* Filtros */}
-      <div className="ap-filters">
-        <input
-          type="text"
-          placeholder="Usuario actor (username)"
-          value={actorUsername}
-          onChange={(e) => {
-            setActorUsername(e.target.value);
-            setPage(1);
-          }}
-          className="ap-filter"
-        />
-        <input
-          type="text"
-          placeholder="Entidad (usuarios, personas, visitas...)"
-          value={tablaAfectada}
-          onChange={(e) => {
-            setTablaAfectada(e.target.value);
-            setPage(1);
-          }}
-          className="ap-filter"
-        />
-        <input
-          type="text"
-          placeholder="Acción (ej: crear, borrar, editar...)"
-          value={realizado}
-          onChange={(e) => {
-            setRealizado(e.target.value);
-            setPage(1);
-          }}
-          className="ap-filter"
-        />
-        <input
-          type="date"
-          value={fechaDesde}
-          max={fechaHasta || todayStr}
-          onChange={(e) => {
-            setFechaDesde(e.target.value);
-            setPage(1);
-          }}
-          className="ap-filter"
-        />
-        <input
-          type="date"
-          value={fechaHasta}
-          max={todayStr}
-          min={fechaDesde || undefined}
-          onChange={(e) => {
-            setFechaHasta(e.target.value);
-            setPage(1);
-          }}
-          className="ap-filter"
-        />
+        {/* Filtros */}
+        <div className="bg-slate-800 rounded-lg p-6 mb-8 border border-slate-700">
+          <h2 className="text-lg font-semibold text-white mb-4">Filtros</h2>
 
-        <button
-          onClick={() => {
-            setRealizado("");
-            setTablaAfectada("");
-            setUsuarioId("");
-            setActorUsername("");
-            setFechaDesde("");
-            setFechaHasta("");
-            setPage(1);
-            setDateError("");
-          }}
-          className="ap-btn-clear"
-        >
-          Limpiar
-        </button>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            {/* Acción (SELECT DROPDOWN) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Acción Realizada
+              </label>
+              <select
+                value={realizado}
+                onChange={(e) => setRealizado(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+              >
+                <option value="">Todas las acciones</option>
+                {ACCIONES_DISPONIBLES.map((accion) => (
+                  <option key={accion.value} value={accion.value}>
+                    {accion.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      {/* Mensaje de error de fechas */}
-      {dateError && <div className="ap-error ap-error-dates">{dateError}</div>}
+            {/* Tabla Afectada */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Tabla Afectada
+              </label>
+              <select
+                value={tablaAfectada}
+                onChange={(e) => setTablaAfectada(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+              >
+                <option value="">Todas las tablas</option>
+                <option value="usuarios">Usuarios</option>
+                <option value="personas">Personas</option>
+                <option value="visitas">Visitas</option>
+                <option value="centros_datos">Centros de datos</option>
+                <option value="control">Auditoría</option>
+              </select>
+            </div>
 
-      {/* Tabla de logs */}
-      <div className="ap-table-container">
-        <table className="ap-table">
-          <thead>
-            <tr>
-              <th>Fecha / Hora</th>
-              <th>Usuario (actor)</th>
-              <th>Acción</th>
-              <th>Entidad</th>
-              <th>Descripción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length > 0 ? (
-              rows.map((log) => (
-                <tr key={log.id}>
-                  <td>{fmtFecha(log.fecha_completa || log.fecha)}</td>
-                  <td>{log.usuario?.username || "N/A"}</td>
-                  <td className={getAccionClass(log.realizado)}>
-                    {getAccionDisplay(log.realizado)}
-                  </td>
-                  <td>{getEntidadDisplay(log.tabla_afectada)}</td>
-                  <td>{buildHumanMessage(log)}</td>
-                </tr>
-              ))
+            {/* Actor Username */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Usuario (Actor)
+              </label>
+              <input
+                type="text"
+                value={actorUsername}
+                onChange={(e) => setActorUsername(e.target.value)}
+                placeholder="Ej: admin"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+            </div>
+
+            {/* Fecha Desde */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Desde (Fecha)
+              </label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                max={todayStr}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+            </div>
+
+            {/* Fecha Hasta */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Hasta (Fecha)
+              </label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                max={todayStr}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Error de fechas */}
+          {dateError && (
+            <div className="mb-4 p-3 bg-red-900 border border-red-700 rounded-lg text-red-100 text-sm">
+              ⚠️ {dateError}
+            </div>
+          )}
+
+          {/* Botón Limpiar */}
+          <button
+            onClick={handleClearFilters}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+          >
+            Limpiar Filtros
+          </button>
+        </div>
+
+        {/* Error General */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg text-red-100">
+            ❌ {error}
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+              <p className="text-slate-400">Cargando registros de auditoría...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tabla */}
+        {!loading && (
+          <>
+            {rows.length === 0 ? (
+              <div className="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
+                <p className="text-slate-400 text-lg">
+                  {total === 0
+                    ? "No hay logs disponibles con los filtros aplicados."
+                    : "Sin registros en esta página."}
+                </p>
+              </div>
             ) : (
-              <tr>
-                <td colSpan={5} className="ap-no-data">
-                  No hay logs disponibles.
-                </td>
-              </tr>
+              <div className="bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-700 border-b border-slate-600">
+                      <tr>
+                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
+                          Fecha / Hora
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
+                          Usuario (Actor)
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
+                          Acción
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
+                          Entidad
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
+                          Descripción
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                      {rows.map((log, idx) => (
+                        <tr
+                          key={`${log.id || idx}`}
+                          className="hover:bg-slate-700 transition-colors"
+                        >
+                          <td className="px-6 py-3 text-slate-300">
+                            {fmtFecha(log.fecha_completa || log.fecha)}
+                          </td>
+                          <td className="px-6 py-3 text-slate-300">
+                            {log.usuario?.username || "N/A"}
+                          </td>
+                          <td className="px-6 py-3">
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getAccionClass(
+                                log.realizado
+                              )}`}
+                            >
+                              {getAccionDisplay(log.realizado)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3 text-slate-300">
+                            {getEntidadDisplay(log.tabla_afectada)}
+                          </td>
+                          <td className="px-6 py-3 text-slate-300 max-w-md truncate">
+                            {buildHumanMessage(log)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
 
-      <div className="ap-pagination">
-        <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page === 1}
-        >
-          Anterior
-        </button>
-        <span>
-          Página {page} de {pages} – Total {total}
-        </span>
-        <button
-          onClick={() => setPage((p) => Math.min(pages, p + 1))}
-          disabled={page === pages}
-        >
-          Siguiente
-        </button>
+            {/* Paginación */}
+            {pages > 1 && (
+              <div className="mt-6 flex items-center justify-between">
+                <div className="text-slate-400 text-sm">
+                  Página {page} de {pages} | Total: {total} registros
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={page === 1}
+                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={page === pages}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                  >
+                    Siguiente →
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      <button className="ap-btn-back" onClick={() => navigate("/accesos")}>
-        Volver a Accesos
-      </button>
     </div>
   );
 }
