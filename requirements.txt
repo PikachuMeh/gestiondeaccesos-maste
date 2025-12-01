@@ -33,3 +33,5 @@ email-validator==2.1.0
 fastapi-mail
 passlib[bcrypt]==1.7.4
 reportlab
+httpx
+requests

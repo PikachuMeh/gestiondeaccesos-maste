@@ -77,7 +77,7 @@ class Usuario(Base):
     __table_args__ = {"schema": SCHEMA}
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    cedula = Column(Integer, unique=True, nullable=False, index=True)
+    cedula = Column(String(20), unique=True, nullable=False, index=True)
     username = Column(String(255), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     nombre = Column(String(200), nullable=False)

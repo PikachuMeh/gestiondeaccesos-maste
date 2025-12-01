@@ -1,17 +1,24 @@
-// src/components/RegistroAcceso.jsx - COMPLETO CORREGIDO ✅
+// src/components/RegistroAcceso.jsx - COMPLETO CON ENVÍO DE FOTO ✅
+
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApi } from "../../context/ApiContext.jsx";
 import { useImages } from "../../context/ImageContext.jsx";
 
+
 // ✅ Helper sin hook - recibe token como parámetro
 function apiFetch(url, options = {}) {
   const token = localStorage.getItem('access_token');
   const headers = {
-    'Content-Type': 'application/json',
     ...options.headers,
   };
+  
+  // Si es FormData, NO setear Content-Type (el navegador lo hará automáticamente)
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -32,9 +39,12 @@ function apiFetch(url, options = {}) {
   });
 }
 
+
 export default function RegistroAcceso() {
   const navigate = useNavigate();
   const { API_V1 } = useApi();  // ✅ Hook top-level componente
+  const { getImageUrl } = useImages();  // ✅ Para construir URLs de imagen
+
 
   // Estados varios
   const [detalleCache, setDetalleCache] = useState(new Map());
@@ -55,6 +65,9 @@ export default function RegistroAcceso() {
     fecha_creacion: "",
   });
   const [newFoto, setNewFoto] = useState(null);
+  const [fotoFile, setFotoFile] = useState(null);  // ✅ Para guardar el archivo
+  const [imagenError, setImagenError] = useState(false);  // ✅ Para manejar errores de imagen
+
 
   // ✅ 1 CENTRO ÚNICO + MÚLTIPLES ÁREAS
   const [centros, setCentros] = useState([]);
@@ -64,6 +77,7 @@ export default function RegistroAcceso() {
   const [tiposActividad, setTiposActividad] = useState([]);
   const [idTipo_act, setidTipo_act] = useState("");
 
+
   const [formVisita, setFormVisita] = useState({
     descripcion_actividad: "",
     autorizado_por: "",
@@ -71,16 +85,19 @@ export default function RegistroAcceso() {
     observaciones: "",
   });
 
+
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const debounceRef = useRef();
 
+
   const API_PERSONAS = `${API_V1}/personas`;
   const API_VISITAS = `${API_V1}/visitas`;
   const API_CENTROS = `${API_V1}/visitas/centros-datos`;
   const API_AUTH = `${API_V1}/auth`;
+
 
   async function fetchCurrentUser() {
     try {
@@ -98,6 +115,7 @@ export default function RegistroAcceso() {
     }
   }
 
+
   // ✅ SELECCIÓN CENTRO ÚNICO
   const onCentroCheckboxChange = (id) => {
     setCdSel(id);
@@ -109,6 +127,7 @@ export default function RegistroAcceso() {
     }
   };
 
+
   // ✅ SELECCIÓN MÚLTIPLES ÁREAS
   const onAreaCheckboxChange = (id) => {
     setAreasSel(prev => {
@@ -119,17 +138,20 @@ export default function RegistroAcceso() {
     });
   };
 
+
   async function fetchCedulas() {
     const r = await apiFetch(`${API_PERSONAS}/cedulas`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
 
+
   async function searchCedulas(prefix) {
     const r = await apiFetch(`${API_PERSONAS}/search?q=${encodeURIComponent(prefix)}`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
+
 
   async function fetchPersonaById(id) {
     if (detalleCache.has(id)) return detalleCache.get(id);
@@ -138,6 +160,7 @@ export default function RegistroAcceso() {
     setDetalleCache(prev => new Map(prev).set(id, p));
     return p;
   }
+
 
   async function loadCentros() {
     setLoading(true);
@@ -152,6 +175,7 @@ export default function RegistroAcceso() {
       setLoading(false);
     }
   }
+
 
   async function loadAreasPorCentro(centro_id) {
     if (!centro_id) {
@@ -171,6 +195,7 @@ export default function RegistroAcceso() {
     }
   }
 
+
   async function loadTipoActividad() {
     setLoading(true);
     try {
@@ -185,12 +210,14 @@ export default function RegistroAcceso() {
     }
   }
 
+
   useEffect(() => {
     loadCentros();
     loadTipoActividad();
     fetchCedulas().then(setSugerencias).catch(console.error);
     fetchCurrentUser();
   }, []);
+
 
   const onCedulaChange = (e) => {
     const raw = e.target.value;
@@ -211,6 +238,9 @@ export default function RegistroAcceso() {
       fecha_creacion: new Date().toISOString(),
     });
     setNewFoto(null);
+    setFotoFile(null);  // ✅ Reset foto file
+    setImagenError(false);  // ✅ Reset error de imagen
+
 
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -223,6 +253,7 @@ export default function RegistroAcceso() {
     }, 200);
   };
 
+
   const getSelectedActividadName = () => {
     const selectedTipo = tiposActividad.find(
       t => String(t.id_tipo_actividad) === String(idTipo_act)
@@ -231,10 +262,39 @@ export default function RegistroAcceso() {
   };
   const requiereEquiposYObs = ["1", "2", "3", "6", "7"].includes(String(idTipo_act));
 
+
+  // ✅ OBTENER URL DE FOTO CONSTRUIDA CORRECTAMENTE
+  const getFotoPersonaUrl = () => {
+    if (newFoto) {
+      // Si hay una foto nueva cargada localmente, usa su URL blob
+      return newFoto;
+    }
+    
+    const fotoDelForm = form.foto;
+    if (!fotoDelForm) return null;
+    
+    // Si ya es una URL completa (contiene http), úsala directamente
+    if (typeof fotoDelForm === 'string' && fotoDelForm.startsWith('http')) {
+      return fotoDelForm;
+    }
+    
+    // Si es un nombre de archivo, construye la URL con getImageUrl
+    if (typeof fotoDelForm === 'string') {
+      return getImageUrl("persona", fotoDelForm);
+    }
+    
+    return null;
+  };
+
+
   const onSelectById = async (id) => {
     try {
       const p = await fetchPersonaById(id);
       setSelected(p);
+      
+      // ✅ Construir la URL de foto completa con getImageUrl
+      const fotoUrl = p.foto ? getImageUrl("persona", p.foto) : "";
+      
       setForm({
         cedula: p.documento_identidad || "",
         nombre: p.nombre || "",
@@ -244,29 +304,36 @@ export default function RegistroAcceso() {
         cargo: p.cargo || "",
         direccion: p.direccion || "",
         observaciones: p.observaciones || "",
-        foto: p.foto || "",
+        foto: fotoUrl,  // ✅ Aquí guardas la URL completa
         unidad: p.empresa === "SENIAT" ? (p.unidad || "") : "",
         fecha_creacion: p.fecha_creacion || new Date().toISOString(),
       });
       setQ(String(p.documento_identidad || ""));
       setNewFoto(null);
+      setFotoFile(null);  // ✅ Reset foto file
+      setImagenError(false);  // ✅ Reset error de imagen
     } catch (err) {
       console.error(err);
       alert("Error cargando persona seleccionada");
     }
   };
 
+
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setNewFoto(URL.createObjectURL(file));
+    setFotoFile(file);  // ✅ Guardar el archivo original
     setForm(f => ({ ...f, foto: file }));
+    setImagenError(false);  // ✅ Reset error de imagen
   };
+
 
   const onActividadChange = (e) => {
     const id = e.target.value;
     setidTipo_act(id);
   };
+
 
   function onChangeVisita(e) {
     const { name, value, type, checked } = e.target;
@@ -276,11 +343,20 @@ export default function RegistroAcceso() {
     setFormVisita(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
+
   function validarDescripcion(desc) {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
 
-  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS
+
+  // ✅ Manejar error al cargar imagen
+  const handleImageError = (type) => {
+    console.error(`Error cargando imagen de ${type}`);
+    setImagenError(true);
+  };
+
+
+  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS + FOTO
   async function onRegistrarAcceso() {
     if (!selected?.id) return alert("Seleccione un visitante");
     if (!cdSel) return alert("Seleccione un centro de datos");
@@ -292,6 +368,7 @@ export default function RegistroAcceso() {
       return alert("Ingrese una descripción de al menos 3 caracteres");
     }
 
+
     setPosting(true);
     try {
       const tipoActividadId = parseInt(idTipo_act, 10);
@@ -299,27 +376,37 @@ export default function RegistroAcceso() {
         throw new Error("ID de tipo de actividad inválido");
       }
 
-      const body = {
-        persona_id: selected.id,
-        centro_datos_id: Number(cdSel),
-        centro_datos_ids: [Number(cdSel)],
-        tipo_actividad_id: tipoActividadId,
-        area_ids: areasSel.map(Number),
-        descripcion_actividad: formVisita.descripcion_actividad.trim(),
-        fecha_programada: new Date().toISOString(),
-        autorizado_por: formVisita.autorizado_por?.trim() || null,
-        equipos_ingresados: formVisita.equipos_ingresados?.trim() || null,
-        observaciones: formVisita.observaciones?.trim() || null,
-        estado_id: 1,
-      };
+
+      // ✅ USAR FORMDATA PARA ENVIAR FOTO
+      const formData = new FormData();
+      formData.append('persona_id', selected.id);
+      formData.append('centro_datos_id', Number(cdSel));
+      formData.append('centro_datos_ids', JSON.stringify([Number(cdSel)]));
+      formData.append('tipo_actividad_id', tipoActividadId);
+      formData.append('area_ids', JSON.stringify(areasSel.map(Number)));
+      formData.append('descripcion_actividad', formVisita.descripcion_actividad.trim());
+      formData.append('fecha_programada', new Date().toISOString());
+      formData.append('autorizado_por', formVisita.autorizado_por?.trim() || null);
+      formData.append('equipos_ingresados', formVisita.equipos_ingresados?.trim() || null);
+      formData.append('observaciones', formVisita.observaciones?.trim() || null);
+      formData.append('estado_id', 1);
+      
+      // ✅ AGREGAR FOTO SI EXISTE
+      if (fotoFile) {
+        formData.append('foto', fotoFile);
+        console.log("✅ Foto adjuntada al FormData:", fotoFile.name);
+      }
+
 
       const res = await apiFetch(API_VISITAS, {
         method: "POST",
-        body: JSON.stringify(body),
+        body: formData,  // ✅ Usar FormData en lugar de JSON
       });
+
 
       const created = await res.json();
       alert(`✅ Visita creada exitosamente (Centro: ${centros.find(c => c.id === cdSel)?.nombre}, Áreas: ${areasSel.length})`);
+
 
       // Reset form
       setCdSel(null);
@@ -332,8 +419,12 @@ export default function RegistroAcceso() {
         equipos_ingresados: "",
         observaciones: ""
       });
+      setImagenError(false);  // ✅ Reset error de imagen
+      setFotoFile(null);  // ✅ Reset foto file
+
 
       navigate(`/accesos/${created.id}`);
+
 
     } catch (e) {
       console.error("❌ Error:", e);
@@ -343,11 +434,14 @@ export default function RegistroAcceso() {
     }
   }
 
+
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
   const showNoResults = q && !selected && sugerencias.length === 0;
 
-  // ✅ CONSTRUIR URL DE FOTO DESDE API (como en DetallePersonaPage)
-  const fotoUrl = selected?.foto ? `${API_V1}/personas/foto/${selected.foto}` : null;
+
+  // ✅ Obtener URL de foto actual
+  const fotoUrl = getFotoPersonaUrl();
+
 
   if (userLoading) {
     return (
@@ -357,6 +451,7 @@ export default function RegistroAcceso() {
     );
   }
 
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
@@ -365,6 +460,7 @@ export default function RegistroAcceso() {
           <div className="p-8">
             <form className="space-y-5" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
               <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
+
 
               {/* CÉDULA */}
               <div className="space-y-4">
@@ -404,11 +500,13 @@ export default function RegistroAcceso() {
                 )}
               </div>
 
+
               {/* DATOS VISITA */}
               {selected && (
                 <>
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
+
 
                     {/* CENTRO DE DATOS - SOLO 1 */}
                     <div>
@@ -442,6 +540,7 @@ export default function RegistroAcceso() {
                         ))}
                       </div>
                     </div>
+
 
                     {/* ÁREAS - MÚLTIPLES */}
                     {cdSel && areas.length > 0 && (
@@ -483,6 +582,7 @@ export default function RegistroAcceso() {
                       </div>
                     )}
 
+
                     {/* TIPO ACTIVIDAD */}
                     <div>
                       <label className="block text-sm font-medium text-on-surface mb-2">
@@ -503,6 +603,7 @@ export default function RegistroAcceso() {
                       </select>
                     </div>
                   </div>
+
 
                   {/* CAMPOS TEXTO */}
                   <div className="grid grid-cols-1 gap-4">
@@ -527,6 +628,7 @@ export default function RegistroAcceso() {
                       />
                     </div>
                   </div>
+
 
                   {requiereEquiposYObs && (
                     <div className="grid grid-cols-1 gap-4">
@@ -553,6 +655,7 @@ export default function RegistroAcceso() {
                     </div>
                   )}
 
+
                   <div className="flex justify-start pt-6">
                     <button
                       type="button"
@@ -571,6 +674,7 @@ export default function RegistroAcceso() {
             </form>
           </div>
 
+
           {/* Right side - FOTO */}
           <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-linear-to-br from-primary via-primary/95 to-primary/80"></div>
@@ -580,16 +684,16 @@ export default function RegistroAcceso() {
             <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
             <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/20 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
 
+
             <div className="text-center relative z-10">
-              {fotoUrl ? (
+              {/* ✅ VALIDACIÓN Y MOSTRADO DE FOTO CORREGIDO */}
+              {fotoUrl && !imagenError ? (
                 <div className="w-72 h-72 mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
                   <img
                     src={fotoUrl}
-                    alt={`Foto de ${selected.nombre} ${selected.apellido}`}
+                    alt={`Foto de ${selected?.nombre} ${selected?.apellido}`}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='288' height='288' viewBox='0 0 288 288'%3E%3Crect fill='%23e0e0e0' width='288' height='288'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em' font-size='32'%3ESin Foto%3C/text%3E%3C/svg%3E";
-                    }}
+                    onError={() => handleImageError("persona")}
                   />
                 </div>
               ) : (
@@ -599,6 +703,7 @@ export default function RegistroAcceso() {
                   </svg>
                 </div>
               )}
+
 
               {selected && (
                 <div className="space-y-2">
@@ -622,4 +727,3 @@ export default function RegistroAcceso() {
     </div>
   );
 }
-

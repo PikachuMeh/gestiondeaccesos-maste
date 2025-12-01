@@ -569,8 +569,8 @@ export default function DetalleUsuarioPage() {
                   }}
                 >
                   <option value="">Seleccionar rol...</option>
-                  <option value="3">Supervisor</option>
-                  <option value="2">Operador</option>
+                  <option value="2">Supervisor</option>
+                  <option value="3">Operador</option>
                 </select>
               </div>
 

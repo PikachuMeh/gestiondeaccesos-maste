@@ -77,10 +77,26 @@ export default function DetallePersonaPage() {
 
   // ✅ Función para construir URL de imagen (igual que EditarPersona)
   const getImageUrl = (fotoPath) => {
-    if (!fotoPath) return null;
-    if (fotoPath.startsWith("http")) return fotoPath;
-    return `${API_V1}/files/${fotoPath}`;
-  };
+  if (!fotoPath) return null;
+  
+  // Si ya es una URL completa
+  if (fotoPath.startsWith("http")) return fotoPath;
+  
+  // Si la ruta tiene la estructura esperada del backend
+  // Asumiendo que fotoPath es algo como "imagenes/personas/28007701.png"
+  // o solo "28007701.png"
+  
+  const baseURL = "http://172.16.56.102:5050";
+  
+  // Si fotoPath ya incluye "imagenes/personas/"
+  if (fotoPath.includes("imagenes/")) {
+    return `${baseURL}/${fotoPath}`;
+  }
+  
+  // Si es solo el nombre del archivo
+  return `${baseURL}/imagenes/personas/${fotoPath}`;
+};
+  
 
   // Estados de carga
   if (authLoading || pageLoading) {
@@ -140,7 +156,8 @@ export default function DetallePersonaPage() {
           {/* Lado Izquierdo - Imagen */}
           <div className="md:col-span-1">
             <div className="bg-gray-100 rounded-lg overflow-hidden">
-              {persona.foto ? (
+             {console.log(persona)}
+	       {persona.foto ? (
                 <img
                   src={getImageUrl(persona.foto)}
                   alt={`${persona.nombre} ${persona.apellido}`}

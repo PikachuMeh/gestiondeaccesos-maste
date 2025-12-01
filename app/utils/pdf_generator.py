@@ -1,292 +1,241 @@
-from reportlab.lib.pagesizes import letter
+# app/utils/pdf_generator.py - MEJORADO CON SOPORTE PARA BASE64 ✅
+
+from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
-from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-from io import BytesIO
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
 from datetime import datetime
+import io
 import base64
+from PIL import Image as PILImage
+from io import BytesIO
 
-def generar_pdf_visita(visita_data: dict) -> bytes:
-    """Genera PDF con diseño oficial del SENIAT - VERSIÓN MEJORADA"""
+def generar_pdf_visita(visita_data):
+    """
+    Genera un PDF profesional de constancia de visita
     
+    ✅ Recibe:
+    - visita_data['foto_data']: String en base64 de la foto
+    - Resto de datos de la visita
+    """
+    
+    # Crear buffer en memoria
     buffer = BytesIO()
+    
+    # Crear documento PDF con tamaño A4
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
         rightMargin=0.5*inch,
         leftMargin=0.5*inch,
-        topMargin=0.5*inch,
-        bottomMargin=0.5*inch
+        topMargin=0.75*inch,
+        bottomMargin=0.75*inch
     )
     
-    styles = getSampleStyleSheet()
-    
-    # 🎨 COLORES PERSONALIZADOS
-    color_header_bg = colors.HexColor('#1a5f7a')      # Azul oscuro
-    color_label_bg = colors.HexColor('#e8b5a2')       # Marrón/beige
-    color_border = colors.HexColor('#999999')
-    
-    # 📝 ESTILOS PERSONALIZADOS
-    title_style = ParagraphStyle(
-        'Title',
-        parent=styles['Normal'],
-        fontSize=18,
-        textColor=colors.black,
-        fontName='Helvetica-Bold',
-        alignment=TA_CENTER,
-        spaceAfter=4,
-        spaceBefore=0
-    )
-    
-    fecha_style = ParagraphStyle(
-        'Fecha',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.grey,
-        fontName='Helvetica',
-        alignment=TA_CENTER,
-        spaceAfter=12
-    )
-    
-    intro_style = ParagraphStyle(
-        'Intro',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.black,
-        fontName='Helvetica',
-        alignment=TA_JUSTIFY,
-        spaceAfter=6,
-        leading=12
-    )
-    
-    section_header_style = ParagraphStyle(
-        'SectionHeader',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.white,
-        fontName='Helvetica-Bold',
-        alignment=TA_LEFT,
-        spaceAfter=2,
-        leftIndent=6
-    )
-    
-    label_style = ParagraphStyle(
-        'Label',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.black,
-        fontName='Helvetica-Bold',
-        spaceAfter=2
-    )
-    
-    value_style = ParagraphStyle(
-        'Value',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.black,
-        fontName='Helvetica',
-        spaceAfter=2
-    )
-    
+    # Contenedor de elementos
     elements = []
     
-    # ═════════════════════════════════════════════════════════════
-    # ENCABEZADO: TÍTULO Y FECHA
-    # ═════════════════════════════════════════════════════════════
-    elements.append(Paragraph("ACCESO REGISTRADO", title_style))
-    
-    fecha_str = datetime.now().strftime('FECHA: %d/%m/%Y %H:%M:%S')
-    elements.append(Paragraph(fecha_str, fecha_style))
-    
-    elements.append(Spacer(1, 0.15*inch))
-    
-    # ═════════════════════════════════════════════════════════════
-    # TEXTO INTRODUCTORIO
-    # ═════════════════════════════════════════════════════════════
-    intro_text = (
-        f"<b>Tengo el honor</b> de dirigirme a usted, en la oportunidad de extenderle un cordial "
-        f"saludo Bolivariano, Revolucionario e Institucional, en nombre del personal que labora "
-        f"en esta Gerencia, y a su vez hacer constatancia que el personal de la "
-        f"<b>\"UNIDAD O EMPRESA\"</b>: <b>{visita_data.get('persona_empresa', 'N/A')}</b>, Titular de la "
-        f"cédula venezolana: <b>{visita_data.get('persona_cedula', 'N/A')}</b>, al cual se le conoce como "
-        f"<b>{visita_data.get('persona_nombre', 'N/A')}</b> al área para ejecutar: "
-        f"<b>{visita_data.get('descripcion_actividad', 'N/A')}</b>, correspondiente al área estipulada "
-        f"por la empresa o unidad antes mencionada."
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        textColor=colors.HexColor('#00378B'),
+        spaceAfter=6,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
     )
     
-    elements.append(Paragraph(intro_text, intro_style))
-    elements.append(Spacer(1, 0.25*inch))
-    
-    # ═════════════════════════════════════════════════════════════
-    # FOTO DEL VISITANTE
-    # ═════════════════════════════════════════════════════════════
-    foto_base64 = visita_data.get('foto_data')
-    if foto_base64:
-        try:
-            foto_bytes = base64.b64decode(foto_base64)
-            foto_stream = BytesIO(foto_bytes)
-            foto_stream.seek(0)
-            img = Image(foto_stream, width=1.0*inch, height=1.3*inch)
-            
-            foto_table = Table([[img]], colWidths=[1.1*inch])
-            foto_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('BORDER', (0, 0), (-1, -1), 1, color_border),
-                ('LEFTPADDING', (0, 0), (-1, -1), 4),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ]))
-            
-            elements.append(foto_table)
-            elements.append(Spacer(1, 0.25*inch))
-            print("✅ Foto cargada correctamente desde Base64")
-        except Exception as e:
-            print(f"⚠️ Error procesando foto: {e}")
-    else:
-        print("⚠️ Sin foto en datos del PDF")
-    
-    # ═════════════════════════════════════════════════════════════
-    # SECCIÓN: DATOS DEL VISITANTE
-    # ═════════════════════════════════════════════════════════════
-    datos_header = Table(
-        [[Paragraph("Datos del visitante", section_header_style)]],
-        colWidths=[7.0*inch]
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.HexColor('#00378B'),
+        spaceAfter=8,
+        spaceBefore=8,
+        fontName='Helvetica-Bold'
     )
-    datos_header.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), color_label_bg),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(datos_header)
     
-    # Tabla de datos del visitante
-    datos_table = Table([
-        [Paragraph("CÉDULA", label_style), Paragraph(visita_data.get('persona_cedula', 'N/A'), value_style)],
-        [Paragraph("NOMBRE Y APELLIDOS", label_style), Paragraph(visita_data.get('persona_nombre', 'N/A'), value_style)],
-        [Paragraph("UNIDAD O EMPRESA", label_style), Paragraph(visita_data.get('persona_empresa', 'N/A'), value_style)],
-        [Paragraph("EMAIL", label_style), Paragraph(visita_data.get('persona_email', 'N/A'), value_style)],
-    ], colWidths=[2.0*inch, 5.0*inch])
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_LEFT,
+        spaceAfter=4
+    )
     
-    datos_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), color_label_bg),
-        ('BACKGROUND', (1, 0), (1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 1, color_border),
-        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
-    ]))
-    
-    elements.append(datos_table)
+    # ====== HEADER ======
+    elements.append(Paragraph("SISTEMA DE CONTROL DE ACCESOS", title_style))
+    elements.append(Paragraph("SENIAT - CONSTANCIA DE VISITA", title_style))
     elements.append(Spacer(1, 0.2*inch))
     
-    # ═════════════════════════════════════════════════════════════
-    # SECCIÓN: BITÁCORA DE ACCIÓN
-    # ═════════════════════════════════════════════════════════════
-    bitacora_header = Table(
-        [[Paragraph("BITÁCORA DE ACCIÓN", section_header_style)]],
-        colWidths=[7.0*inch]
-    )
-    bitacora_header.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), color_label_bg),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(bitacora_header)
+    # ====== INFORMACIÓN PRINCIPAL ======
+    info_data = [
+        ['Código de Visita:', visita_data.get('codigo_visita', 'N/A'), 'Fecha/Hora:', visita_data.get('fecha_programada', 'N/A')],
+        ['Estado:', visita_data.get('estado', 'N/A'), 'Tipo de Actividad:', visita_data.get('tipo_actividad', 'N/A')],
+    ]
     
-    # Tabla de bitácora
-    bitacora_table = Table([
-        [Paragraph("TRABAJO A REALIZAR", label_style), Paragraph(visita_data.get('descripcion_actividad', 'N/A'), value_style)],
-        [Paragraph("ÁREA DONDE SE REALIZÓ", label_style), Paragraph(', '.join(visita_data.get('areas_nombres', ['N/A'])) if visita_data.get('areas_nombres') else 'N/A', value_style)],
-        [Paragraph("CENTRO DE DATOS", label_style), Paragraph(visita_data.get('centro_nombre', 'N/A'), value_style)],
-        [Paragraph("UBICACIÓN", label_style), Paragraph(visita_data.get('centro_ciudad', 'N/A'), value_style)],
-        [Paragraph("FECHA PROGRAMADA", label_style), Paragraph(visita_data.get('fecha_programada', 'N/A'), value_style)],
-        [Paragraph("CÓDIGO DE VISITA", label_style), Paragraph(visita_data.get('codigo_visita', 'N/A'), value_style)],
-    ], colWidths=[2.0*inch, 5.0*inch])
-    
-    bitacora_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), color_label_bg),
-        ('BACKGROUND', (1, 0), (1, -1), colors.white),
+    info_table = Table(info_data, colWidths=[1.5*inch, 2*inch, 1.5*inch, 2*inch])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F0F0F0')),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # ====== INFORMACIÓN DE LA PERSONA ======
+    elements.append(Paragraph("INFORMACIÓN DE LA PERSONA", heading_style))
+    
+    # Preparar foto
+    foto_image = None
+    if visita_data.get('foto_data'):
+        try:
+            # Decodificar base64
+            foto_bytes = base64.b64decode(visita_data['foto_data'])
+            foto_img = PILImage.open(BytesIO(foto_bytes))
+            
+            # Redimensionar si es necesario (máx 200x200)
+            foto_img.thumbnail((200, 200), PILImage.Resampling.LANCZOS)
+            
+            # Guardar en buffer
+            foto_buffer = BytesIO()
+            foto_img.save(foto_buffer, format='PNG')
+            foto_buffer.seek(0)
+            
+            foto_image = Image(foto_buffer, width=1.2*inch, height=1.2*inch)
+            print("✅ Foto base64 procesada correctamente")
+        except Exception as e:
+            print(f"⚠️ Error procesando foto base64: {e}")
+            foto_image = None
+    
+    # Tabla de persona
+    persona_data = []
+    
+    # Primera fila: Foto + Datos básicos
+    col1_persona = []
+    if foto_image:
+        col1_persona.append(foto_image)
+    
+    col2_persona = [
+        Paragraph(f"<b>Nombre:</b> {visita_data.get('persona_nombre', 'N/A')}", normal_style),
+        Paragraph(f"<b>Cédula:</b> {visita_data.get('persona_cedula', 'N/A')}", normal_style),
+        Paragraph(f"<b>Email:</b> {visita_data.get('persona_email', 'N/A')}", normal_style),
+        Paragraph(f"<b>Empresa:</b> {visita_data.get('persona_empresa', 'N/A')}", normal_style),
+        Paragraph(f"<b>Cargo:</b> {visita_data.get('persona_cargo', 'N/A')}", normal_style),
+    ]
+    
+    persona_table = Table([
+        [col1_persona if foto_image else '', col2_persona]
+    ], colWidths=[1.5*inch, 4.5*inch])
+    persona_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+        ('BORDER', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 1, color_border),
-        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
+    elements.append(persona_table)
+    elements.append(Spacer(1, 0.2*inch))
     
-    elements.append(bitacora_table)
-    elements.append(Spacer(1, 0.25*inch))
+    # ====== INFORMACIÓN DEL CENTRO ======
+    elements.append(Paragraph("INFORMACIÓN DEL CENTRO", heading_style))
+    centro_data = [
+        ['Centro:', visita_data.get('centro_nombre', 'N/A'), 'Código:', visita_data.get('centro_codigo', 'N/A')],
+        ['Ubicación:', visita_data.get('centro_ciudad', 'N/A'), 'Dirección:', visita_data.get('centro_direccion', 'N/A')],
+    ]
+    centro_table = Table(centro_data, colWidths=[1*inch, 2.2*inch, 1*inch, 2.2*inch])
+    centro_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F0F0F0')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+    ]))
+    elements.append(centro_table)
+    elements.append(Spacer(1, 0.2*inch))
     
-    # ═════════════════════════════════════════════════════════════
-    # INFORMACIÓN ADICIONAL (si existe)
-    # ═════════════════════════════════════════════════════════════
+    # ====== DETALLES DE LA VISITA ======
+    elements.append(Paragraph("DETALLES DE LA VISITA", heading_style))
+    
+    # Áreas
+    areas_str = ', '.join(visita_data.get('areas_nombres', [])) if visita_data.get('areas_nombres') else 'N/A'
+    elementos_visita = [
+        [Paragraph(f"<b>Áreas Autorizadas:</b> {areas_str}", normal_style)],
+        [Paragraph(f"<b>Descripción de Actividad:</b> {visita_data.get('descripcion_actividad', 'N/A')}", normal_style)],
+        [Paragraph(f"<b>Autorizado Por:</b> {visita_data.get('autorizado_por', 'N/A')}", normal_style)],
+        [Paragraph(f"<b>Motivo de Autorización:</b> {visita_data.get('motivo_autorizacion', 'N/A')}", normal_style)],
+    ]
+    
+    # Agregar equipos si existen
+    if visita_data.get('equipos_ingresados') and visita_data.get('equipos_ingresados') != 'N/A':
+        elementos_visita.append(
+            [Paragraph(f"<b>Equipos Ingresados:</b> {visita_data.get('equipos_ingresados', 'N/A')}", normal_style)]
+        )
+    
+    # Agregar observaciones si existen
     if visita_data.get('observaciones') and visita_data.get('observaciones') != 'N/A':
-        obs_header = Table(
-            [[Paragraph("OBSERVACIONES", section_header_style)]],
-            colWidths=[7.0*inch]
+        elementos_visita.append(
+            [Paragraph(f"<b>Observaciones:</b> {visita_data.get('observaciones', 'N/A')}", normal_style)]
         )
-        obs_header.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), color_label_bg),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        elements.append(obs_header)
-        elements.append(Paragraph(visita_data.get('observaciones'), value_style))
-        elements.append(Spacer(1, 0.1*inch))
     
-    if visita_data.get('autorizado_por') and visita_data.get('autorizado_por') != 'N/A':
-        auth_header = Table(
-            [[Paragraph("AUTORIZADO POR", section_header_style)]],
-            colWidths=[7.0*inch]
-        )
-        auth_header.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), color_label_bg),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        elements.append(auth_header)
-        elements.append(Paragraph(visita_data.get('autorizado_por'), value_style))
-        elements.append(Spacer(1, 0.1*inch))
+    visita_table = Table(elementos_visita, colWidths=[6*inch])
+    visita_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('BORDER', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+    ]))
+    elements.append(visita_table)
+    elements.append(Spacer(1, 0.3*inch))
     
-    # ═════════════════════════════════════════════════════════════
-    # PIE DE PÁGINA
-    # ═════════════════════════════════════════════════════════════
-    elements.append(Spacer(1, 0.15*inch))
-    footer_text = f"Sistema de Control de Accesos SENIAT | Generado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"
-    footer_style = ParagraphStyle('Footer', parent=styles['Normal'],
-        fontSize=7, alignment=TA_CENTER, textColor=colors.grey)
-    elements.append(Paragraph(footer_text, footer_style))
+    # ====== FOOTER ======
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        textColor=colors.grey,
+    )
+    elements.append(Paragraph("Este documento es una constancia oficial de registro de visita", footer_style))
+    elements.append(Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", footer_style))
     
-    # ═════════════════════════════════════════════════════════════
-    # CONSTRUIR PDF
-    # ═════════════════════════════════════════════════════════════
+    # ====== GENERAR PDF ======
     doc.build(elements)
     
+    # Obtener bytes del PDF
     pdf_bytes = buffer.getvalue()
     buffer.close()
     
     return pdf_bytes
+
+
+# ====== FUNCIÓN AUXILIAR PARA PROCESAR BASE64 ======
+def procesar_foto_base64(foto_data_base64):
+    """
+    Convierte una foto en base64 a una imagen PIL
+    Útil para procesamiento adicional
+    """
+    try:
+        foto_bytes = base64.b64decode(foto_data_base64)
+        foto_img = PILImage.open(BytesIO(foto_bytes))
+        return foto_img
+    except Exception as e:
+        print(f"Error procesando foto: {e}")
+        return None

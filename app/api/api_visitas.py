@@ -17,6 +17,7 @@ from app.schemas import (
     VisitaSalida,
     VisitaTipoActividad,
 )
+import httpx
 import base64
 from pathlib import Path
 from fastapi.responses import StreamingResponse
@@ -475,23 +476,29 @@ async def crear_visita(
                 from pathlib import Path
                 import base64
                 
-                # Construir ruta a la foto
-                foto_path = Path(f"app/files/images/personas/{persona.foto}")
+                # 🔧 CONSTRUIR RUTA CORRECTA basada en tu estructura
+                # Si persona.foto es solo "28007701.png"
+                foto_filename = persona.foto.split('/')[-1]  # Extrae solo el nombre
+                foto_path = Path(f"app/files/images/personas/{foto_filename}")
                 
                 if foto_path.exists():
                     with open(foto_path, 'rb') as f:
                         foto_bytes = f.read()
-                        foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
-                        visita_pdf_data['foto_data'] = foto_base64
-                        print(f"✅ Foto cargada en BASE64: {len(foto_base64)} caracteres")
+                    foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
+                    visita_pdf_data['foto_data'] = foto_base64
+                    print(f"✅ Foto cargada en BASE64: {len(foto_base64)} caracteres")
                 else:
-                    print(f"⚠️ Foto no encontrada en ruta: {foto_path}")
+                    print(f"⚠️ Foto no encontrada: {foto_path}")
                     visita_pdf_data['foto_data'] = None
+                    
             except Exception as e:
                 print(f"⚠️ Error leyendo foto: {e}")
+                import traceback
+                traceback.print_exc()
                 visita_pdf_data['foto_data'] = None
         else:
-            print("⚠️ Persona sin foto (foto_url es None)")
+            print("⚠️ Persona sin foto")
+            visita_pdf_data['foto_data'] = None
         
         # 📄 Generar PDF
         try:
