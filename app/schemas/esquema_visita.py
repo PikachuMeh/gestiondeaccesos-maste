@@ -6,7 +6,7 @@ Define la validación y serialización de datos de visitas.
 from pydantic import BaseModel, validator, Field, field_validator, ConfigDict
 from typing import Optional, List
 from datetime import datetime, timezone
-
+from fastapi import Form 
 
 # ============================================
 # Schemas anidados (para las relaciones)
@@ -85,33 +85,24 @@ class VisitaBase(BaseModel):
 
 
 class VisitaCreate(BaseModel):
-    """
-    Datos necesarios para crear una visita.
-    Alinear nombres EXACTOS con columnas del modelo SQLAlchemy.
-    """
-    # FKs obligatorias
-    persona_id: int = Field(..., ge=1, description="ID de la persona visitante")
-    centro_datos_id: int = Field(..., ge=1, description="ID del centro de datos")
+    """Datos necesarios para crear una visita."""
+    # ... (todos tus campos actuales igual)
+    persona_id: int = Field(..., ge=1)
+    centro_datos_id: int = Field(..., ge=1)
+    estado_id: Optional[int] = Field(None, ge=1)
+    tipo_actividad_id: Optional[int] = Field(None, ge=1)
+    descripcion_actividad: str = Field(..., min_length=1)
+    fecha_programada: datetime = Field(...)
+    autorizado_por: Optional[str] = Field(None, max_length=200)
+    motivo_autorizacion: Optional[str] = None
+    equipos_ingresados: Optional[str] = None
+    equipos_retirados: Optional[str] = None
+    observaciones: Optional[str] = None
+    area_id: Optional[int] = Field(None, ge=1)
+    duracion_estimada: Optional[int] = Field(None, ge=15, le=480)
 
-    # Catálogos opcionales si no se usan en el flujo actual
-    estado_id: Optional[int] = Field(None, ge=1, description="Estado de la visita (opcional)")
-    tipo_actividad_id: Optional[int] = Field(None, ge=1, description="Tipo de actividad (opcional)")
-
-    # Detalles operativos
-    descripcion_actividad: str = Field(..., min_length=1, description="Descripción o actividad a realizar/retirar")
-    fecha_programada: datetime = Field(..., description="Fecha/hora programada en ISO; se normaliza a UTC")
-    autorizado_por: Optional[str] = Field(None, max_length=200, description="Nombre de quien autoriza")
-    motivo_autorizacion: Optional[str] = Field(None, description="Motivo de la autorización")
-    equipos_ingresados: Optional[str] = Field(None, description="Listado/desc de equipos a ingresar")
-    equipos_retirados: Optional[str] = Field(None, description="Listado/desc de equipos a retirar (si aplica)")
-    observaciones: Optional[str] = Field(None, description="Observaciones generales")
-    area_id: Optional[int] = Field(None, ge=1, description="Área (opcional)")
-    duracion_estimada: Optional[int] = Field(None, ge=15, le=480, description="Duración estimada en minutos")
-
-    # Config para ORM
     model_config = ConfigDict(from_attributes=True)
 
-    # Normalización y validaciones
     @field_validator("descripcion_actividad")
     @classmethod
     def desc_strip(cls, v: str) -> str:
@@ -120,7 +111,8 @@ class VisitaCreate(BaseModel):
             raise ValueError("La descripción debe tener al menos 1 caracter")
         return v2
 
-    @field_validator("autorizado_por", "motivo_autorizacion", "equipos_ingresados", "equipos_retirados", "observaciones")
+    @field_validator("autorizado_por", "motivo_autorizacion", 
+                     "equipos_ingresados", "equipos_retirados", "observaciones")
     @classmethod
     def optional_str_strip(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
@@ -128,6 +120,40 @@ class VisitaCreate(BaseModel):
         v2 = v.strip()
         return v2 if v2 else None
 
+    # ⬇️ NUEVO: Constructor desde form-data
+    @classmethod
+    def as_form(
+        cls,
+        persona_id: int = Form(...),
+        centro_datos_id: int = Form(...),
+        estado_id: Optional[int] = Form(None),
+        tipo_actividad_id: Optional[int] = Form(None),
+        descripcion_actividad: str = Form(...),
+        fecha_programada: datetime = Form(...),
+        autorizado_por: Optional[str] = Form(None),
+        motivo_autorizacion: Optional[str] = Form(None),
+        equipos_ingresados: Optional[str] = Form(None),
+        equipos_retirados: Optional[str] = Form(None),
+        observaciones: Optional[str] = Form(None),
+        area_id: Optional[int] = Form(None),
+        duracion_estimada: Optional[int] = Form(None),
+    ) -> "VisitaCreate":
+        return cls(
+            persona_id=persona_id,
+            centro_datos_id=centro_datos_id,
+            estado_id=estado_id,
+            tipo_actividad_id=tipo_actividad_id,
+            descripcion_actividad=descripcion_actividad,
+            fecha_programada=fecha_programada,
+            autorizado_por=autorizado_por,
+            motivo_autorizacion=motivo_autorizacion,
+            equipos_ingresados=equipos_ingresados,
+            equipos_retirados=equipos_retirados,
+            observaciones=observaciones,
+            area_id=area_id,
+            duracion_estimada=duracion_estimada,
+        )
+    
 class VisitaUpdate(BaseModel):
     """Schema para actualizar una visita existente"""
     persona_id: Optional[int] = None

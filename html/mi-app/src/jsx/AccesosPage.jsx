@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { useApi } from "../context/ApiContext";
-import { useImage } from "../context/ImageContext";
+
 
 const PAGE_SIZE = 10;
 

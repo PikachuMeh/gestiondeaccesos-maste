@@ -1,7 +1,7 @@
 # app/api/api_visitas.py
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request,APIRouter, Depends, HTTPException, Query, status,Request, Form, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
-from typing import Optional, List
+from typing import Optional, List, Annotated
 from app.services.visita_service import VisitaService
 from app.services.persona_service import PersonaService
 from app.database import get_db
@@ -17,7 +17,9 @@ from app.schemas import (
     VisitaSalida,
     VisitaTipoActividad,
 )
-import httpx
+import shutil
+import os
+import json
 import base64
 from pathlib import Path
 from fastapi.responses import StreamingResponse
@@ -30,6 +32,52 @@ from app.auth.api_permisos import require_operator_or_above, require_admin
 from app.utils.log_utils import log_action  # Agregado
 
 router = APIRouter(prefix="/visitas", tags=["visitas"])
+
+def obtener_imagen_persona_base64(foto_nombre: str) -> str:
+    """
+    Busca la imagen en la carpeta del frontend y la retorna en Base64.
+    """
+    if not foto_nombre:
+        return None
+
+    # Limpiamos el nombre (ej: "foto.png" en lugar de "rutas/foto.png")
+    filename = os.path.basename(foto_nombre)
+
+    # ✅ LISTA DE RUTAS DONDE BUSCAR LA FOTO
+    # La primera es la ruta específica que me indicaste
+    base_dirs = [
+        # Ruta prioritaria (Frontend)
+        Path("html/mi-app/src/img/personas"),
+        
+        # Rutas de respaldo (por si mueves carpetas en el futuro)
+        Path("app/files/images/personas"),
+        Path("static/images/personas"),
+    ]
+
+    foto_path = None
+    
+    # Recorremos las rutas hasta encontrar el archivo
+    for directory in base_dirs:
+        # .resolve() convierte la ruta relativa en absoluta para evitar errores
+        possible_path = (directory / filename).resolve()
+        
+        if possible_path.exists():
+            foto_path = possible_path
+            break
+    
+    # Si encontramos la foto, la convertimos a Base64
+    if foto_path:
+        try:
+            with open(foto_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                print(f"✅ Imagen encontrada: {foto_path}")
+                return encoded_string
+        except Exception as e:
+            print(f"⚠️ Error leyendo archivo de imagen: {e}")
+            return None
+    else:
+        print(f"⚠️ Imagen no encontrada en: {[str(p) for p in base_dirs]}")
+        return None
 
 def _codigo_9d() -> str:
     return str(random.randint(0, 999_999_999)).zfill(9)
@@ -77,6 +125,8 @@ def _get_visita_or_404(db: Session, visita_id: int) -> Visita:
     if not v:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visita no encontrada")
     return v
+
+
 
 @router.get("/centros-datos", response_model=List[dict])
 async def listar_centros_datos(
@@ -366,244 +416,198 @@ async def list_visitas(
 @router.post("/", response_model=VisitaResponse, summary="Crear nueva visita")
 async def crear_visita(
     request: Request,
-    payload: VisitaCreate,
+    payload: Annotated[VisitaCreate, Depends(VisitaCreate.as_form)],
+    centro_datos_ids: Optional[str] = Form(None),
+    area_ids: Optional[str] = Form(None),
+    foto: Optional[UploadFile] = File(None),  # <--- Recibimos el archivo
     current_user=Depends(require_operator_or_above),
     db: Session = Depends(get_db),
 ):
-    """Crear nueva visita con información completa, PDF y notificaciones"""
+    """Crear nueva visita con foto actualizada, PDF y notificaciones"""
     
     persona_id = payload.persona_id
     centro_datos_id = payload.centro_datos_id
-    centro_datos_ids = payload.centro_datos_id or []
-    area_ids = payload.area_id or []
     
-    # Validar IDs
-    _ensure_fk_visita(
-        db,
-        persona_id=persona_id,
-        centro_datos_id=centro_datos_id,
-        estado_id=getattr(payload, "estado_id", None),
-        tipo_actividad_id=getattr(payload, "tipo_actividad_id", None),
-    )
+    # 1. Validaciones y Parsing de JSONs (Igual que antes)
+    try:
+        centros_ids_list = json.loads(centro_datos_ids) if centro_datos_ids else [centro_datos_id]
+    except Exception:
+        centros_ids_list = [centro_datos_id]
     
     try:
-        # Obtener información COMPLETA de persona
-        persona = db.query(Persona).filter(Persona.id == persona_id).first()
-        if not persona:
-            raise HTTPException(status_code=404, detail="Persona no encontrada")
-        
-        # Obtener información COMPLETA del centro principal
-        centro_datos = db.query(CentroDatos).filter(CentroDatos.id == centro_datos_id).first()
-        if not centro_datos:
-            raise HTTPException(status_code=404, detail="Centro de datos no encontrado")
-        
-        # Obtener todas las áreas si existen
-        areas = []
-        if area_ids:
-            areas = db.query(Area).filter(Area.id.in_(area_ids)).all()
-        
-        # Obtener tipo de actividad
-        tipo_actividad = None
-        if payload.tipo_actividad_id:
-            tipo_actividad = db.query(TipoActividad).filter(
-                TipoActividad.id_tipo_actividad == payload.tipo_actividad_id
-            ).first()
-        
-        # Obtener estado
-        estado = None
-        if payload.estado_id:
-            estado = db.query(EstadoVisita).filter(
-                EstadoVisita.id_estado == payload.estado_id
-            ).first()
-        
-        # Generar código único
-        codigo_visita = _generar_codigo_9d_unico(db)
-        
-        # Crear visita
-        visita = Visita(
-            codigo_visita=codigo_visita,
-            persona_id=persona_id,
-            centro_datos_id=centro_datos_id,
-            estado_id=payload.estado_id or 1,
-            tipo_actividad_id=payload.tipo_actividad_id,
-            area_id=area_ids[0] if area_ids else None,
-            descripcion_actividad=payload.descripcion_actividad,
-            fecha_programada=payload.fecha_programada,
-            duracion_estimada=payload.duracion_estimada,
-            autorizado_por=payload.autorizado_por,
-            motivo_autorizacion=payload.motivo_autorizacion,
-            observaciones=payload.observaciones,
-            centros_datos_ids=centro_datos_ids,
-            areas_ids=area_ids,
-        )
-        
-        db.add(visita)
-        db.flush()
-        db.commit()
-        db.refresh(visita)
-        
-        # ✅ PREPARAR DATOS COMPLETOS PARA PDF
-        visita_pdf_data = {
-            'id': visita.id,
-            'codigo_visita': visita.codigo_visita,
-            'persona_id': persona_id,
-            'persona_nombre': f"{persona.nombre} {persona.apellido}",
-            'persona_cedula': persona.documento_identidad,
-            'persona_email': persona.email,
-            'persona_empresa': persona.empresa,
-            'persona_cargo': persona.cargo or 'N/A',
-            'foto_data': None,  # ← Cambio: BASE64, no URL
-            'centro_id': centro_datos_id,
-            'centro_nombre': centro_datos.nombre,
-            'centro_direccion': centro_datos.direccion,
-            'centro_ciudad': centro_datos.ciudad,
-            'centro_codigo': centro_datos.codigo,
-            'tipo_actividad': tipo_actividad.nombre_actividad if tipo_actividad else 'N/A',
-            'descripcion_actividad': visita.descripcion_actividad,
-            'areas_nombres': [area.nombre for area in areas],
-            'estado': estado.nombre_estado if estado else 'N/A',
-            'autorizado_por': visita.autorizado_por or 'N/A',
-            'motivo_autorizacion': visita.motivo_autorizacion or 'N/A',
-            'equipos_ingresados': visita.equipos_ingresados or 'N/A',
-            'equipos_retirados': visita.equipos_retirados or 'N/A',
-            'observaciones': visita.observaciones or 'N/A',
-            'fecha_programada': visita.fecha_programada.strftime('%d/%m/%Y %H:%M') if visita.fecha_programada else 'N/A',
-        }
+        areas_ids_list = json.loads(area_ids) if area_ids else ([payload.area_id] if payload.area_id else [])
+    except Exception:
+        areas_ids_list = ([payload.area_id] if payload.area_id else [])
 
-        # ✅ AGREGAR FOTO EN BASE64 SI EXISTE
-        if persona.foto:
-            try:
-                from pathlib import Path
-                import base64
-                
-                # 🔧 CONSTRUIR RUTA CORRECTA basada en tu estructura
-                # Si persona.foto es solo "28007701.png"
-                foto_filename = persona.foto.split('/')[-1]  # Extrae solo el nombre
-                foto_path = Path(f"app/files/images/personas/{foto_filename}")
-                
-                if foto_path.exists():
-                    with open(foto_path, 'rb') as f:
-                        foto_bytes = f.read()
-                    foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
-                    visita_pdf_data['foto_data'] = foto_base64
-                    print(f"✅ Foto cargada en BASE64: {len(foto_base64)} caracteres")
-                else:
-                    print(f"⚠️ Foto no encontrada: {foto_path}")
-                    visita_pdf_data['foto_data'] = None
-                    
-            except Exception as e:
-                print(f"⚠️ Error leyendo foto: {e}")
-                import traceback
-                traceback.print_exc()
-                visita_pdf_data['foto_data'] = None
-        else:
-            print("⚠️ Persona sin foto")
-            visita_pdf_data['foto_data'] = None
-        
-        # 📄 Generar PDF
+    _ensure_fk_visita(db, persona_id=persona_id, centro_datos_id=centro_datos_id, 
+                      estado_id=payload.estado_id, tipo_actividad_id=payload.tipo_actividad_id)
+    
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona: raise HTTPException(404, "Persona no encontrada")
+    
+    centro_datos = db.query(CentroDatos).filter(CentroDatos.id == centro_datos_id).first()
+    if not centro_datos: raise HTTPException(404, "Centro no encontrado")
+
+    # =======================================================================
+    # 📸 PASO NUEVO: PROCESAR Y GUARDAR LA FOTO SUBIDA (SI EXISTE)
+    # =======================================================================
+    foto_base64 = None
+    
+    if foto:
         try:
-            pdf_bytes = generar_pdf_visita(visita_pdf_data)
-            print(f"✅ PDF generado: {len(pdf_bytes)} bytes")
-        except Exception as pdf_error:
-            print(f"⚠️ Error generando PDF: {pdf_error}")
-            pdf_bytes = None
-        
-        # 💬 Enviar a Telegram COMPLETO con PDF
-        try:
-            persona_nombre = f"{persona.nombre} {persona.apellido}"
-            await enviar_notificacion_telegram(
-                visita_data=visita_pdf_data,
-                persona_nombre=persona_nombre,
-                pdf_bytes=pdf_bytes
-            )
-            print("✅ Notificación Telegram enviada con PDF")
-        except Exception as telegram_error:
-            print(f"⚠️ Error en Telegram: {telegram_error}")
-        
-        # 📧 Enviar email con PDF
-        try:
-            from app.services.email_service import EmailService
-            email_service = EmailService()
+            # 1. Crear directorio si no existe
+            base_path = Path("app/files/images/personas")
+            base_path.mkdir(parents=True, exist_ok=True)
             
-            email_persona = persona.email
+            # 2. Generar nombre de archivo (Usamos la cédula para estandarizar)
+            # Extensión original o .jpg por defecto
+            ext = foto.filename.split('.')[-1] if '.' in foto.filename else "jpg"
+            nuevo_nombre = f"{persona.documento_identidad}.{ext}"
+            file_path = base_path / nuevo_nombre
             
-            if email_persona:
-                cuerpo_email = f"""
-Estimado/a {persona.nombre} {persona.apellido},
-
-✅ Se ha registrado exitosamente su visita al sistema SENIAT.
-
-DETALLES DE LA VISITA:
-
-• Código: {visita.codigo_visita}
-• Centro: {centro_datos.nombre}
-• Ubicación: {centro_datos.ciudad}
-• Fecha/Hora: {visita_pdf_data['fecha_programada']}
-• Tipo de Actividad: {visita_pdf_data['tipo_actividad']}
-• Áreas Autorizadas: {', '.join(visita_pdf_data['areas_nombres']) if visita_pdf_data['areas_nombres'] else 'N/A'}
-• Estado: {visita_pdf_data['estado']}
-
-📎 Adjunto encontrará la Constancia Oficial en PDF con toda la información de su visita.
-
-Saludos cordiales,
-Sistema de Control de Accesos SENIAT
-"""
+            # 3. Guardar archivo en disco
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(foto.file, buffer)
+            
+            print(f"✅ Nueva foto guardada: {file_path}")
+            
+            # 4. Actualizar BD
+            persona.foto = nuevo_nombre
+            db.add(persona)
+            db.commit()
+            db.refresh(persona)
+            
+            # 5. Leer bytes para el PDF (inmediato)
+            with open(file_path, "rb") as f:
+                foto_bytes = f.read()
+                foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
                 
-                await email_service.send_email(
-                    email=email_persona,
-                    subject=f"Constancia de Visita SENIAT - {visita.codigo_visita}",
-                    body=cuerpo_email,
-                    attachment_bytes=pdf_bytes,
-                    attachment_name=f"constancia_visita_{visita.codigo_visita}.pdf"
-                )
-                
-                print(f"✅ Email+PDF enviado a {email_persona}")
-                
-                # 📲 Notificar a Telegram que el email fue enviado
-                try:
-                    await enviar_email_a_telegram(
-                        correo_destinatario=email_persona,
-                        asunto=f"Constancia de Visita SENIAT - {visita.codigo_visita}",
-                        cuerpo=cuerpo_email,
-                        pdf_bytes=pdf_bytes
-                    )
-                except Exception as e:
-                    print(f"⚠️ No se pudo notificar email en Telegram: {e}")
-            else:
-                print("⚠️ Persona sin email - PDF no enviado por correo")
-                
-        except Exception as email_error:
-            print(f"⚠️ Error en email/PDF: {email_error}")
+        except Exception as e:
+            print(f"⚠️ Error guardando nueva foto: {e}")
+            # Si falla, intentamos seguir sin foto nueva
+            foto_base64 = None
+            
+    # Si no se subió foto nueva, intentamos cargar la que ya tenía
+    if not foto_base64 and persona.foto:
+        foto_base64 = obtener_imagen_persona_base64(persona.foto)
+
+    # =======================================================================
+    # FIN PROCESO FOTO - CONTINUA CREACIÓN DE VISITA
+    # =======================================================================
+
+    codigo_visita = _generar_codigo_9d_unico(db)
+    
+    # Obtener objetos relacionados
+    areas = db.query(Area).filter(Area.id.in_(areas_ids_list)).all() if areas_ids_list else []
+    
+    tipo_actividad = None
+    if payload.tipo_actividad_id:
+        tipo_actividad = db.query(TipoActividad).filter(TipoActividad.id_tipo_actividad == payload.tipo_actividad_id).first()
         
-        # 📝 LOGGING
-        await log_action(
-            "crear_visita",
-            "visitas",
-            {
-                "visita_id": visita.id,
-                "codigo": visita.codigo_visita,
-                "persona_id": persona_id,
-                "persona": f"{persona.nombre} {persona.apellido}",
-                "centro_id": centro_datos_id,
-                "centro": centro_datos.nombre,
-                "areas": [a.nombre for a in areas],
-                "pdf_generado": pdf_bytes is not None,
-            },
-            request,
-            db,
-            current_user
+    estado = None
+    if payload.estado_id:
+        estado = db.query(EstadoVisita).filter(EstadoVisita.id_estado == payload.estado_id).first()
+
+    visita = Visita(
+        codigo_visita=codigo_visita,
+        persona_id=persona_id,
+        centro_datos_id=centro_datos_id,
+        estado_id=payload.estado_id or 1,
+        tipo_actividad_id=payload.tipo_actividad_id,
+        area_id=areas_ids_list[0] if areas_ids_list else None,
+        descripcion_actividad=payload.descripcion_actividad,
+        fecha_programada=payload.fecha_programada,
+        duracion_estimada=payload.duracion_estimada,
+        autorizado_por=payload.autorizado_por,
+        motivo_autorizacion=payload.motivo_autorizacion,
+        observaciones=payload.observaciones,
+        centros_datos_ids=centros_ids_list,
+        areas_ids=areas_ids_list,
+        equipos_ingresados=payload.equipos_ingresados,
+        equipos_retirados=payload.equipos_retirados,
+    )
+    
+    db.add(visita)
+    db.flush()
+    db.commit()
+    db.refresh(visita)
+    
+    # ✅ PREPARAR DATOS PARA PDF (Con la foto ya procesada)
+    visita_pdf_data = {
+        'id': visita.id,
+        'codigo_visita': visita.codigo_visita,
+        'persona_id': persona_id,
+        'persona_nombre': f"{persona.nombre} {persona.apellido}",
+        'persona_cedula': persona.documento_identidad,
+        'persona_email': persona.email,
+        'persona_empresa': persona.empresa,
+        'persona_cargo': persona.cargo or 'N/A',
+        'foto_data': foto_base64,  # <--- Aquí va la foto (nueva o vieja)
+        'centro_id': centro_datos_id,
+        'centro_nombre': centro_datos.nombre,
+        'centro_direccion': centro_datos.direccion,
+        'centro_ciudad': centro_datos.ciudad,
+        'centro_codigo': centro_datos.codigo,
+        'tipo_actividad': tipo_actividad.nombre_actividad if tipo_actividad else 'N/A',
+        'descripcion_actividad': visita.descripcion_actividad,
+        'areas_nombres': [area.nombre for area in areas],
+        'estado': estado.nombre_estado if estado else 'N/A',
+        'autorizado_por': visita.autorizado_por or 'N/A',
+        'motivo_autorizacion': visita.motivo_autorizacion or 'N/A',
+        'equipos_ingresados': visita.equipos_ingresados or 'N/A',
+        'equipos_retirados': visita.equipos_retirados or 'N/A',
+        'observaciones': visita.observaciones or 'N/A',
+        'fecha_programada': visita.fecha_programada.strftime('%d/%m/%Y %H:%M') if visita.fecha_programada else 'N/A',
+    }
+    
+    # 📄 Generar PDF
+    pdf_bytes = None
+    try:
+        pdf_bytes = generar_pdf_visita(visita_pdf_data)
+        print(f"✅ PDF generado: {len(pdf_bytes)} bytes")
+    except Exception as pdf_error:
+        print(f"⚠️ Error generando PDF: {pdf_error}")
+
+    # 💬 Enviar a Telegram
+    try:
+        persona_nombre = f"{persona.nombre} {persona.apellido}"
+        await enviar_notificacion_telegram(
+            visita_data=visita_pdf_data,
+            persona_nombre=persona_nombre,
+            pdf_bytes=pdf_bytes
         )
-        
-        return visita
-        
-    except HTTPException:
-        db.rollback()
-        raise
     except Exception as e:
-        db.rollback()
-        print(f"❌ Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Error creando visita: {str(e)}")
+        print(f"⚠️ Error Telegram: {e}")
 
+    # 📧 Email (lógica existente)
+    try:
+        from app.services.email_service import EmailService
+        email_service = EmailService()
+        if persona.email:
+            cuerpo_email = f"""
+            Estimado/a {persona.nombre} {persona.apellido},
+            ✅ Visita registrada: {visita.codigo_visita}
+            Centro: {centro_datos.nombre}
+            Fecha: {visita_pdf_data['fecha_programada']}
+            """
+            await email_service.send_email(
+                email=persona.email,
+                subject=f"Constancia Visita - {visita.codigo_visita}",
+                body=cuerpo_email,
+                attachment_bytes=pdf_bytes,
+                attachment_name=f"constancia_{visita.codigo_visita}.pdf"
+            )
+    except Exception as e:
+        print(f"⚠️ Error Email: {e}")
+
+    # Log
+    await log_action(
+        "crear_visita", "visitas", registro_id=visita.id,
+        detalles={"codigo": visita.codigo_visita, "con_foto": bool(foto_base64)},
+        request=request, db=db, current_user=current_user
+    )
+    
+    return visita
 
 @router.put("/{visita_id}", response_model=VisitaResponse)
 async def update_visita(
@@ -762,104 +766,119 @@ async def delete_visita(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error eliminando visita: {exc}")
 
 
-# ===== NUEVO ENDPOINT: DESCARGAR PDF =====
-
 @router.get("/{visita_id}/download-pdf", summary="Descargar PDF de visita")
 async def download_pdf_visita(
     request: Request,
     visita_id: int,
-    current_user = Depends(require_operator_or_above),
+    current_user = Depends(require_operator_or_above), # Asumido
     db: Session = Depends(get_db)
 ):
-    """Descargar PDF de una visita - Solo OPERADOR o ADMIN"""
-    
+    """
+    Genera y descarga el PDF de la visita incluyendo la foto de la persona.
+    """
     try:
-        # Obtener visita
-        visita = _get_visita_or_404(db, visita_id)
-        
-        # ✅ VALIDAR PERMISOS: Solo admin o creador
-        if current_user.rol_id != 1 and getattr(visita, 'creado_por_id', None) != current_user.id:
-            await log_action(
-                accion="intento_descarga_pdf_sin_permiso",
-                tabla_afectada="visitas",
-                registro_id=visita_id,
-                detalles={"usuario_id": current_user.id},
-                request=request,
-                db=db,
-                current_user=current_user
+        # ---------------------------------------------------------
+        # PASO 1: Obtener datos completos con JOIN (SQLAlchemy)
+        # ---------------------------------------------------------
+        visita = (
+            db.query(Visita)
+            .options(
+                joinedload(Visita.persona),      
+                joinedload(Visita.centro_datos),  
+                joinedload(Visita.actividad),     
+                joinedload(Visita.estado)        
             )
-            raise HTTPException(status_code=403, detail="No tienes permiso para descargar este PDF")
+            .filter(Visita.id == visita_id)
+            .first()
+        )
         
-        # Obtener información completa
-        persona = db.query(Persona).filter(Persona.id == visita.persona_id).first()
-        centro = db.query(CentroDatos).filter(CentroDatos.id == visita.centro_datos_id).first()
-        tipo_actividad = db.query(TipoActividad).filter(TipoActividad.id_tipo_actividad == visita.tipo_actividad_id).first()
+        if not visita:
+            raise HTTPException(status_code=404, detail="Visita no encontrada")
 
-        if not persona or not centro:
-            raise HTTPException(status_code=404, detail="Información incompleta de visita")
-        
-        # Preparar datos para PDF
+        persona = visita.persona
+        centro = visita.centro_datos
+
+        # ---------------------------------------------------------
+        # PASO 2: Procesar la FOTO
+        # ---------------------------------------------------------
+        foto_base64 = None
+        if persona and persona.foto:
+            # Llama a la función que busca y codifica la imagen
+            foto_base64 = obtener_imagen_persona_base64(persona.foto)
+
+        # ---------------------------------------------------------
+        # PASO 3: Procesar Áreas (Manejo de JSON de IDs - Asumido)
+        # ---------------------------------------------------------
+        areas_nombres = []
+        # Asumo que visita.areas_ids es una lista de IDs (JSON o similar)
+        if hasattr(visita, 'areas_ids') and visita.areas_ids and isinstance(visita.areas_ids, list):
+            areas_db = db.query(Area).filter(Area.id.in_(visita.areas_ids)).all()
+            areas_nombres = [a.nombre for a in areas_db]
+        # O si la relación es directa
+        elif hasattr(visita, 'area') and visita.area: 
+             areas_nombres = [visita.area.nombre]
+
+
+        # ---------------------------------------------------------
+        # PASO 4: Preparar Diccionario para el Generador PDF
+        # ---------------------------------------------------------
         visita_pdf_data = {
+            # ... otros datos
             'codigo_visita': visita.codigo_visita,
+            'fecha_programada': visita.fecha_programada.strftime('%d/%m/%Y %H:%M') if visita.fecha_programada else 'N/A',
+            'estado': visita.estado.nombre_estado if visita.estado else 'N/A',
+            
+            # Datos Persona
             'persona_nombre': f"{persona.nombre} {persona.apellido}",
             'persona_cedula': persona.documento_identidad,
             'persona_email': persona.email,
             'persona_empresa': persona.empresa,
+            'persona_cargo': persona.cargo or 'N/A',
+            'foto_data': foto_base64,  # <--- FOTO EN BASE64
+            
+            # Datos Centro
             'centro_nombre': centro.nombre,
             'centro_ciudad': centro.ciudad,
-            'tipo_actividad': tipo_actividad.nombre_actividad,
+            
+            # Detalles
+            'tipo_actividad': visita.actividad.nombre_actividad if visita.actividad else 'N/A',
             'descripcion_actividad': visita.descripcion_actividad,
-            'areas_nombres': [a.nombre for a in visita.area] if visita.area else [],
+            'areas_nombres': areas_nombres,
             'autorizado_por': visita.autorizado_por or 'N/A',
-            'fecha_programada': visita.fecha_programada.strftime('%d/%m/%Y %H:%M') if visita.fecha_programada else 'N/A',
-            'foto_data': None
+            'equipos_ingresados': visita.equipos_ingresados or 'N/A',
+            'observaciones': visita.observaciones or 'N/A',
         }
         
-        # ✅ Cargar foto en Base64 si existe
-        if persona.foto:
-            try:
-                foto_path = Path(f"app/files/images/personas/{persona.foto}")
-                
-                if foto_path.exists():
-                    with open(foto_path, 'rb') as f:
-                        foto_bytes = f.read()
-                        foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
-                        visita_pdf_data['foto_data'] = foto_base64
-                        print(f"✅ Foto cargada en Base64: {len(foto_base64)} caracteres")
-                else:
-                    print(f"⚠️ Foto no encontrada en ruta: {foto_path}")
-                    visita_pdf_data['foto_data'] = None
-                    
-            except Exception as e:
-                print(f"⚠️ Error leyendo foto: {e}")
-                visita_pdf_data['foto_data'] = None
-        else:
-            print("⚠️ Persona sin foto registrada")
-            visita_pdf_data['foto_data'] = None
-        
-        # Generar PDF
+        # ---------------------------------------------------------
+        # PASO 5: Generar Bytes del PDF
+        # ---------------------------------------------------------
         pdf_bytes = generar_pdf_visita(visita_pdf_data)
         
-        # Logging
+        # ---------------------------------------------------------
+        # PASO 6 & 7: Log y Retorno
+        # ---------------------------------------------------------
         await log_action(
             accion="descargar_pdf_visita",
             tabla_afectada="visitas",
             registro_id=visita_id,
-            detalles={"codigo": visita.codigo_visita},
+            detalles={"codigo": visita.codigo_visita, "tiene_foto": bool(foto_base64)},
             request=request,
             db=db,
             current_user=current_user
         )
         
-        # Retornar PDF
+        filename = f"constancia_{visita.codigo_visita}.pdf"
+        
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=constancia_{visita.codigo_visita}.pdf"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error en download_pdf: {e}")
+        print(f"❌ Error crítico generando PDF: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
