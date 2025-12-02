@@ -5,21 +5,25 @@
 @tailwind utilities; */
 
 @layer base {
-  html, body {
+
+  html,
+  body {
     background-color: hsl(var(--background));
   }
 
   :root {
-    /* Material Design 3 Color Tokens */
-    --primary: 262.1 83.3% 57.8%;
+    /* Improved Light Theme Colors */
+    --primary: 217.2 91.2% 59.8%;
+    /* Blue */
     --on-primary: 0 0% 100%;
-    --primary-container: 261.9 100% 96.1%;
-    --on-primary-container: 262.1 83.3% 10%;
+    --primary-container: 217.2 100% 95%;
+    --on-primary-container: 217.2 91.2% 10%;
 
-    --secondary: 286.7 21.4% 47.1%;
+    --secondary: 222.2 84% 58.8%;
+    /* Light blue */
     --on-secondary: 0 0% 100%;
-    --secondary-container: 286.7 21.4% 93.9%;
-    --on-secondary-container: 286.7 21.4% 10%;
+    --secondary-container: 222.2 84% 94%;
+    --on-secondary-container: 222.2 84% 10%;
 
     --tertiary: 120 60% 40%;
     --on-tertiary: 0 0% 100%;
@@ -31,15 +35,17 @@
     --error-container: 0 84.2% 96.1%;
     --on-error-container: 0 84.2% 10%;
 
-    --background: 0 0% 95%;
-    --on-background: 0 0% 9%;
+    --background: 0 0% 100%;
+    /* Pure white background */
+    --on-background: 0 0% 10%;
+    /* Darker text for better contrast */
     --surface: 0 0% 100%;
-    --on-surface: 0 0% 9%;
-    --surface-variant: 286.7 21.4% 93.9%;
-    --on-surface-variant: 286.7 21.4% 30%;
+    --on-surface: 0 0% 10%;
+    --surface-variant: 222.2 84% 94%;
+    --on-surface-variant: 222.2 84% 30%;
 
-    --outline: 286.7 21.4% 47.1%;
-    --outline-variant: 286.7 21.4% 80%;
+    --outline: 222.2 84% 58.8%;
+    --outline-variant: 222.2 84% 80%;
 
     --shadow: 0 0% 0%;
     --scrim: 0 0% 0%;
@@ -66,16 +72,18 @@
   }
 
   .dark {
-    /* Material Design 3 Dark Theme */
-    --primary: 262.1 83.3% 70%;
-    --on-primary: 262.1 83.3% 10%;
-    --primary-container: 262.1 83.3% 15%;
-    --on-primary-container: 262.1 83.3% 90%;
+    /* Improved Dark Theme Colors */
+    --primary: 217.2 91.2% 70%;
+    /* Blue */
+    --on-primary: 217.2 91.2% 10%;
+    --primary-container: 217.2 91.2% 15%;
+    --on-primary-container: 217.2 91.2% 90%;
 
-    --secondary: 286.7 21.4% 60%;
-    --on-secondary: 286.7 21.4% 10%;
-    --secondary-container: 286.7 21.4% 20%;
-    --on-secondary-container: 286.7 21.4% 90%;
+    --secondary: 222.2 84% 70%;
+    /* Light blue */
+    --on-secondary: 222.2 84% 10%;
+    --secondary-container: 222.2 84% 20%;
+    --on-secondary-container: 222.2 84% 90%;
 
     --tertiary: 120 60% 60%;
     --on-tertiary: 120 60% 10%;
@@ -87,15 +95,18 @@
     --error-container: 0 84.2% 20%;
     --on-error-container: 0 84.2% 90%;
 
-    --background: 0 0% 4%;
-    --on-background: 0 0% 98%;
-    --surface: 0 0% 6%;
-    --on-surface: 0 0% 98%;
-    --surface-variant: 286.7 21.4% 20%;
-    --on-surface-variant: 286.7 21.4% 80%;
+    --background: 0 0% 5%;
+    /* Slightly lighter dark background */
+    --on-background: 0 0% 95%;
+    /* Better contrast */
+    --surface: 0 0% 8%;
+    /* Lighter surface */
+    --on-surface: 0 0% 95%;
+    --surface-variant: 222.2 84% 20%;
+    --on-surface-variant: 222.2 84% 80%;
 
-    --outline: 286.7 21.4% 60%;
-    --outline-variant: 286.7 21.4% 30%;
+    --outline: 222.2 84% 70%;
+    --outline-variant: 222.2 84% 30%;
 
     --shadow: 0 0% 0%;
     --scrim: 0 0% 0%;
@@ -120,5 +131,3 @@
   }
 
 }
-
-

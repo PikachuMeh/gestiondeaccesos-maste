@@ -5,6 +5,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
 import { useImages } from "../context/ImageContext.jsx";
+import {
+  FaArrowLeft,
+  FaUser,
+  FaCamera,
+  FaInfoCircle,
+  FaHistory,
+  FaCalendarAlt,
+  FaClock,
+  FaMapMarkerAlt,
+  FaSitemap,
+  FaClipboardList,
+  FaExclamationCircle
+} from "react-icons/fa";
 
 export default function DetalleVisitaPage() {
   const { API_V1 } = useApi();
@@ -131,12 +144,10 @@ export default function DetalleVisitaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-          <p className="mt-4 text-gray-600">Cargando visita...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Cargando visita...</p>
         </div>
       </div>
     );
@@ -144,16 +155,19 @@ export default function DetalleVisitaPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-lg max-w-md w-full">
-          <h3 className="font-bold mb-2">Error</h3>
-          <p className="text-sm mb-4">{error}</p>
-          <button
-            onClick={() => navigate("/accesos")}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors"
-          >
-            Volver a Accesos
-          </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-6 py-4 rounded-lg max-w-md w-full flex items-center gap-3">
+          <FaExclamationCircle className="text-2xl" />
+          <div>
+            <h3 className="font-bold mb-1">Error</h3>
+            <p className="text-sm mb-4">{error}</p>
+            <button
+              onClick={() => navigate("/accesos")}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors flex items-center gap-2"
+            >
+              <FaArrowLeft /> Volver a Accesos
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -161,14 +175,14 @@ export default function DetalleVisitaPage() {
 
   if (!visita) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-gray-100 border border-gray-300 text-gray-800 px-6 py-4 rounded-lg max-w-md w-full">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 px-6 py-4 rounded-lg max-w-md w-full text-center">
           <p className="mb-4">No se encontró la visita</p>
           <button
             onClick={() => navigate("/accesos")}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded transition-colors"
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded transition-colors flex items-center gap-2 mx-auto"
           >
-            Volver a Accesos
+            <FaArrowLeft /> Volver a Accesos
           </button>
         </div>
       </div>
@@ -180,23 +194,25 @@ export default function DetalleVisitaPage() {
   const estadoText = getEstadoText();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header con botón volver */}
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Detalles de Visita #{visita.id}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <FaInfoCircle className="text-blue-600 dark:text-blue-400" /> Detalles de Visita #{visita.id}
+          </h1>
           <button
             onClick={() => navigate("/accesos")}
             className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
           >
-            <span>←</span> Volver a Accesos
+            <FaArrowLeft /> Volver a Accesos
           </button>
         </div>
 
         {/* Información de la persona */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-          <div className="bg-blue-600 text-white px-6 py-4">
-            <h2 className="text-xl font-bold">Información de la Persona</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
+          <div className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-4 flex items-center gap-2">
+            <FaUser /> <h2 className="text-xl font-bold">Información de la Persona</h2>
           </div>
           <div className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
@@ -206,7 +222,7 @@ export default function DetalleVisitaPage() {
                   <img
                     src={fotoPersonaUrl}
                     alt={visita?.persona?.nombre}
-                    className="w-32 h-32 rounded-lg object-cover border-2 border-gray-200"
+                    className="w-32 h-32 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-600"
                     onError={() => handleImageError("persona")}
                   />
                 </div>
@@ -215,32 +231,32 @@ export default function DetalleVisitaPage() {
               {/* Detalles de la persona */}
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-gray-600">Nombre</p>
-                  <p className="text-base text-gray-900">
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Nombre</p>
+                  <p className="text-base text-gray-900 dark:text-white">
                     {visita?.persona?.nombre} {visita?.persona?.apellido}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-600">Documento</p>
-                  <p className="text-base text-gray-900">
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Documento</p>
+                  <p className="text-base text-gray-900 dark:text-white">
                     {visita?.persona?.documento_identidad}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-600">Empresa</p>
-                  <p className="text-base text-gray-900">
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Empresa</p>
+                  <p className="text-base text-gray-900 dark:text-white">
                     {visita?.persona?.empresa || "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-600">Cargo</p>
-                  <p className="text-base text-gray-900">
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Cargo</p>
+                  <p className="text-base text-gray-900 dark:text-white">
                     {visita?.persona?.cargo || "—"}
                   </p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-sm font-semibold text-gray-600">Email</p>
-                  <p className="text-base text-gray-900">
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Email</p>
+                  <p className="text-base text-gray-900 dark:text-white">
                     {visita?.persona?.email || "—"}
                   </p>
                 </div>
@@ -251,15 +267,15 @@ export default function DetalleVisitaPage() {
 
         {/* Captura del acceso */}
         {capturaUrl && (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-            <div className="bg-blue-600 text-white px-6 py-4">
-              <h2 className="text-xl font-bold">Captura del Acceso</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
+            <div className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-4 flex items-center gap-2">
+              <FaCamera /> <h2 className="text-xl font-bold">Captura del Acceso</h2>
             </div>
             <div className="p-6">
               <img
                 src={capturaUrl}
                 alt="Captura del acceso"
-                className="w-full rounded-lg object-contain max-h-96 border border-gray-200"
+                className="w-full rounded-lg object-contain max-h-96 border border-gray-200 dark:border-gray-600"
                 onError={() => handleImageError("captura")}
               />
             </div>
@@ -267,48 +283,48 @@ export default function DetalleVisitaPage() {
         )}
 
         {/* Detalles de la visita */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-          <div className="bg-blue-600 text-white px-6 py-4">
-            <h3 className="text-lg font-bold">Información de la Visita</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
+          <div className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-4 flex items-center gap-2">
+            <FaInfoCircle /> <h3 className="text-lg font-bold">Información de la Visita</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <tbody className="divide-y divide-gray-200">
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50 w-1/3">
-                    Fecha
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 w-1/3 flex items-center gap-2">
+                    <FaCalendarAlt className="text-gray-400" /> Fecha
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {fmtFecha(visita.fecha_programada)}
                   </td>
                 </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                    Hora
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
+                    <FaClock className="text-gray-400" /> Hora
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {fmtHora(visita.fecha_programada)}
                   </td>
                 </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                    Lugar
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
+                    <FaMapMarkerAlt className="text-gray-400" /> Lugar
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {visita.centro_datos?.nombre || "—"}
                   </td>
                 </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                    Áreas
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
+                    <FaSitemap className="text-gray-400" /> Áreas
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {visita.areas_nombres && visita.areas_nombres.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {visita.areas_nombres.map((nombre, i) => (
                           <span
                             key={i}
-                            className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold"
+                            className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full text-xs font-semibold"
                           >
                             {nombre}
                           </span>
@@ -319,28 +335,27 @@ export default function DetalleVisitaPage() {
                     )}
                   </td>
                 </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                    Actividad
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
+                    <FaClipboardList className="text-gray-400" /> Actividad
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {visita.actividad?.nombre_actividad ||
                       visita.descripcion_actividad ||
                       "—"}
                   </td>
                 </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                    Estado
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
+                    <FaInfoCircle className="text-gray-400" /> Estado
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                        estadoText === "completada" ||
-                        estadoText === "Completada"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${estadoText === "completada" ||
+                          estadoText === "Completada"
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                        }`}
                     >
                       {estadoText}
                     </span>
@@ -353,52 +368,52 @@ export default function DetalleVisitaPage() {
 
         {/* Historial de visitas */}
         {historial.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-blue-600 text-white px-6 py-4">
-              <h2 className="text-xl font-bold">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-4 flex items-center gap-2">
+              <FaHistory /> <h2 className="text-xl font-bold">
                 Historial de Visitas - {visita?.persona?.nombre}
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Fecha
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Hora
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Lugar
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Área
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Actividad
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {historial.map((v) => (
-                    <tr key={v.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                    <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                         {fmtFecha(v.fecha_programada)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                         {fmtHora(v.fecha_programada)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                         {v.centro_datos?.nombre || "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                         {v.areas_nombres && v.areas_nombres.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {v.areas_nombres.map((nombre, idx) => (
                               <span
                                 key={idx}
-                                className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-semibold"
+                                className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded text-xs font-semibold"
                               >
                                 {nombre}
                               </span>
@@ -408,7 +423,7 @@ export default function DetalleVisitaPage() {
                           v.area?.nombre || "—"
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
                         {v.actividad?.nombre_actividad ||
                           v.descripcion_actividad ||
                           "—"}

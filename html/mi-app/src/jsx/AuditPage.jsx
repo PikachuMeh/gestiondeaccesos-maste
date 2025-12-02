@@ -2,6 +2,18 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
+import {
+  FaHistory,
+  FaFilter,
+  FaEraser,
+  FaChevronLeft,
+  FaChevronRight,
+  FaExclamationCircle,
+  FaSearch,
+  FaCalendarAlt,
+  FaTable,
+  FaUser
+} from "react-icons/fa";
 
 const PAGE_SIZE = 10;
 const DEBOUNCE_MS = 400;
@@ -46,18 +58,18 @@ const getAccionDisplay = (realizado) => {
 const getAccionClass = (realizado) => {
   const r = realizado?.toLowerCase() || "";
   if (r.includes("borrar") || r.includes("delete"))
-    return "bg-red-100 text-red-800 border-red-300";
+    return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-800";
   if (r.includes("crear") || r.includes("create"))
-    return "bg-green-100 text-green-800 border-green-300";
+    return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-800";
   if (r.includes("editar") || r.includes("update"))
-    return "bg-blue-100 text-blue-800 border-blue-300";
+    return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-800";
   if (r.includes("consultar") || r.includes("get"))
-    return "bg-yellow-100 text-yellow-800 border-yellow-300";
+    return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-800";
   if (r.includes("ingreso"))
-    return "bg-purple-100 text-purple-800 border-purple-300";
+    return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 dark:border-purple-800";
   if (r.includes("salida"))
-    return "bg-orange-100 text-orange-800 border-orange-300";
-  return "bg-gray-100 text-gray-800 border-gray-300";
+    return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300 dark:border-orange-800";
+  return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600";
 };
 
 const getEntidadDisplay = (tabla) => {
@@ -301,30 +313,37 @@ export default function AuditPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Auditoría del Sistema</h1>
-          <p className="text-slate-400">
-            Vista resumida de las acciones realizadas por los usuarios del sistema.
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white dark:bg-gray-800 min-h-screen">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+          <FaHistory className="text-blue-600 dark:text-blue-400" /> Auditoría del Sistema
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Vista resumida de las acciones realizadas por los usuarios del sistema.
+        </p>
+      </div>
 
-        {/* Filtros */}
-        <div className="bg-slate-800 rounded-lg p-6 mb-8 border border-slate-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Filtros</h2>
+      {/* Filtros */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <FaFilter className="text-gray-400" /> Filtros
+        </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            {/* Acción (SELECT DROPDOWN) */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Acción Realizada
-              </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          {/* Acción (SELECT DROPDOWN) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Acción Realizada
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400" />
+              </div>
               <select
                 value={realizado}
                 onChange={(e) => setRealizado(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                className="w-full pl-10 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
               >
                 <option value="">Todas las acciones</option>
                 {ACCIONES_DISPONIBLES.map((accion) => (
@@ -334,16 +353,21 @@ export default function AuditPage() {
                 ))}
               </select>
             </div>
+          </div>
 
-            {/* Tabla Afectada */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Tabla Afectada
-              </label>
+          {/* Tabla Afectada */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Tabla Afectada
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaTable className="text-gray-400" />
+              </div>
               <select
                 value={tablaAfectada}
                 onChange={(e) => setTablaAfectada(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                className="w-full pl-10 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
               >
                 <option value="">Todas las tablas</option>
                 <option value="usuarios">Usuarios</option>
@@ -353,179 +377,194 @@ export default function AuditPage() {
                 <option value="control">Auditoría</option>
               </select>
             </div>
+          </div>
 
-            {/* Actor Username */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Usuario (Actor)
-              </label>
+          {/* Actor Username */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Usuario (Actor)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaUser className="text-gray-400" />
+              </div>
               <input
                 type="text"
                 value={actorUsername}
                 onChange={(e) => setActorUsername(e.target.value)}
                 placeholder="Ej: admin"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full pl-10 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
+          </div>
 
-            {/* Fecha Desde */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Desde (Fecha)
-              </label>
+          {/* Fecha Desde */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Desde (Fecha)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaCalendarAlt className="text-gray-400" />
+              </div>
               <input
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
                 max={todayStr}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full pl-10 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
+          </div>
 
-            {/* Fecha Hasta */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Hasta (Fecha)
-              </label>
+          {/* Fecha Hasta */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Hasta (Fecha)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaCalendarAlt className="text-gray-400" />
+              </div>
               <input
                 type="date"
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
                 max={todayStr}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full pl-10 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               />
             </div>
           </div>
+        </div>
 
-          {/* Error de fechas */}
-          {dateError && (
-            <div className="mb-4 p-3 bg-red-900 border border-red-700 rounded-lg text-red-100 text-sm">
-              ⚠️ {dateError}
+        {/* Error de fechas */}
+        {dateError && (
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 rounded-lg text-red-800 dark:text-red-300 text-sm flex items-center gap-2">
+            <FaExclamationCircle /> {dateError}
+          </div>
+        )}
+
+        {/* Botón Limpiar */}
+        <button
+          onClick={handleClearFilters}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+        >
+          <FaEraser /> Limpiar Filtros
+        </button>
+      </div>
+
+      {/* Error General */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 rounded-lg text-red-800 dark:text-red-300 flex items-center gap-2">
+          <FaExclamationCircle /> {error}
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Cargando registros de auditoría...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla */}
+      {!loading && (
+        <>
+          {rows.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center border border-gray-200 dark:border-gray-700">
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
+                {total === 0
+                  ? "No hay logs disponibles con los filtros aplicados."
+                  : "Sin registros en esta página."}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                    <tr>
+                      <th className="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Fecha / Hora
+                      </th>
+                      <th className="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Usuario (Actor)
+                      </th>
+                      <th className="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Acción
+                      </th>
+                      <th className="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Entidad
+                      </th>
+                      <th className="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Descripción
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {rows.map((log, idx) => (
+                      <tr
+                        key={`${log.id || idx}`}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <td className="px-6 py-3 text-gray-900 dark:text-gray-100">
+                          {fmtFecha(log.fecha_completa || log.fecha)}
+                        </td>
+                        <td className="px-6 py-3 text-gray-900 dark:text-gray-100">
+                          {log.usuario?.username || "N/A"}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span
+                            className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getAccionClass(
+                              log.realizado
+                            )}`}
+                          >
+                            {getAccionDisplay(log.realizado)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-gray-900 dark:text-gray-100">
+                          {getEntidadDisplay(log.tabla_afectada)}
+                        </td>
+                        <td className="px-6 py-3 text-gray-900 dark:text-gray-100 max-w-md truncate">
+                          {buildHumanMessage(log)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
-          {/* Botón Limpiar */}
-          <button
-            onClick={handleClearFilters}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
-          >
-            Limpiar Filtros
-          </button>
-        </div>
-
-        {/* Error General */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg text-red-100">
-            ❌ {error}
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-              <p className="text-slate-400">Cargando registros de auditoría...</p>
+          {/* Paginación */}
+          {pages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-gray-600 dark:text-gray-400 text-sm">
+                Página {page} de {pages} | Total: {total} registros
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={page === 1}
+                  className="flex items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-200 rounded-lg font-medium transition-colors"
+                >
+                  <FaChevronLeft /> Anterior
+                </button>
+                <button
+                  onClick={handleNextPage}
+                  disabled={page === pages}
+                  className="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                >
+                  Siguiente <FaChevronRight />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Tabla */}
-        {!loading && (
-          <>
-            {rows.length === 0 ? (
-              <div className="bg-slate-800 rounded-lg p-8 text-center border border-slate-700">
-                <p className="text-slate-400 text-lg">
-                  {total === 0
-                    ? "No hay logs disponibles con los filtros aplicados."
-                    : "Sin registros en esta página."}
-                </p>
-              </div>
-            ) : (
-              <div className="bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-700 border-b border-slate-600">
-                      <tr>
-                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
-                          Fecha / Hora
-                        </th>
-                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
-                          Usuario (Actor)
-                        </th>
-                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
-                          Acción
-                        </th>
-                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
-                          Entidad
-                        </th>
-                        <th className="px-6 py-3 text-left font-semibold text-slate-300">
-                          Descripción
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700">
-                      {rows.map((log, idx) => (
-                        <tr
-                          key={`${log.id || idx}`}
-                          className="hover:bg-slate-700 transition-colors"
-                        >
-                          <td className="px-6 py-3 text-slate-300">
-                            {fmtFecha(log.fecha_completa || log.fecha)}
-                          </td>
-                          <td className="px-6 py-3 text-slate-300">
-                            {log.usuario?.username || "N/A"}
-                          </td>
-                          <td className="px-6 py-3">
-                            <span
-                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getAccionClass(
-                                log.realizado
-                              )}`}
-                            >
-                              {getAccionDisplay(log.realizado)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-3 text-slate-300">
-                            {getEntidadDisplay(log.tabla_afectada)}
-                          </td>
-                          <td className="px-6 py-3 text-slate-300 max-w-md truncate">
-                            {buildHumanMessage(log)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Paginación */}
-            {pages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-slate-400 text-sm">
-                  Página {page} de {pages} | Total: {total} registros
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handlePreviousPage}
-                    disabled={page === 1}
-                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-                  >
-                    ← Anterior
-                  </button>
-                  <button
-                    onClick={handleNextPage}
-                    disabled={page === pages}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-                  >
-                    Siguiente →
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -4,6 +4,18 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
+import {
+  FaPlus,
+  FaTrash,
+  FaCheck,
+  FaTimes,
+  FaChevronLeft,
+  FaChevronRight,
+  FaExclamationCircle,
+  FaUsers,
+  FaCheckCircle,
+  FaTimesCircle
+} from "react-icons/fa";
 
 const PAGE_SIZE = 10;
 
@@ -14,21 +26,13 @@ function Toast({ message, type, onClose }) {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === "success" ? "#4CAF50" : "#f44";
+  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
+  const icon = type === "success" ? <FaCheckCircle /> : <FaTimesCircle />;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: "20px",
-        right: "20px",
-        backgroundColor: bgColor,
-        color: "white",
-        padding: "16px",
-        borderRadius: "4px",
-        zIndex: 1000,
-      }}
-    >
-      {message}
+    <div className={`fixed bottom-5 right-5 px-6 py-4 ${bgColor} text-white rounded-lg shadow-lg z-50 flex items-center gap-3 animate-fade-in-up`}>
+      {icon}
+      <span>{message}</span>
     </div>
   );
 }
@@ -138,94 +142,95 @@ export default function UsuariosPage() {
   if (authLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center text-gray-600">Cargando...</div>
+        <div className="text-center text-gray-600 dark:text-gray-400">Cargando...</div>
       </div>
     );
   }
 
   // Contenido principal
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white dark:bg-gray-800 min-h-screen">
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-lg">
-          ❌ {error}
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-6 py-4 rounded-lg flex items-center gap-2">
+          <FaExclamationCircle /> {error}
         </div>
       )}
 
       <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Usuarios</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <FaUsers className="text-blue-600 dark:text-blue-400" /> Usuarios
+        </h1>
         <button
           onClick={() => navigate("/usuarios/nuevo")}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
         >
-          <span>➕</span> Registro de Usuarios
+          <FaPlus /> Registro de Usuarios
         </button>
       </div>
 
       {pageLoading ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
           Cargando usuarios...
         </div>
       ) : usuarios.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
           No hay usuarios registrados
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto border border-gray-200 dark:border-gray-700">
             <table className="w-full border-collapse">
-              <thead className="bg-gray-100 border-b">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Nombre
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Usuario
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Rol
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Cédula
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Activo
                   </th>
                   {isAdmin() && (
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Acciones
                     </th>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 {usuarios.map((u) => (
                   <tr
                     key={u.id}
                     onClick={() => handleRowClick(u.id)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {u.nombre || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {u.username || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {u.rol?.nombre_rol || u.rol || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {u.cedula || "—"}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          u.activo
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${u.activo
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                          : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                          }`}
                       >
-                        {u.activo ? "✓ Sí" : "✗ No"}
+                        {u.activo ? <><FaCheck size={10} /> Sí</> : <><FaTimes size={10} /> No</>}
                       </span>
                     </td>
                     {isAdmin() && (
@@ -235,9 +240,9 @@ export default function UsuariosPage() {
                       >
                         <button
                           onClick={() => handleDelete(u.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                          className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
                         >
-                          🗑️ Eliminar
+                          <FaTrash /> Eliminar
                         </button>
                       </td>
                     )}
@@ -252,17 +257,17 @@ export default function UsuariosPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
             >
-              ← Anterior
+              <FaChevronLeft /> Anterior
             </button>
-            <span className="px-4 py-2 font-medium">Página {currentPage}</span>
+            <span className="px-4 py-2 font-medium text-gray-900 dark:text-white">Página {currentPage}</span>
             <button
               onClick={() => setCurrentPage((p) => p + 1)}
               disabled={usuarios.length < PAGE_SIZE}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
             >
-              Siguiente →
+              Siguiente <FaChevronRight />
             </button>
           </div>
         </>

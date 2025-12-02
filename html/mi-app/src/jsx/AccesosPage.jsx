@@ -4,7 +4,17 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { useApi } from "../context/ApiContext";
-
+import {
+  FaClipboardList,
+  FaPlus,
+  FaTrash,
+  FaDownload,
+  FaChevronLeft,
+  FaChevronRight,
+  FaExclamationCircle,
+  FaCheckCircle,
+  FaTimesCircle
+} from "react-icons/fa";
 
 const PAGE_SIZE = 10;
 
@@ -15,27 +25,16 @@ function Toast({ message, type, onClose }) {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === "success" ? "#4CAF50" : "#f44";
+  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
+  const icon = type === "success" ? <FaCheckCircle /> : <FaTimesCircle />;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "20px",
-        right: "20px",
-        padding: "15px 25px",
-        backgroundColor: bgColor,
-        color: "white",
-        borderRadius: "8px",
-        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        zIndex: 9999,
-      }}
-    >
-      {message}
+    <div className={`fixed top-5 right-5 px-6 py-4 ${bgColor} text-white rounded-lg shadow-lg z-50 flex items-center gap-3 animate-fade-in-down`}>
+      {icon}
+      <span>{message}</span>
     </div>
   );
 }
-
-
 
 export default function AccesosPage() {
   const navigate = useNavigate();
@@ -50,74 +49,70 @@ export default function AccesosPage() {
   const toastRef = useRef(null);
 
   // Función para cargar accesos
-  
-const downloadPdf = async (visitaId) => {
-  try {
-    setLoading(true);
-    console.log(`📥 Iniciando descarga de PDF para visita ${visitaId}...`);
+  const downloadPdf = async (visitaId) => {
+    try {
+      setLoading(true);
+      console.log(`📥 Iniciando descarga de PDF para visita ${visitaId}...`);
 
-    const response = await fetch(
-      `${API_V1}/visitas/${visitaId}/download-pdf`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Respuesta error PDF:", errText);
-      throw new Error(
-        `Error al descargar PDF: ${response.status} ${response.statusText}`
+      const response = await fetch(
+        `${API_V1}/visitas/${visitaId}/download-pdf`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-    }
 
-    // Obtener blob del PDF
-    const blob = await response.blob();
-
-    // Nombre de archivo desde Content-Disposition (si existe)
-    const contentDisposition = response.headers.get("Content-Disposition");
-    let filename = `constancia_visita_${visitaId}.pdf`;
-
-    if (contentDisposition) {
-      const match = contentDisposition.match(
-        /filename[^;=\n]*=(?:(['"]).*?\1|[^;\n]*)/
-      );
-      if (match && match[0]) {
-        filename = match[0].replace(/filename=/, "").replace(/['"]/g, "");
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Respuesta error PDF:", errText);
+        throw new Error(
+          `Error al descargar PDF: ${response.status} ${response.statusText}`
+        );
       }
+
+      // Obtener blob del PDF
+      const blob = await response.blob();
+
+      // Nombre de archivo desde Content-Disposition (si existe)
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `constancia_visita_${visitaId}.pdf`;
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(
+          /filename[^;=\n]*=(?:(['"]).*?\1|[^;\n]*)/
+        );
+        if (match && match[0]) {
+          filename = match[0].replace(/filename=/, "").replace(/['"]/g, "");
+        }
+      }
+
+      // Crear URL temporal y lanzar descarga
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      setToast({ message: `PDF descargado: ${filename}`, type: "success" });
+      console.log("✅ Descarga completada");
+    } catch (error) {
+      console.error("❌ Error descargando PDF:", error);
+      setToast({
+        message: `${error.message || "Error al descargar PDF"}`,
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    // Crear URL temporal y lanzar descarga
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-
-    setTimeout(() => {
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-
-    setToast({ message: `✅ PDF descargado: ${filename}`, type: "success" });
-    console.log("✅ Descarga completada");
-  } catch (error) {
-    console.error("❌ Error descargando PDF:", error);
-    setToast({
-      message: `❌ ${error.message || "Error al descargar PDF"}`,
-      type: "error",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  
+  };
 
   const loadAccesos = async () => {
     if (!isAuthenticated()) {
@@ -179,10 +174,10 @@ const downloadPdf = async (visitaId) => {
         throw new Error("Error al eliminar");
       }
 
-      setToast({ message: "✅ Acceso eliminado", type: "success" });
+      setToast({ message: "Acceso eliminado", type: "success" });
       loadAccesos();
     } catch (err) {
-      setToast({ message: `❌ ${err.message}`, type: "error" });
+      setToast({ message: `${err.message}`, type: "error" });
     }
   };
 
@@ -193,30 +188,17 @@ const downloadPdf = async (visitaId) => {
 
   // Renderizado
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white dark:bg-gray-800 min-h-screen">
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <h1 style={{ margin: 0 }}>📋 Accesos</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <FaClipboardList className="text-blue-600 dark:text-blue-400" /> Accesos
+        </h1>
         <button
           onClick={() => navigate("/registro/acceso")}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#4CAF50",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-sm"
         >
-          ➕ Nuevo Acceso
+          <FaPlus /> Nuevo Acceso
         </button>
       </div>
 
@@ -231,223 +213,138 @@ const downloadPdf = async (visitaId) => {
 
       {/* Error */}
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            color: "#c33",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "20px",
-          }}
-        >
-          ✗ {error}
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6 flex items-center gap-2">
+          <FaExclamationCircle /> {error}
         </div>
       )}
 
       {/* Tabla */}
-      <div
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: "8px",
-          border: "1px solid #ddd",
-          overflow: "hidden",
-        }}
-      >
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
         {loading ? (
-          <div style={{ padding: "40px", textAlign: "center" }}>
+          <div className="p-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
             Cargando accesos...
           </div>
         ) : accesos.length === 0 ? (
-          <div
-            style={{
-              padding: "40px",
-              textAlign: "center",
-              color: "#999",
-            }}
-          >
+          <div className="p-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
             No hay accesos registrados
           </div>
         ) : (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-            }}
-          >
-            <thead>
-              <tr style={{ backgroundColor: "#f5f5f5", borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                  Fecha
-                </th>
-                <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                  Persona
-                </th>
-                <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                  Cédula
-                </th>
-                <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                  Empresa
-                </th>
-                <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                  Actividad
-                </th>
-                <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                  Centro
-                </th>
-                {isAdmin() && (
-                  <th style={{ padding: "12px", textAlign: "left", fontWeight: "bold" }}>
-                    Acciones
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Fecha
                   </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {accesos.map((v, idx) => (
-                <tr
-                  key={v.id}
-                  onClick={() => navigate(`/accesos/${v.id}`)}
-                  style={{
-                    borderBottom: "1px solid #eee",
-                    backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f0f0f0";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      idx % 2 === 0 ? "#fff" : "#f9f9f9";
-                  }}
-                >
-                  <td style={{ padding: "12px" }}>
-                    {v.fecha_programada
-                      ? v.fecha_programada.slice(0, 10)
-                      : "—"}
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    {v.persona?.nombre || "—"}
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    {v.persona?.documento_identidad || "—"}
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    {v.persona?.empresa || "—"}
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    {v.actividad?.nombre_actividad || "—"}
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    {v.centro_datos?.nombre || "—"}
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Persona
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Cédula
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Empresa
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Actividad
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Centro
+                  </th>
                   {isAdmin() && (
-                    <td
-                      style={{ padding: "12px" }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => handleDelete(v.id)}
-                        style={{
-                          padding: "6px 12px",
-                          backgroundColor: "#f44",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        🗑️ Eliminar
-                      </button>
-                    </td>
-                  )}
-                  {isAdmin() && (
-                    <td
-                      style={{ padding: "12px" }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                    onClick={() => downloadPdf(v.id)}   // ← antes decía downloadPDF
-                    disabled={loading}
-                    style={{
-                      padding: "6px 12px",
-                      background: "#3498db",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    📥 PDF
-                  </button>
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Acciones
+                    </th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {accesos.map((v, idx) => (
+                  <tr
+                    key={v.id}
+                    onClick={() => navigate(`/accesos/${v.id}`)}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {v.fecha_programada
+                        ? v.fecha_programada.slice(0, 10)
+                        : "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {v.persona?.nombre || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {v.persona?.documento_identidad || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {v.persona?.empresa || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {v.actividad?.nombre_actividad || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {v.centro_datos?.nombre || "—"}
+                    </td>
+                    {isAdmin() && (
+                      <td
+                        className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => handleDelete(v.id)}
+                          className="flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                        >
+                          <FaTrash size={14} /> Eliminar
+                        </button>
+                        <button
+                          onClick={() => downloadPdf(v.id)}
+                          disabled={loading}
+                          className="flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50"
+                        >
+                          <FaDownload size={14} /> PDF
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "10px",
-            marginTop: "20px",
-          }}
-        >
+        <div className="flex justify-center items-center gap-2 mt-6">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: page === 1 ? "#ccc" : "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: page === 1 ? "not-allowed" : "pointer",
-            }}
+            className="flex items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            ← Anterior
+            <FaChevronLeft /> Anterior
           </button>
 
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
-              style={{
-                padding: "8px 12px",
-                backgroundColor: page === p ? "#2196F3" : "#f0f0f0",
-                color: page === p ? "white" : "#333",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: page === p ? "bold" : "normal",
-              }}
-            >
-              {p}
-            </button>
-          ))}
+          <div className="hidden sm:flex gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${page === p
+                  ? "bg-blue-600 text-white border border-blue-600"
+                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
 
           <button
             onClick={() => setPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: page === totalPages ? "#ccc" : "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: page === totalPages ? "not-allowed" : "pointer",
-            }}
+            className="flex items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Siguiente →
+            Siguiente <FaChevronRight />
           </button>
         </div>
       )}

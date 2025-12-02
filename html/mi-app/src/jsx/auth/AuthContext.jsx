@@ -69,6 +69,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
+      console.log("tengohambre:" + API_V1);
       const response = await fetch(`${API_V1}/auth/login-json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

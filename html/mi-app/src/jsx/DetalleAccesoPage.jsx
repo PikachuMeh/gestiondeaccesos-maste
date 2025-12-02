@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { useApi } from "../context/ApiContext";
+import {
+  FaArrowLeft,
+  FaHistory,
+  FaCalendarAlt,
+  FaClipboardList,
+  FaBuilding,
+  FaSitemap,
+  FaInfoCircle,
+  FaEye,
+  FaExclamationCircle
+} from "react-icons/fa";
 
 export default function DetalleAccesoPage() {
   const { persona_id } = useParams(); // ID de la persona
@@ -59,7 +70,7 @@ export default function DetalleAccesoPage() {
       try {
         setLoading(true);
         const skip = (page - 1) * PAGE_SIZE;
-        
+
         // ✅ Endpoint para obtener visitas de una persona
         const resp = await fetch(
           `${API_V1}/visitas?persona_id=${persona_id}&skip=${skip}&limit=${PAGE_SIZE}`,
@@ -77,11 +88,11 @@ export default function DetalleAccesoPage() {
 
         const data = await resp.json();
         setAccesos(data.items || data); // Adaptarse a la estructura de tu API
-        
+
         // Calcular páginas totales
         const total = data.total || 0;
         setTotalPages(Math.ceil(total / PAGE_SIZE));
-        
+
         setError(null);
       } catch (err) {
         console.error("Error cargando accesos:", err);
@@ -104,327 +115,191 @@ export default function DetalleAccesoPage() {
 
   if (loading && !persona) {
     return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <p>Cargando historial...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Cargando historial...</p>
+        </div>
       </div>
     );
   }
 
   if (error && !persona) {
     return (
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-        <div
-          style={{
-            backgroundColor: "#fee",
-            color: "#c33",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "15px",
-          }}
-        >
-          ✗ {error}
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <div className="text-red-500 text-5xl mb-4 flex justify-center">
+            <FaExclamationCircle />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error al cargar</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={handleBack}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 mx-auto"
+          >
+            <FaArrowLeft /> Volver
+          </button>
         </div>
-        <button
-          onClick={handleBack}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#999",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          Volver
-        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "30px",
-        }}
-      >
-        <div>
-          <h1 style={{ margin: "0 0 10px 0" }}>Historial de Accesos</h1>
-          {persona && (
-            <p style={{ margin: 0, color: "#666", fontSize: "16px" }}>
-              <strong>{persona.nombre} {persona.apellido}</strong> - Cédula: {persona.documento_identidad}
-            </p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <FaHistory className="text-blue-600 dark:text-blue-400" /> Historial de Accesos
+            </h1>
+            {persona && (
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                <span className="font-semibold text-gray-900 dark:text-white">{persona.nombre} {persona.apellido}</span> - Cédula: {persona.documento_identidad}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleBack}
+            className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <FaArrowLeft /> Volver
+          </button>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg flex items-center gap-2">
+            <FaExclamationCircle /> {error}
+          </div>
+        )}
+
+        {/* Tabla de accesos */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+              <p className="text-gray-500 dark:text-gray-400">Cargando accesos...</p>
+            </div>
+          ) : accesos.length === 0 ? (
+            <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+              <FaClipboardList className="text-4xl mx-auto mb-2 opacity-50" />
+              <p>No hay registros de acceso para esta persona</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                    <th className="p-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      <div className="flex items-center gap-2"><FaCalendarAlt /> Fecha Programada</div>
+                    </th>
+                    <th className="p-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      <div className="flex items-center gap-2"><FaClipboardList /> Actividad</div>
+                    </th>
+                    <th className="p-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      <div className="flex items-center gap-2"><FaBuilding /> Centro de Datos</div>
+                    </th>
+                    <th className="p-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      <div className="flex items-center gap-2"><FaSitemap /> Área(s)</div>
+                    </th>
+                    <th className="p-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      <div className="flex items-center gap-2"><FaInfoCircle /> Estado</div>
+                    </th>
+                    <th className="p-4 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {accesos.map((acceso, idx) => (
+                    <tr
+                      key={acceso.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors bg-white dark:bg-gray-800"
+                    >
+                      <td className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                        {acceso.fecha_programada
+                          ? new Date(acceso.fecha_programada).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                        {acceso.actividad?.nombre_actividad || "—"}
+                      </td>
+                      <td className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                        {acceso.centro_datos?.nombre || "—"}
+                      </td>
+                      <td className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                        {acceso.area?.nombre || "—"}
+                      </td>
+                      <td className="p-4 text-sm">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${acceso.estado?.nombre_estado === "Completado"
+                              ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+                              : acceso.estado?.nombre_estado === "Pendiente"
+                                ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300"
+                                : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300"
+                            }`}
+                        >
+                          {acceso.estado?.nombre_estado || "—"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => handleVerDetalles(acceso.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+                        >
+                          <FaEye /> Ver Detalles
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
-        <button
-          onClick={handleBack}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#999",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
-          ← Volver
-        </button>
-      </div>
 
-      {/* Error */}
-      {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            color: "#c33",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "20px",
-            border: "1px solid #fcc",
-          }}
-        >
-          ✗ {error}
-        </div>
-      )}
-
-      {/* Tabla de accesos */}
-      <div
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: "10px",
-          border: "1px solid #ddd",
-          overflow: "hidden",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        }}
-      >
-        {loading ? (
-          <div style={{ padding: "40px", textAlign: "center" }}>
-            <p>Cargando accesos...</p>
-          </div>
-        ) : accesos.length === 0 ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
-            <p>No hay registros de acceso para esta persona</p>
-          </div>
-        ) : (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  backgroundColor: "#f5f5f5",
-                  borderBottom: "2px solid #ddd",
-                }}
-              >
-                <th
-                  style={{
-                    padding: "12px",
-                    textAlign: "left",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  Fecha Programada
-                </th>
-                <th
-                  style={{
-                    padding: "12px",
-                    textAlign: "left",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  Actividad
-                </th>
-                <th
-                  style={{
-                    padding: "12px",
-                    textAlign: "left",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  Centro de Datos
-                </th>
-                <th
-                  style={{
-                    padding: "12px",
-                    textAlign: "left",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  Área(s)
-                </th>
-                <th
-                  style={{
-                    padding: "12px",
-                    textAlign: "left",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  Estado
-                </th>
-                <th
-                  style={{
-                    padding: "12px",
-                    textAlign: "left",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {accesos.map((acceso, idx) => (
-                <tr
-                  key={acceso.id}
-                  style={{
-                    borderBottom: "1px solid #eee",
-                    backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9",
-                  }}
-                >
-                  <td style={{ padding: "12px", fontSize: "14px" }}>
-                    {acceso.fecha_programada
-                      ? new Date(acceso.fecha_programada).toLocaleDateString()
-                      : "—"}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: "14px" }}>
-                    {acceso.actividad?.nombre_actividad || "—"}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: "14px" }}>
-                    {acceso.centro_datos?.nombre || "—"}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: "14px" }}>
-                    {acceso.area?.nombre || "—"}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: "14px" }}>
-                    <span
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        backgroundColor:
-                          acceso.estado?.nombre_estado === "Completado"
-                            ? "#d4edda"
-                            : acceso.estado?.nombre_estado === "Pendiente"
-                            ? "#fff3cd"
-                            : "#f8d7da",
-                        color:
-                          acceso.estado?.nombre_estado === "Completado"
-                            ? "#155724"
-                            : acceso.estado?.nombre_estado === "Pendiente"
-                            ? "#856404"
-                            : "#721c24",
-                        fontSize: "12px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {acceso.estado?.nombre_estado || "—"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    <button
-                      onClick={() => handleVerDetalles(acceso.id)}
-                      style={{
-                        padding: "6px 12px",
-                        backgroundColor: "#2196F3",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Ver Detalles
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Paginación */}
-      {totalPages > 1 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "10px",
-            marginTop: "30px",
-          }}
-        >
-          <button
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page === 1}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: page === 1 ? "#ccc" : "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: page === 1 ? "not-allowed" : "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            ← Anterior
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-8">
             <button
-              key={p}
-              onClick={() => setPage(p)}
-              style={{
-                padding: "8px 12px",
-                backgroundColor: page === p ? "#2196F3" : "#f0f0f0",
-                color: page === p ? "white" : "#333",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: page === p ? "bold" : "normal",
-              }}
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {p}
+              ← Anterior
             </button>
-          ))}
 
-          <button
-            onClick={() => setPage(Math.min(totalPages, page + 1))}
-            disabled={page === totalPages}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: page === totalPages ? "#ccc" : "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: page === totalPages ? "not-allowed" : "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            Siguiente →
-          </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`px-4 py-2 rounded-lg border transition-colors ${page === p
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+              >
+                {p}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
+
+        {/* Info */}
+        <div className="text-center mt-6 text-gray-500 dark:text-gray-400 text-sm">
+          <p>
+            Mostrando página <strong>{page}</strong> de <strong>{totalPages}</strong>
+            {accesos.length > 0 && ` • Total de registros: ${accesos.length * totalPages}`}
+          </p>
         </div>
-      )}
-
-      {/* Info */}
-      <div style={{ textAlign: "center", marginTop: "30px", color: "#666" }}>
-        <p>
-          Mostrando página <strong>{page}</strong> de <strong>{totalPages}</strong>
-          {accesos.length > 0 && ` • Total de registros: ${accesos.length * totalPages}`}
-        </p>
       </div>
     </div>
   );

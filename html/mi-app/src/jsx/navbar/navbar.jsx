@@ -2,6 +2,19 @@
 
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  FaUsers,
+  FaDoorOpen,
+  FaClipboardList,
+  FaChartBar,
+  FaCog,
+  FaSignOutAlt,
+  FaBars,
+  FaKey,
+  FaMoon,
+  FaSun
+} from "react-icons/fa";
 
 export default function Navbar() {
   const {
@@ -13,6 +26,7 @@ export default function Navbar() {
     isAuditor,
     getCurrentRoleName,
   } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -22,12 +36,12 @@ export default function Navbar() {
 
   const isActive = (path) => {
     return location.pathname === path
-      ? "bg-blue-600 text-white"
-      : "text-gray-700 hover:bg-gray-100";
+      ? "bg-blue-700 text-white dark:bg-blue-700"
+      : "text-white hover:bg-blue-500 dark:text-gray-200 dark:hover:bg-gray-700";
   };
 
   return (
-    <nav className="bg-white shadow-md border-b border-gray-200">
+    <nav className="bg-blue-600 dark:bg-gray-800 shadow-lg border-b border-blue-700 dark:border-gray-700 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -37,51 +51,52 @@ export default function Navbar() {
                 isAuditor()
                   ? "/auditoria"
                   : isSupervisorOrAbove()
-                  ? "/usuarios"
-                  : "/accesos"
+                    ? "/usuarios"
+                    : "/accesos"
               }
-              className="text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors"
+              className="flex items-center gap-2 text-xl font-bold text-white dark:text-blue-400 hover:text-blue-100 dark:hover:text-blue-300 transition-colors"
             >
-              🔐 Gestión de Acceso
+              <FaKey />
+              <span>Gestión de Acceso</span>
             </Link>
           </div>
 
           {/* ✅ MENÚ DINÁMICO SEGÚN ROL */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4">
             {/* ADMIN (rol_id = 1) - Todo */}
             {isAdmin() && (
               <>
                 <Link
                   to="/usuarios"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/usuarios"
                   )}`}
                 >
-                  👥 Usuarios
+                  <FaUsers /> Usuarios
                 </Link>
                 <Link
                   to="/accesos"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/accesos"
                   )}`}
                 >
-                  🚪 Accesos
+                  <FaDoorOpen /> Accesos
                 </Link>
                 <Link
                   to="/personas"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/personas"
                   )}`}
                 >
-                  📋 Personas
+                  <FaClipboardList /> Personas
                 </Link>
                 <Link
                   to="/auditoria"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/auditoria"
                   )}`}
                 >
-                  📊 Auditoría
+                  <FaChartBar /> Auditoría
                 </Link>
               </>
             )}
@@ -91,27 +106,27 @@ export default function Navbar() {
               <>
                 <Link
                   to="/usuarios"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/usuarios"
                   )}`}
                 >
-                  👥 Usuarios
+                  <FaUsers /> Usuarios
                 </Link>
                 <Link
                   to="/accesos"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/accesos"
                   )}`}
                 >
-                  🚪 Accesos
+                  <FaDoorOpen /> Accesos
                 </Link>
                 <Link
                   to="/personas"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/personas"
                   )}`}
                 >
-                  📋 Personas
+                  <FaClipboardList /> Personas
                 </Link>
               </>
             )}
@@ -121,19 +136,19 @@ export default function Navbar() {
               <>
                 <Link
                   to="/accesos"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/accesos"
                   )}`}
                 >
-                  🚪 Accesos
+                  <FaDoorOpen /> Accesos
                 </Link>
                 <Link
                   to="/personas"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/personas"
                   )}`}
                 >
-                  📋 Personas
+                  <FaClipboardList /> Personas
                 </Link>
               </>
             )}
@@ -143,42 +158,51 @@ export default function Navbar() {
               <>
                 <Link
                   to="/auditoria"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
                     "/auditoria"
                   )}`}
                 >
-                  📊 Auditoría
+                  <FaChartBar /> Auditoría
                 </Link>
               </>
             )}
 
             {/* Separador */}
-            <div className="border-l border-gray-300 h-6"></div>
+            <div className="border-l border-blue-500 dark:border-gray-600 h-6"></div>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full text-white dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-gray-700 transition-colors"
+              title={theme === 'dark' ? "Modo Claro" : "Modo Oscuro"}
+            >
+              {theme === 'dark' ? <FaSun /> : <FaMoon />}
+            </button>
 
             {/* Perfil (Para todos) */}
             <Link
-              to="/perfil"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
-                "/perfil"
+              to={`/usuarios/${user?.id}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(
+                `/usuarios/${user?.id}`
               )}`}
             >
-              ⚙️ Perfil
+              <FaCog /> Perfil
             </Link>
 
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
             >
-              Logout
+              <FaSignOutAlt /> Logout
             </button>
           </div>
 
           {/* Usuario Info */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3 ml-4">
             <div className="text-right text-sm">
-              <p className="text-gray-900 font-medium">{user?.username || "Usuario"}</p>
-              <p className="text-gray-500 text-xs">{getCurrentRoleName()}</p>
+              <p className="text-white dark:text-white font-medium">{user?.username || "Usuario"}</p>
+              <p className="text-blue-100 dark:text-gray-400 text-xs">{getCurrentRoleName()}</p>
             </div>
             <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
               {user?.username?.charAt(0).toUpperCase() || "U"}
@@ -186,22 +210,15 @@ export default function Navbar() {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:bg-gray-100">
-              <svg
-                className="h-6 w-6"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full text-white dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-gray-700 transition-colors"
+            >
+              {theme === 'dark' ? <FaSun /> : <FaMoon />}
+            </button>
+            <button className="inline-flex items-center justify-center p-2 rounded-md text-white dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-gray-700">
+              <FaBars className="h-6 w-6" />
             </button>
           </div>
         </div>

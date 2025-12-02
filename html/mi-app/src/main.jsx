@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ApiProvider } from '@/context/ApiContext';
 import { AuthProvider } from '@/jsx/auth/AuthContext';
 import { ImageProvider } from '@/context/ImageContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 // Layout
 import App from '@/App.jsx';
@@ -45,42 +46,44 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <ApiProvider>
         <AuthProvider>
           <ImageProvider>
-            <Routes>
-              {/* ==================== RUTAS PÚBLICAS ==================== */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <ThemeProvider>
+              <Routes>
+                {/* ==================== RUTAS PÚBLICAS ==================== */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-              {/* ==================== RUTAS PROTEGIDAS ==================== */}
-              <Route
-                element={<ProtectedRoute><App /></ProtectedRoute>}
-              >
-                {/* OPERADOR+ (rol <= 3) */}
-                <Route path="/accesos" element={<AccesosPage />} />
-                <Route path="/accesos/:id" element={<DetalleVisitaPage />} />
-                <Route path="/personas" element={<PersonasPage />} />
-                <Route path="/personas/:id" element={<DetallePersonaPage />} />
-                <Route path="/personas/:id/editar" element={<EditarPersonaPage />} />
-                <Route path="/registro/acceso" element={<CrearAccesoPage />} />
-                <Route path="/registro/visitante" element={<CrearVisitante />} />
-                <Route path="/perfil" element={<Perfil_persona />} />
+                {/* ==================== RUTAS PROTEGIDAS ==================== */}
+                <Route
+                  element={<ProtectedRoute><App /></ProtectedRoute>}
+                >
+                  {/* OPERADOR+ (rol <= 3) */}
+                  <Route path="/accesos" element={<AccesosPage />} />
+                  <Route path="/accesos/:id" element={<DetalleVisitaPage />} />
+                  <Route path="/personas" element={<PersonasPage />} />
+                  <Route path="/personas/:id" element={<DetallePersonaPage />} />
+                  <Route path="/personas/:id/editar" element={<EditarPersonaPage />} />
+                  <Route path="/registro/acceso" element={<CrearAccesoPage />} />
+                  <Route path="/registro/visitante" element={<CrearVisitante />} />
+                  <Route path="/perfil" element={<Perfil_persona />} />
 
-                {/* SUPERVISOR+ (rol <= 2) */}
-                <Route path="/usuarios" element={<UsuariosPage />} />
-                <Route path="/usuarios/nuevo" element={<CrearUsuarioPage />} />
-                <Route path="/usuarios/:id" element={<DetalleUsuarioPage />} />
+                  {/* SUPERVISOR+ (rol <= 2) */}
+                  <Route path="/usuarios" element={<UsuariosPage />} />
+                  <Route path="/usuarios/nuevo" element={<CrearUsuarioPage />} />
+                  <Route path="/usuarios/:id" element={<DetalleUsuarioPage />} />
 
-                {/* AUDITOR (rol = 4) */}
-                <Route path="/auditoria" element={<AuditPage />} />
+                  {/* AUDITOR (rol = 4) */}
+                  <Route path="/auditoria" element={<AuditPage />} />
 
-                {/* Catch-all - Redirige a /accesos */}
-                <Route path="/" element={<Navigate to="/accesos" replace />} />
-              </Route>
+                  {/* Catch-all - Redirige a /accesos */}
+                  <Route path="/" element={<Navigate to="/accesos" replace />} />
+                </Route>
 
-              {/* ==================== CATCH-ALL ==================== */}
-              {/* Si no está autenticado, va a login */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
+                {/* ==================== CATCH-ALL ==================== */}
+                {/* Si no está autenticado, va a login */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </ThemeProvider>
           </ImageProvider>
         </AuthProvider>
       </ApiProvider>

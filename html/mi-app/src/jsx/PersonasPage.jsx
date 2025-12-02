@@ -4,6 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
+import {
+  FaPlus,
+  FaSearch,
+  FaBuilding,
+  FaRedo,
+  FaEye,
+  FaEdit,
+  FaChevronLeft,
+  FaChevronRight,
+  FaExclamationCircle,
+  FaUserFriends
+} from "react-icons/fa";
 
 const PAGE_SIZE = 10;
 
@@ -133,75 +145,89 @@ export default function PersonasPage() {
   if (authLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center text-gray-600">Cargando...</div>
+        <div className="text-center text-gray-600 dark:text-gray-400">Cargando...</div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white dark:bg-gray-800 min-h-screen">
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-lg">
-          ❌ {error}
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-6 py-4 rounded-lg flex items-center gap-2">
+          <FaExclamationCircle /> {error}
         </div>
       )}
 
       {/* Header con botón agregar */}
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Personas</h1>
-          <p className="text-gray-600 mt-1">Total: {total} registros</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <FaUserFriends className="text-blue-600 dark:text-blue-400" /> Personas
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Total: {total} registros</p>
         </div>
         {canCreate && (
           <button
             onClick={handleAgregarPersona}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
           >
-            <span>➕</span> Nuevo Visitante
+            <FaPlus /> Nuevo Visitante
           </button>
         )}
       </div>
 
       {/* Filtros de Búsqueda */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 text-gray-900">Filtros de Búsqueda</h2>
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+          <FaSearch className="text-gray-400" /> Filtros de Búsqueda
+        </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Búsqueda Unificada (Nombre o Cédula) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              🔍 Buscar por Nombre o Cédula
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Buscar por Nombre o Cédula
             </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Ej: Juan Pérez o 12345678"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Ej: Juan Pérez o 12345678"
+                className="w-full pl-10 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+              />
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Escribe un nombre o una cédula para buscar
             </p>
           </div>
 
           {/* Búsqueda por Empresa */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              🏢 Buscar por Empresa
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Buscar por Empresa
             </label>
-            <input
-              type="text"
-              value={empresa}
-              onChange={(e) => {
-                setEmpresa(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Ej: Acme Corp"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaBuilding className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={empresa}
+                onChange={(e) => {
+                  setEmpresa(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Ej: Acme Corp"
+                className="w-full pl-10 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+              />
+            </div>
           </div>
         </div>
 
@@ -209,90 +235,92 @@ export default function PersonasPage() {
         {(searchQuery || empresa) && (
           <button
             onClick={handleLimpiarFiltros}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
           >
-            🔄 Limpiar Filtros
+            <FaRedo /> Limpiar Filtros
           </button>
         )}
       </div>
 
       {/* Tabla */}
       {pageLoading ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
           Cargando personas...
         </div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
           {searchQuery || empresa
             ? "No se encontraron personas con esos criterios"
             : "No hay personas registradas"}
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow overflow-x-auto border border-gray-200 dark:border-gray-700">
             <table className="w-full border-collapse">
-              <thead className="bg-gray-100 border-b">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Cédula
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Nombre Completo
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Empresa
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Cargo
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Unidad
                   </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-gray-50 dark:bg-gray-800">
                 {rows.map((p) => (
                   <tr
                     key={p.id}
                     onClick={() => handleVerPersona(p.id)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       V-{p.documento_identidad || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {p.nombre || "—"} {p.apellido || ""}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {p.empresa || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {p.cargo || "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                       {p.unidad || "—"}
                     </td>
                     <td
                       className="px-6 py-4 text-sm"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
-                        onClick={() => handleVerPersona(p.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                      >
-                        👁️ Ver
-                      </button>
-                      {canEdit && (
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => handleEditarPersona(p.id)}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors ml-2"
+                          onClick={() => handleVerPersona(p.id)}
+                          className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
                         >
-                          ✏️ Editar
+                          <FaEye /> Ver
                         </button>
-                      )}
+                        {canEdit && (
+                          <button
+                            onClick={() => handleEditarPersona(p.id)}
+                            className="flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                          >
+                            <FaEdit /> Editar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -305,9 +333,9 @@ export default function PersonasPage() {
             <button
               onClick={handlePrev}
               disabled={page === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
             >
-              ← Anterior
+              <FaChevronLeft /> Anterior
             </button>
 
             <div className="flex items-center gap-2">
@@ -317,28 +345,27 @@ export default function PersonasPage() {
                   <button
                     key={p}
                     onClick={() => setPage(p)}
-                    className={`px-3 py-2 rounded-lg transition-colors ${
-                      page === p
-                        ? "bg-blue-600 text-white"
-                        : "border border-gray-300 hover:bg-gray-50"
-                    }`}
+                    className={`px-3 py-2 rounded-lg transition-colors ${page === p
+                      ? "bg-blue-600 text-white"
+                      : "border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                      }`}
                   >
                     {p}
                   </button>
                 );
               })}
-              {pages > 5 && <span className="text-gray-500">...</span>}
+              {pages > 5 && <span className="text-gray-500 dark:text-gray-400">...</span>}
             </div>
 
             <button
               onClick={handleNext}
               disabled={page === pages}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
             >
-              Siguiente →
+              Siguiente <FaChevronRight />
             </button>
 
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               Página {page} de {pages}
             </span>
           </div>
