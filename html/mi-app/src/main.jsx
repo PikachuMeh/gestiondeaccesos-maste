@@ -42,11 +42,11 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ApiProvider>
-        <AuthProvider>
-          <ImageProvider>
-            <ThemeProvider>
+    <ThemeProvider>
+      <BrowserRouter>
+        <ApiProvider>
+          <AuthProvider>
+            <ImageProvider>
               <Routes>
                 {/* ==================== RUTAS PÚBLICAS ==================== */}
                 <Route path="/login" element={<LoginPage />} />
@@ -83,10 +83,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 {/* Si no está autenticado, va a login */}
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
-            </ThemeProvider>
-          </ImageProvider>
-        </AuthProvider>
-      </ApiProvider>
-    </BrowserRouter>
+            </ImageProvider>
+          </AuthProvider>
+        </ApiProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </React.StrictMode>
 );

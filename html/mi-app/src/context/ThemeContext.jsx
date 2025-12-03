@@ -19,11 +19,12 @@ export function ThemeProvider({ children }) {
     useEffect(() => {
         const root = document.documentElement;
 
-        // Remove existing theme classes
-        root.classList.remove("light", "dark");
-
-        // Apply current theme class
-        root.classList.add(theme);
+        // Apply theme class for dark mode
+        if (theme === "dark") {
+            root.classList.add("dark");
+        } else {
+            root.classList.remove("dark");
+        }
 
         // Save to localStorage
         localStorage.setItem("theme", theme);
