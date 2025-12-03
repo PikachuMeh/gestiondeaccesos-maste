@@ -7,27 +7,35 @@ export function ThemeProvider({ children }) {
         // Check localStorage first
         const savedTheme = localStorage.getItem("theme");
         if (savedTheme) {
+            console.log("Loaded theme from localStorage:", savedTheme);
             return savedTheme;
         }
         // Check system preference
         if (typeof window !== "undefined" && window.matchMedia) {
-            return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            console.log("Using system theme:", systemTheme);
+            return systemTheme;
         }
+        console.log("Using default theme: light");
         return "light";
     });
 
     useEffect(() => {
         const root = document.documentElement;
+        console.log("Applying theme:", theme);
 
         // Apply theme class for dark mode
         if (theme === "dark") {
             root.classList.add("dark");
+            console.log("Added 'dark' class to html element");
         } else {
             root.classList.remove("dark");
+            console.log("Removed 'dark' class from html element");
         }
 
         // Save to localStorage
         localStorage.setItem("theme", theme);
+        console.log("Saved theme to localStorage:", theme);
     }, [theme]);
 
     // Listen for system theme changes
@@ -46,7 +54,12 @@ export function ThemeProvider({ children }) {
     }, []);
 
     const toggleTheme = () => {
-        setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
+        console.log("Toggling theme from:", theme);
+        setTheme((prevTheme) => {
+            const newTheme = prevTheme === "dark" ? "light" : "dark";
+            console.log("New theme:", newTheme);
+            return newTheme;
+        });
     };
 
     return (

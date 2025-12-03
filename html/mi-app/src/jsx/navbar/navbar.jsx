@@ -27,6 +27,7 @@ export default function Navbar() {
     getCurrentRoleName,
   } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  console.log("Navbar theme:", theme);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -170,7 +171,10 @@ export default function Navbar() {
             {/* Theme Toggle */}
             <div className="border-l border-blue-500 dark:border-gray-600 h-6"></div>
             <button
-              onClick={toggleTheme}
+              onClick={() => {
+                console.log("Button clicked, calling toggleTheme");
+                toggleTheme();
+              }}
               className="p-2 rounded-full text-white dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-gray-700 transition-colors"
               title={theme === 'dark' ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
             >
