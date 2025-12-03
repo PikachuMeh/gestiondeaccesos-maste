@@ -20,7 +20,9 @@ import {
   FaArrowLeft,
   FaExclamationCircle,
   FaCheckCircle,
-  FaTimesCircle
+  FaTimesCircle,
+  FaExclamationTriangle,  
+  FaCheck 
 } from "react-icons/fa";
 
 export default function DetalleUsuarioPage() {
@@ -32,6 +34,9 @@ export default function DetalleUsuarioPage() {
   const navigate = useNavigate();
   const { token, isAdmin } = useAuth();
 
+  const [showModal, setShowModal] = useState(false);
+  const [modalMsg, setModalMsg] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,7 +83,9 @@ export default function DetalleUsuarioPage() {
 
     fetchUsuario();
   }, [id, token]);
-
+  const handleCloseModal = () => {
+    setShowModal(false);
+  };
   // ✅ MANEJADOR DE CAMBIOS - CONVIERTE rol_id A NÚMERO
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -130,7 +137,9 @@ export default function DetalleUsuarioPage() {
   // Guardar cambios - SOLO ENVÍA CAMPOS QUE CAMBIARON
   const handleSave = async () => {
     if (!isAdmin()) {
-      setError("Solo administradores pueden editar usuarios");
+      setModalMsg("Solo administradores pueden editar usuarios.");
+      setIsSuccess(false);
+      setShowModal(true);
       return;
     }
 
@@ -212,10 +221,15 @@ export default function DetalleUsuarioPage() {
       setFotoPreview(null);
       setIsEditing(false);
 
-      alert("Usuario actualizado exitosamente");
+      setModalMsg("Usuario actualizado correctamente.");
+      setIsSuccess(true);
+      setShowModal(true);
     } catch (err) {
       console.error("Error guardando:", err);
-      setError(`Error guardando cambios: ${err.message}`);
+      setModalMsg("Error guardando cambios: " + err.message);
+      setIsSuccess(false);
+      setShowModal(true);
+
     } finally {
       setUpdating(false);
     }
@@ -554,6 +568,34 @@ export default function DetalleUsuarioPage() {
           )}
         </div>
       </div>
+    {showModal && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all scale-100">
+          <div className="text-center">
+            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isSuccess ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+              {isSuccess ? (
+                <FaCheck className="text-green-600 dark:text-green-400 text-xl" />
+              ) : (
+                <FaExclamationTriangle className="text-red-600 dark:text-red-400 text-xl" />
+              )}
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {isSuccess ? '¡Éxito!' : 'Atención'}
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">{modalMsg}</p>
+            <button
+              className={`w-full px-4 py-2 rounded-lg text-white font-medium transition-colors ${isSuccess
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+              onClick={handleCloseModal}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }
