@@ -22,15 +22,18 @@ export function ThemeProvider({ children }) {
 
     useEffect(() => {
         const root = document.documentElement;
+        const body = document.body;
         console.log("Applying theme:", theme);
 
         // Apply theme class for dark mode
         if (theme === "dark") {
             root.classList.add("dark");
-            console.log("Added 'dark' class to html element");
+            body.classList.add("dark");
+            console.log("Added 'dark' class to html and body elements");
         } else {
             root.classList.remove("dark");
-            console.log("Removed 'dark' class from html element");
+            body.classList.remove("dark");
+            console.log("Removed 'dark' class from html and body elements");
         }
 
         // Save to localStorage
