@@ -72,46 +72,40 @@
   }
 
   .dark {
-    /* Improved Dark Theme Colors */
-    --primary: 217.2 91.2% 70%;
-    /* Blue */
+    /* Dark Theme Colors */
+    --primary: 217.2 91.2% 65%;
     --on-primary: 217.2 91.2% 10%;
     --primary-container: 217.2 91.2% 15%;
     --on-primary-container: 217.2 91.2% 90%;
 
-    --secondary: 222.2 84% 70%;
-    /* Light blue */
+    --secondary: 222.2 84% 65%;
     --on-secondary: 222.2 84% 10%;
     --secondary-container: 222.2 84% 20%;
     --on-secondary-container: 222.2 84% 90%;
 
-    --tertiary: 120 60% 60%;
+    --tertiary: 120 60% 55%;
     --on-tertiary: 120 60% 10%;
     --tertiary-container: 120 60% 20%;
     --on-tertiary-container: 120 60% 90%;
 
-    --error: 0 84.2% 70%;
+    --error: 0 84.2% 65%;
     --on-error: 0 84.2% 10%;
     --error-container: 0 84.2% 20%;
     --on-error-container: 0 84.2% 90%;
 
-    --background: 0 0% 5%;
-    /* Slightly lighter dark background */
+    --background: 0 0% 8%;
     --on-background: 0 0% 95%;
-    /* Better contrast */
-    --surface: 0 0% 8%;
-    /* Lighter surface */
+    --surface: 0 0% 10%;
     --on-surface: 0 0% 95%;
     --surface-variant: 222.2 84% 20%;
     --on-surface-variant: 222.2 84% 80%;
 
-    --outline: 222.2 84% 70%;
+    --outline: 222.2 84% 65%;
     --outline-variant: 222.2 84% 30%;
 
     --shadow: 0 0% 0%;
     --scrim: 0 0% 0%;
 
-    /* Legacy mappings */
     --foreground: var(--on-background);
     --card: var(--surface);
     --card-foreground: var(--on-surface);

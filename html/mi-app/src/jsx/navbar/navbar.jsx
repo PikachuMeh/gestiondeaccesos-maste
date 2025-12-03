@@ -36,7 +36,7 @@ export default function Navbar() {
 
   const isActive = (path) => {
     return location.pathname === path
-      ? "bg-blue-700 text-white dark:bg-blue-700"
+      ? "bg-blue-700 dark:bg-blue-700 text-white"
       : "text-white hover:bg-blue-500 dark:text-gray-200 dark:hover:bg-gray-700";
   };
 
@@ -54,7 +54,7 @@ export default function Navbar() {
                     ? "/usuarios"
                     : "/accesos"
               }
-              className="flex items-center gap-2 text-xl font-bold text-white dark:text-blue-400 hover:text-blue-100 dark:hover:text-blue-300 transition-colors"
+              className="flex items-center gap-2 text-xl font-bold text-white hover:text-blue-100 transition-colors"
             >
               <FaKey />
               <span>Gestión de Acceso</span>
@@ -167,14 +167,12 @@ export default function Navbar() {
               </>
             )}
 
-            {/* Separador */}
-            <div className="border-l border-blue-500 dark:border-gray-600 h-6"></div>
-
             {/* Theme Toggle */}
+            <div className="border-l border-blue-500 dark:border-gray-600 h-6"></div>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full text-white dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-gray-700 transition-colors"
-              title={theme === 'dark' ? "Modo Claro" : "Modo Oscuro"}
+              title={theme === 'dark' ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
             >
               {theme === 'dark' ? <FaSun /> : <FaMoon />}
             </button>
@@ -217,7 +215,7 @@ export default function Navbar() {
             >
               {theme === 'dark' ? <FaSun /> : <FaMoon />}
             </button>
-            <button className="inline-flex items-center justify-center p-2 rounded-md text-white dark:text-gray-200 hover:bg-blue-500 dark:hover:bg-gray-700">
+            <button className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-blue-500">
               <FaBars className="h-6 w-6" />
             </button>
           </div>

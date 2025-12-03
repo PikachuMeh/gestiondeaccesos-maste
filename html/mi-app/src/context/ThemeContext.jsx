@@ -4,34 +4,49 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
     const [theme, setTheme] = useState(() => {
-        // Check local storage or system preference
-        if (typeof window !== "undefined") {
-            const savedTheme = localStorage.getItem("theme");
-            if (savedTheme) {
-                return savedTheme;
-            }
-            if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-                return "dark";
-            }
+        // Check local storage first
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme) {
+            return savedTheme;
+        }
+        // Check system preference
+        if (typeof window !== "undefined" && window.matchMedia) {
+            return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
         return "light";
     });
 
     useEffect(() => {
-        const root = window.document.documentElement;
-        const body = window.document.body;
+        const root = document.documentElement;
+
+        // Apply theme class
         if (theme === "dark") {
             root.classList.add("dark");
-            body.classList.add("dark");
         } else {
             root.classList.remove("dark");
-            body.classList.remove("dark");
         }
+
+        // Save to localStorage
         localStorage.setItem("theme", theme);
     }, [theme]);
 
+    // Listen for system theme changes
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = (e) => {
+            // Only update if no manual preference is saved
+            const savedTheme = localStorage.getItem("theme");
+            if (!savedTheme) {
+                setTheme(e.matches ? "dark" : "light");
+            }
+        };
+
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, []);
+
     const toggleTheme = () => {
-        setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+        setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
     };
 
     return (
