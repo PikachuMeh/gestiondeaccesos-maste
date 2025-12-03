@@ -1,45 +1,22 @@
-// src/components/RegistroAcceso.jsx - COMPLETO CON ENVÍO DE FOTO ✅
-
+// src/components/RegistroAcceso.jsx - COMPLETO CON MENSAJES DE ERROR DEBAJO DE CAMPOS
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApi } from "../../context/ApiContext.jsx";
 import { useImages } from "../../context/ImageContext.jsx";
-import {
-  FaSearch,
-  FaUserPlus,
-  FaCheck,
-  FaCamera,
-  FaIdCard,
-  FaBuilding,
-  FaSitemap,
-  FaClipboardList,
-  FaUserCheck,
-  FaLaptop,
-  FaStickyNote,
-  FaSave,
-  FaExclamationCircle
-} from "react-icons/fa";
 
 // ✅ Helper sin hook - recibe token como parámetro
 function apiFetch(url, options = {}) {
   const token = localStorage.getItem('access_token');
-  const headers = {
-    ...options.headers,
-  };
-
+  const headers = { ...options.headers, };
   // Si es FormData, NO setear Content-Type (el navegador lo hará automáticamente)
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
-
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  return fetch(url, {
-    ...options,
-    headers,
-  }).then(async (response) => {
+  return fetch(url, { ...options, headers, }).then(async (response) => {
     if (!response.ok) {
       const errorText = await response.text();
       if (response.status === 401 || response.status === 403) {
@@ -53,11 +30,10 @@ function apiFetch(url, options = {}) {
   });
 }
 
-
 export default function RegistroAcceso() {
   const navigate = useNavigate();
-  const { API_V1 } = useApi();  // ✅ Hook top-level componente
-  const { getImageUrl } = useImages();  // ✅ Para construir URLs de imagen
+  const { API_V1 } = useApi(); // ✅ Hook top-level componente
+  const { getImageUrl } = useImages(); // ✅ Para construir URLs de imagen
 
   // Estados varios
   const [detalleCache, setDetalleCache] = useState(new Map());
@@ -65,21 +41,12 @@ export default function RegistroAcceso() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({
-    cedula: "",
-    nombre: "",
-    apellido: "",
-    email: "",
-    empresa: "",
-    cargo: "",
-    direccion: "",
-    observaciones: "",
-    foto: "",
-    unidad: "",
-    fecha_creacion: "",
+    cedula: "", nombre: "", apellido: "", email: "", empresa: "", cargo: "",
+    direccion: "", observaciones: "", foto: "", unidad: "", fecha_creacion: "",
   });
   const [newFoto, setNewFoto] = useState(null);
-  const [fotoFile, setFotoFile] = useState(null);  // ✅ Para guardar el archivo
-  const [imagenError, setImagenError] = useState(false);  // ✅ Para manejar errores de imagen
+  const [fotoFile, setFotoFile] = useState(null); // ✅ Para guardar el archivo
+  const [imagenError, setImagenError] = useState(false); // ✅ Para manejar errores de imagen
 
   // ✅ 1 CENTRO ÚNICO + MÚLTIPLES ÁREAS
   const [centros, setCentros] = useState([]);
@@ -88,18 +55,23 @@ export default function RegistroAcceso() {
   const [areasSel, setAreasSel] = useState([]);
   const [tiposActividad, setTiposActividad] = useState([]);
   const [idTipo_act, setidTipo_act] = useState("");
-
   const [formVisita, setFormVisita] = useState({
-    descripcion_actividad: "",
-    autorizado_por: "",
-    equipos_ingresados: "",
-    observaciones: "",
+    descripcion_actividad: "", autorizado_por: "", equipos_ingresados: "", observaciones: "",
   });
-
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
+
+  // ✅ ESTADOS PARA MENSAJES DE ERROR EN CAMPOS
+  const [errors, setErrors] = useState({
+    visitante: false,
+    centro: false,
+    actividad: false,
+    descripcion: false,
+    general: ""
+  });
+
   const debounceRef = useRef();
 
   const API_PERSONAS = `${API_V1}/personas`;
@@ -113,8 +85,7 @@ export default function RegistroAcceso() {
       const userData = await response.json();
       setCurrentUser(userData);
       setFormVisita(prev => ({
-        ...prev,
-        autorizado_por: `${userData.nombre} ${userData.apellidos}`.trim(),
+        ...prev, autorizado_por: `${userData.nombre} ${userData.apellidos}`.trim(),
       }));
     } catch (error) {
       console.error('Error fetching current user:', error);
@@ -132,6 +103,8 @@ export default function RegistroAcceso() {
     } else {
       setAreas([]);
     }
+    // Limpiar error del centro
+    setErrors(prev => ({ ...prev, centro: false }));
   };
 
   // ✅ SELECCIÓN MÚLTIPLES ÁREAS
@@ -223,22 +196,14 @@ export default function RegistroAcceso() {
     setQ(s);
     setSelected(null);
     setForm({
-      cedula: "",
-      nombre: "",
-      apellido: "",
-      email: "",
-      empresa: "",
-      cargo: "",
-      direccion: "",
-      observaciones: "",
-      foto: "",
-      unidad: "",
-      fecha_creacion: new Date().toISOString(),
+      cedula: "", nombre: "", apellido: "", email: "", empresa: "", cargo: "",
+      direccion: "", observaciones: "", foto: "", unidad: "", fecha_creacion: new Date().toISOString(),
     });
     setNewFoto(null);
-    setFotoFile(null);  // ✅ Reset foto file
-    setImagenError(false);  // ✅ Reset error de imagen
-
+    setFotoFile(null); // ✅ Reset foto file
+    setImagenError(false); // ✅ Reset error de imagen
+    // Limpiar error de visitante
+    setErrors(prev => ({ ...prev, visitante: false }));
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -256,28 +221,24 @@ export default function RegistroAcceso() {
     );
     return selectedTipo ? selectedTipo.nombre_actividad : null;
   };
+
   const requiereEquiposYObs = ["1", "2", "3", "6", "7"].includes(String(idTipo_act));
 
   // ✅ OBTENER URL DE FOTO CONSTRUIDA CORRECTAMENTE
   const getFotoPersonaUrl = () => {
-    if (newFoto) {
-      // Si hay una foto nueva cargada localmente, usa su URL blob
+    if (newFoto) { // Si hay una foto nueva cargada localmente, usa su URL blob
       return newFoto;
     }
-
     const fotoDelForm = form.foto;
     if (!fotoDelForm) return null;
-
     // Si ya es una URL completa (contiene http), úsala directamente
     if (typeof fotoDelForm === 'string' && fotoDelForm.startsWith('http')) {
       return fotoDelForm;
     }
-
     // Si es un nombre de archivo, construye la URL con getImageUrl
     if (typeof fotoDelForm === 'string') {
       return getImageUrl("persona", fotoDelForm);
     }
-
     return null;
   };
 
@@ -285,10 +246,8 @@ export default function RegistroAcceso() {
     try {
       const p = await fetchPersonaById(id);
       setSelected(p);
-
       // ✅ Construir la URL de foto completa con getImageUrl
       const fotoUrl = p.foto ? getImageUrl("persona", p.foto) : "";
-
       setForm({
         cedula: p.documento_identidad || "",
         nombre: p.nombre || "",
@@ -298,32 +257,34 @@ export default function RegistroAcceso() {
         cargo: p.cargo || "",
         direccion: p.direccion || "",
         observaciones: p.observaciones || "",
-        foto: fotoUrl,  // ✅ Aquí guardas la URL completa
+        foto: fotoUrl, // ✅ Aquí guardas la URL completa
         unidad: p.empresa === "SENIAT" ? (p.unidad || "") : "",
         fecha_creacion: p.fecha_creacion || new Date().toISOString(),
       });
       setQ(String(p.documento_identidad || ""));
       setNewFoto(null);
-      setFotoFile(null);  // ✅ Reset foto file
-      setImagenError(false);  // ✅ Reset error de imagen
+      setFotoFile(null); // ✅ Reset foto file
+      setImagenError(false); // ✅ Reset error de imagen
     } catch (err) {
       console.error(err);
-      alert("Error cargando persona seleccionada");
     }
   };
 
   const onFileChange = (e) => {
+    console.log(e)
     const file = e.target.files?.[0];
     if (!file) return;
     setNewFoto(URL.createObjectURL(file));
-    setFotoFile(file);  // ✅ Guardar el archivo original
+    setFotoFile(file); // ✅ Guardar el archivo original
     setForm(f => ({ ...f, foto: file }));
-    setImagenError(false);  // ✅ Reset error de imagen
+    setImagenError(false); // ✅ Reset error de imagen
   };
 
   const onActividadChange = (e) => {
     const id = e.target.value;
     setidTipo_act(id);
+    // Limpiar error de actividad
+    setErrors(prev => ({ ...prev, actividad: false }));
   };
 
   function onChangeVisita(e) {
@@ -332,6 +293,10 @@ export default function RegistroAcceso() {
       return;
     }
     setFormVisita(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
+    // Limpiar error de descripción
+    if (name === 'descripcion_actividad') {
+      setErrors(prev => ({ ...prev, descripcion: false }));
+    }
   }
 
   function validarDescripcion(desc) {
@@ -344,16 +309,38 @@ export default function RegistroAcceso() {
     setImagenError(true);
   };
 
-  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS + FOTO
-  async function onRegistrarAcceso() {
-    if (!selected?.id) return alert("Seleccione un visitante");
-    if (!cdSel) return alert("Seleccione un centro de datos");
+  // ✅ VALIDACIONES VISUALES ANTES DE POST
+  const validateForm = () => {
+    const newErrors = {
+      visitante: false,
+      centro: false,
+      actividad: false,
+      descripcion: false,
+      general: ""
+    };
+
+    if (!selected?.id) {
+      newErrors.visitante = true;
+    }
+    if (!cdSel) {
+      newErrors.centro = true;
+    }
     if (!idTipo_act || idTipo_act === "") {
-      console.error("idTipo_act está vacío:", idTipo_act);
-      return alert("Tiene que seleccionar una actividad");
+      newErrors.actividad = true;
     }
     if (!validarDescripcion(formVisita.descripcion_actividad)) {
-      return alert("Ingrese una descripción de al menos 3 caracteres");
+      newErrors.descripcion = true;
+    }
+
+    setErrors(newErrors);
+    return Object.values(newErrors).every(v => !v);
+  };
+
+  // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS + FOTO
+  async function onRegistrarAcceso() {
+    // ✅ Validar visualmente primero
+    if (!validateForm()) {
+      return;
     }
 
     setPosting(true);
@@ -372,9 +359,9 @@ export default function RegistroAcceso() {
       formData.append('area_ids', JSON.stringify(areasSel.map(Number)));
       formData.append('descripcion_actividad', formVisita.descripcion_actividad.trim());
       formData.append('fecha_programada', new Date().toISOString());
-      formData.append('autorizado_por', formVisita.autorizado_por?.trim() || null);
-      formData.append('equipos_ingresados', formVisita.equipos_ingresados?.trim() || null);
-      formData.append('observaciones', formVisita.observaciones?.trim() || null);
+      formData.append('autorizado_por', formVisita.autorizado_por?.trim() || '');
+      formData.append('equipos_ingresados', formVisita.equipos_ingresados?.trim() || '');
+      formData.append('observaciones', formVisita.observaciones?.trim() || '');
       formData.append('estado_id', 1);
 
       // ✅ AGREGAR FOTO SI EXISTE
@@ -385,13 +372,12 @@ export default function RegistroAcceso() {
 
       const res = await apiFetch(API_VISITAS, {
         method: "POST",
-        body: formData,  // ✅ Usar FormData en lugar de JSON
+        body: formData, // ✅ Usar FormData en lugar de JSON
       });
 
       const created = await res.json();
-      alert(`✅ Visita creada exitosamente (Centro: ${centros.find(c => c.id === cdSel)?.nombre}, Áreas: ${areasSel.length})`);
 
-      // Reset form
+      // ✅ Reset form y navegar
       setCdSel(null);
       setAreasSel([]);
       setAreas([]);
@@ -402,20 +388,20 @@ export default function RegistroAcceso() {
         equipos_ingresados: "",
         observaciones: ""
       });
-      setImagenError(false);  // ✅ Reset error de imagen
-      setFotoFile(null);  // ✅ Reset foto file
-
+      setErrors({}); // Limpiar errores
+      setImagenError(false); // ✅ Reset error de imagen
+      setFotoFile(null); // ✅ Reset foto file
       navigate(`/accesos/${created.id}`);
-
     } catch (e) {
       console.error("❌ Error:", e);
-      alert(`Error al registrar visita: ${e.message}`);
+      setErrors(prev => ({ ...prev, general: `Error al registrar visita: ${e.message}` }));
     } finally {
       setPosting(false);
     }
   }
 
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
+
   const showNoResults = q && !selected && sugerencias.length === 0;
 
   // ✅ Obtener URL de foto actual
@@ -423,296 +409,293 @@ export default function RegistroAcceso() {
 
   if (userLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
-        <div className="text-center text-gray-500 dark:text-gray-400">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p>Cargando usuario...</p>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center py-12 text-gray-500">Cargando usuario...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
-            {/* Left side - FORMULARIO */}
-            <div className="p-8">
-              <form className="space-y-6" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-2">
-                  <FaClipboardList className="text-blue-600 dark:text-blue-400" /> REGISTRO ACCESO
-                </div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px] gap-6">
+          {/* Left side - FORMULARIO */}
+          <div className="p-8">
+            <form className="space-y-5" autoComplete="off" onSubmit={e => e.preventDefault()}>
+              <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
 
-                {/* CÉDULA */}
-                <div className="space-y-4">
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                      <FaSearch className="text-gray-400" /> CÉDULA
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Buscar..."
-                      value={q}
-                      onChange={onCedulaChange}
-                      className="block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      autoFocus
-                    />
-                    {!selected && sugerencias.length > 0 && (
-                      <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {sugerencias.slice(0, 100).map(p => (
-                          <li
-                            key={p.id}
-                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-900 dark:text-white flex items-center gap-2"
-                            onMouseDown={() => onSelectById(p.id)}
-                          >
-                            <FaUserCheck className="text-gray-400" /> V-{p.documento_identidad} - {p.nombre} {p.apellido}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {showNoResults && (
-                    <div className="mt-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <div className="text-red-800 dark:text-red-300 mb-2 flex items-center gap-2">
-                        <FaExclamationCircle /> No se encontró la cédula. Puede registrar al visitante.
-                      </div>
-                      <button
-                        type="button"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                        onMouseDown={goRegistrarVisitante}
-                      >
-                        <FaUserPlus /> Registrar visitante
-                      </button>
-                    </div>
+              {/* CÉDULA - CON MENSAJE DE ERROR */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <label className="block text-sm font-medium text-on-surface mb-2">
+                    CÉDULA
+                  </label>
+
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={q}
+                    onChange={onCedulaChange}
+                    className={`block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all ${
+                      errors.visitante ? "border-red-500 focus:border-red-500" : ""
+                    }`}
+                    autoFocus={selected || sugerencias.length === 0}
+                  />
+
+                  {/* SUGERENCIAS */}
+                  {sugerencias.length > 0 && (
+                    <ul
+                      className="
+                        absolute left-0 right-0 mt-1 
+                        bg-surface border border-outline rounded-lg shadow-lg 
+                        max-h-60 overflow-auto z-30
+                      "
+                    >
+                      {sugerencias.slice(0, 100).map((p) => (
+                        <li
+                          key={p.id}
+                          className="px-3 py-2 hover:bg-surface-variant cursor-pointer text-on-surface text-sm"
+                          onMouseDown={() => {
+                            onSelectById(p.id);     // selecciona persona
+                            setSugerencias([]);     // <- oculta lista
+                          }}
+                        >
+                          {p.documento_identidad} - {p.nombre} {p.apellido}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
 
-                {/* DATOS VISITA */}
-                {selected && (
-                  <>
-                    <div className="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                        <FaBuilding className="text-gray-500" /> Datos de visita
-                      </h3>
+                {errors.visitante && (
+                  <p className="text-sm text-red-600">Seleccione un visitante</p>
+                )}
+              </div>
 
-                      {/* CENTRO DE DATOS - SOLO 1 */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Centro de datos {cdSel && `(1 seleccionado)`}
+              {/* DATOS VISITA */}
+              {selected && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
+
+                  {/* CENTRO DE DATOS - CON MENSAJE DE ERROR */}
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Centro de datos {cdSel ? "(1 seleccionado)" : ""}
+                    </label>
+                    {errors.centro && (
+                      <p className="mb-2 text-sm text-red-600">Seleccione un centro de datos</p>
+                    )}
+                    <div className="flex w-full gap-4 flex-wrap">
+                      {centros.map(c => (
+                        <label key={c.id} className="cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={cdSel === c.id}
+                            onChange={() => onCentroCheckboxChange(c.id)}
+                          />
+                          <span
+                            className={`flex justify-center items-center flex-1 px-4 py-3 rounded-full border-2 border-gray-200 transition-all shadow-sm text-sm font-semibold h-14 ${
+                              cdSel === c.id
+                                ? "bg-[#8ADD64] text-white border-green-400 shadow-md scale-105"
+                                : "bg-gray-100 text-gray-800 hover:bg-gray-200 hover:border-gray-400 hover:scale-105"
+                            }`}
+                            style={{ width: "100%" }}
+                          >
+                            {c.nombre}
+                          </span>
                         </label>
-                        <div className="flex w-full gap-4 flex-wrap">
-                          {centros.map((c) => (
-                            <label key={c.id} className="cursor-pointer flex-1 min-w-[120px]">
-                              <input
-                                type="checkbox"
-                                className="peer sr-only"
-                                checked={cdSel === c.id}
-                                onChange={() => onCentroCheckboxChange(c.id)}
-                              />
-                              <span
-                                className={`
-                                  flex justify-center items-center px-4 py-3
-                                  rounded-lg border transition-all shadow-sm
-                                  text-sm font-semibold h-14 w-full
-                                  ${cdSel === c.id
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                  }
-                                `}
-                              >
-                                {c.nombre}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                      ))}
+                    </div>
+                  </div>
 
-                      {/* ÁREAS - MÚLTIPLES */}
-                      {cdSel && areas.length > 0 && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                            <FaSitemap className="text-gray-400" /> Áreas ({areasSel.length} seleccionada{areasSel.length !== 1 ? 's' : ''})
+                  {/* ÁREAS - MÚLTIPLES */}
+                  {cdSel && areas.length === 0 && (
+                    <div className="text-sm text-on-surface-variant p-4 bg-surface-variant/50 rounded-lg">
+                      Seleccione un centro para ver sus áreas disponibles
+                    </div>
+                  )}
+                  {cdSel && (
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">
+                        Áreas ({areasSel.length} {areasSel.length !== 1 ? 'seleccionadas' : 'seleccionada'})
+                      </label>
+                      <div className="flex w-full gap-3 flex-wrap">
+                        {areas.map(a => (
+                          <label key={a.id} className="cursor-pointer flex-1 min-w-[140px]">
+                            <input
+                              type="checkbox"
+                              className="peer sr-only"
+                              checked={areasSel.includes(a.id)}
+                              onChange={() => onAreaCheckboxChange(a.id)}
+                            />
+                            <span
+                              className={`flex justify-center items-center px-3 py-2 rounded-full border-2 border-gray-200 transition-all shadow-sm text-xs font-medium h-12 ${
+                                areasSel.includes(a.id)
+                                  ? "bg-[#8ADD64] text-white border-green-400 shadow-md"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:border-gray-400"
+                              }`}
+                              style={{ width: "100%" }}
+                            >
+                              {a.nombre}
+                            </span>
                           </label>
-                          <div className="flex w-full gap-3 flex-wrap">
-                            {areas.map((a) => (
-                              <label key={a.id} className="cursor-pointer flex-1 min-w-[140px]">
-                                <input
-                                  type="checkbox"
-                                  className="peer sr-only"
-                                  checked={areasSel.includes(a.id)}
-                                  onChange={() => onAreaCheckboxChange(a.id)}
-                                />
-                                <span
-                                  className={`
-                                    flex justify-center items-center px-3 py-2
-                                    rounded-lg border transition-all shadow-sm
-                                    text-xs font-medium h-12 w-full
-                                    ${areasSel.includes(a.id)
-                                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                    }
-                                  `}
-                                >
-                                  {a.nombre}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {!cdSel && areas.length === 0 && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                          Seleccione un centro para ver sus áreas disponibles
-                        </div>
-                      )}
-
-                      {/* TIPO ACTIVIDAD */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                          <FaClipboardList className="text-gray-400" /> Tipo de actividad
-                        </label>
-                        <select
-                          className="block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          value={idTipo_act}
-                          onChange={onActividadChange}
-                          required
-                        >
-                          <option value="">Seleccione...</option>
-                          {tiposActividad.map((t) => (
-                            <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
-                              {t.nombre_actividad}
-                            </option>
-                          ))}
-                        </select>
+                        ))}
                       </div>
                     </div>
+                  )}
 
-                    {/* CAMPOS TEXTO */}
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción *</label>
-                        <input
-                          name="descripcion_actividad"
-                          value={formVisita.descripcion_actividad}
-                          onChange={onChangeVisita}
-                          className="block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          placeholder="Describa el motivo de la visita..."
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                          <FaUserCheck className="text-gray-400" /> Autorizado por
-                        </label>
-                        <input
-                          name="autorizado_por"
-                          value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : '')}
-                          onChange={onChangeVisita}
-                          className="block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                          disabled={!!currentUser}
-                        />
-                      </div>
+                  {/* TIPO ACTIVIDAD - CON MENSAJE DE ERROR */}
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface mb-2">
+                      Tipo de actividad
+                    </label>
+                    {errors.actividad && (
+                      <p className="mb-2 text-sm text-red-600">Tiene que seleccionar una actividad</p>
+                    )}
+                    <select
+                      className={`block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all ${
+                        errors.actividad ? 'border-red-500 focus:border-red-500' : ''
+                      }`}
+                      value={idTipo_act}
+                      onChange={onActividadChange}
+                      required
+                    >
+                      <option value="">Seleccione...</option>
+                      {tiposActividad.map(t => (
+                        <option key={t.id_tipo_actividad} value={t.id_tipo_actividad}>
+                          {t.nombre_actividad}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* CAMPOS TEXTO - CON MENSAJE DE ERROR EN DESCRIPCIÓN */}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">Descripción</label>
+                      <input
+                        name="descripcion_actividad"
+                        value={formVisita.descripcion_actividad}
+                        onChange={onChangeVisita}
+                        className={`block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all ${
+                          errors.descripcion ? 'border-red-500 focus:border-red-500' : ''
+                        }`}
+                        placeholder="Describa el motivo de la visita..."
+                      />
+                      {errors.descripcion && (
+                        <p className="mt-1 text-sm text-red-600">La descripción debe tener al menos 3 caracteres</p>
+                      )}
                     </div>
-
+                    <div>
+                      <label className="block text-sm font-medium text-on-surface mb-2">Autorizado por</label>
+                      <input
+                        name="autorizado_por"
+                        value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : "")}
+                        onChange={onChangeVisita}
+                        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                        disabled={!currentUser}
+                      />
+                    </div>
                     {requiereEquiposYObs && (
-                      <div className="grid grid-cols-1 gap-4">
+                      <>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                            <FaLaptop className="text-gray-400" /> Equipos ingresados
-                          </label>
+                          <label className="block text-sm font-medium text-on-surface mb-2">Equipos ingresados</label>
                           <input
                             name="equipos_ingresados"
                             value={formVisita.equipos_ingresados}
                             onChange={onChangeVisita}
-                            className="block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
                             placeholder="Laptop, celular, documentos..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                            <FaStickyNote className="text-gray-400" /> Observaciones
-                          </label>
+                          <label className="block text-sm font-medium text-on-surface mb-2">Observaciones</label>
                           <input
                             name="observaciones"
                             value={formVisita.observaciones}
                             onChange={onChangeVisita}
-                            className="block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
                             placeholder="Información adicional..."
                           />
                         </div>
-                      </div>
+                      </>
                     )}
+                  </div>
 
-                    <div className="flex justify-start pt-6">
-                      <button
-                        type="button"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2"
-                        onClick={onRegistrarAcceso}
-                        disabled={posting || loading || !selected || !cdSel || !idTipo_act}
-                      >
-                        {posting ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Registrando...
-                          </>
-                        ) : (
-                          <>
-                            <FaSave /> Registrar acceso <span className="ml-1 bg-blue-700 px-2 py-0.5 rounded-full text-xs">({cdSel ? 1 : 0} centro)</span>
-                          </>
-                        )}
-                      </button>
+                  {/* ERROR GENERAL */}
+                  {errors.general && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-800">{errors.general}</p>
                     </div>
-                  </>
-                )}
-              </form>
+                  )}
+
+                  <div className="flex justify-start pt-6">
+                    <button
+                      type="button"
+                      className="bg-primary text-primary-foreground px-10 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      onClick={onRegistrarAcceso}
+                      disabled={posting || loading}
+                    >
+                      {posting ? (
+                        <span>Registrando...</span>
+                      ) : (
+                        <>
+                          <span>Registrar acceso</span>
+                          <span className="ml-1">{cdSel ? "(1 centro)" : "(0 centros)"}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* Right side - FOTO */}
+          <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/80"></div>
+            <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
+              <div className="w-full h-full bg-gradient-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
             </div>
+            <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
+            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/20 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
 
-            {/* Right side - FOTO */}
-            <div className="bg-blue-600 dark:bg-blue-800 flex items-center justify-center p-8 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 dark:from-blue-800 dark:via-blue-900 dark:to-gray-900 opacity-90"></div>
-              <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
-                <div className="w-full h-full bg-gradient-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
-              </div>
-              <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
-              <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/20 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="text-center relative z-10">
+              {/* VALIDACIÓN Y MOSTRADO DE FOTO CORREGIDO */}
+              {fotoUrl && !imagenError ? (
+                <div className="w-72 h-72 mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
+                  <img
+                    src={fotoUrl}
+                    alt={`Foto de ${selected?.nombre} ${selected?.apellido}`}
+                    className="w-full h-full object-cover"
+                    onError={() => handleImageError('persona')}
+                  />
+                </div>
+              ) : (
+                <div className="w-72 h-72 mx-auto mb-6 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
+                  <svg className="w-32 h-32 text-white/80 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                </div>
+              )}
 
-              <div className="text-center relative z-10 w-full max-w-md">
-                {/* ✅ VALIDACIÓN Y MOSTRADO DE FOTO CORREGIDO */}
-                {fotoUrl && !imagenError ? (
-                  <div className="w-64 h-64 mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1 bg-white">
-                    <img
-                      src={fotoUrl}
-                      alt={`Foto de ${selected?.nombre} ${selected?.apellido}`}
-                      className="w-full h-full object-cover"
-                      onError={() => handleImageError("persona")}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-64 h-64 mx-auto mb-6 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl shadow-2xl ring-4 ring-white/30 transform hover:scale-105 transition-all duration-500 hover:rotate-1">
-                    <FaCamera className="text-6xl text-white/80" />
-                  </div>
-                )}
-
-                {selected && (
-                  <div className="space-y-2">
-                    <h3 className="text-3xl font-bold text-white drop-shadow-lg">{selected.nombre} {selected.apellido}</h3>
-                    <p className="text-white/90 text-xl drop-shadow-md flex items-center justify-center gap-2">
-                      <FaBuilding /> {selected.empresa}
-                    </p>
-                    {form.empresa === "SENIAT" && selected.unidad && (
-                      <p className="text-white/80 text-sm drop-shadow-md flex items-center justify-center gap-2">
-                        <FaSitemap /> {selected.unidad}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {!selected && (
-                  <div className="space-y-2">
-                    <h3 className="text-2xl font-bold text-white drop-shadow-lg">Registro de Acceso</h3>
-                    <p className="text-white/90 text-lg drop-shadow-md">Complete el formulario izquierdo</p>
-                  </div>
-                )}
-              </div>
+              {selected ? (
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold text-white drop-shadow-lg">
+                    {selected.nombre} {selected.apellido}
+                  </h3>
+                  <p className="text-white/90 text-lg drop-shadow-md">{selected.empresa}</p>
+                  {form.empresa === "SENIAT" && selected.unidad && (
+                    <p className="text-white/80 text-sm drop-shadow-md">{selected.unidad}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold text-white drop-shadow-lg">Registro de Acceso</h3>
+                  <p className="text-white/90 text-lg drop-shadow-md">Complete el formulario izquierdo</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -720,3 +703,4 @@ export default function RegistroAcceso() {
     </div>
   );
 }
+
