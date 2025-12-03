@@ -4,7 +4,7 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
     const [theme, setTheme] = useState(() => {
-        // Check local storage first
+        // Check localStorage first
         const savedTheme = localStorage.getItem("theme");
         if (savedTheme) {
             return savedTheme;
@@ -19,12 +19,11 @@ export function ThemeProvider({ children }) {
     useEffect(() => {
         const root = document.documentElement;
 
-        // Apply theme class
-        if (theme === "dark") {
-            root.classList.add("dark");
-        } else {
-            root.classList.remove("dark");
-        }
+        // Remove existing theme classes
+        root.classList.remove("light", "dark");
+
+        // Apply current theme class
+        root.classList.add(theme);
 
         // Save to localStorage
         localStorage.setItem("theme", theme);
