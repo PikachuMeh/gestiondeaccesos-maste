@@ -199,7 +199,7 @@ export default function DetalleVisitaPage() {
         {/* Header con botón volver */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <FaInfoCircle className="text-blue-600 dark:text-blue-400" /> Detalles de Visita #{visita.id}
+            <FaInfoCircle className="text-blue-600 dark:text-blue-400" /> Detalles de Visita
           </h1>
           <button
             onClick={() => navigate("/accesos")}

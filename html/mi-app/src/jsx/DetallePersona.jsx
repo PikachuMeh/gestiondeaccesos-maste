@@ -1,4 +1,4 @@
-// src/jsx/DetallePersona.jsx - CORREGIDO CON IMAGEN FUNCIONANDO
+// src/jsx/DetallePersona.jsx - CON FILTRADO DE ACCESOS
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -86,20 +86,21 @@ export default function DetallePersonaPage() {
     navigate("/personas");
   };
 
+  // ✅ MODIFICADO: Pasar la cédula como parámetro de búsqueda en lugar del ID
   const handleVerAccesos = () => {
-    navigate(`/accesos?persona_id=${id}`);
+    if (persona && persona.documento_identidad) {
+      navigate(`/accesos?search=${persona.documento_identidad}`);
+    } else {
+      navigate("/accesos");
+    }
   };
 
-  // ✅ Función para construir URL de imagen (igual que EditarPersona)
+  // ✅ Función para construir URL de imagen
   const getImageUrl = (fotoPath) => {
     if (!fotoPath) return null;
 
     // Si ya es una URL completa
     if (fotoPath.startsWith("http")) return fotoPath;
-
-    // Si la ruta tiene la estructura esperada del backend
-    // Asumiendo que fotoPath es algo como "imagenes/personas/28007701.png"
-    // o solo "28007701.png"
 
     const baseURL = "http://localhost:5050";
 
@@ -111,7 +112,6 @@ export default function DetallePersonaPage() {
     // Si es solo el nombre del archivo
     return `${baseURL}/imagenes/personas/${fotoPath}`;
   };
-
 
   // Estados de carga
   if (authLoading || pageLoading) {
@@ -173,7 +173,6 @@ export default function DetallePersonaPage() {
           {/* Lado Izquierdo - Imagen */}
           <div className="md:col-span-1">
             <div className="bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
-              {console.log(persona)}
               {persona.foto ? (
                 <img
                   src={getImageUrl(persona.foto)}
@@ -314,7 +313,8 @@ export default function DetallePersonaPage() {
                     <FaSitemap className="text-gray-400" /> Departamento
                   </label>
                   <p className="text-gray-900 dark:text-white mt-1">
-                    {persona.departamento || "N/A"}</p>
+                    {persona.departamento || "N/A"}
+                  </p>
                 </div>
               </div>
             </div>

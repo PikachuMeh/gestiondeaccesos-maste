@@ -1,7 +1,7 @@
-// src/jsx/AccesosPage.jsx - VERSION CORREGIDA SIN ERRORES
+// src/jsx/AccesosPage.jsx - CON FILTRO POR PARÁMETRO URL
 
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { useApi } from "../context/ApiContext";
 import {
@@ -13,7 +13,8 @@ import {
   FaChevronRight,
   FaExclamationCircle,
   FaCheckCircle,
-  FaTimesCircle
+  FaTimesCircle,
+  FaSearch
 } from "react-icons/fa";
 
 const PAGE_SIZE = 10;
@@ -40,15 +41,22 @@ export default function AccesosPage() {
   const navigate = useNavigate();
   const { API_V1, api } = useApi();
   const { token, isAuthenticated } = useAuth();
+  
+  // ✅ NUEVO: Obtener parámetros de la URL
+  const [searchParams] = useSearchParams();
+  
   const [accesos, setAccesos] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  
+  // ✅ MODIFICADO: Inicializar searchTerm con valor de URL o vacío
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const toastRef = useRef(null);
 
-  // Función para cargar accesos
+  // Función para descargar PDF
   const downloadPdf = async (visitaId) => {
     try {
       setLoading(true);
@@ -81,7 +89,7 @@ export default function AccesosPage() {
 
       if (contentDisposition) {
         const match = contentDisposition.match(
-          /filename[^;=\n]*=(?:(['"]).*?\1|[^;\n]*)/
+          /filename[^;=\n]*=(?:(['\"]).*?\1|[^;\n]*)/
         );
         if (match && match[0]) {
           filename = match[0].replace(/filename=/, "").replace(/['"]/g, "");
@@ -114,6 +122,7 @@ export default function AccesosPage() {
     }
   };
 
+  // ✅ MODIFICADO: Cargar accesos con filtro por cédula
   const loadAccesos = async () => {
     if (!isAuthenticated()) {
       navigate("/login");
@@ -125,15 +134,21 @@ export default function AccesosPage() {
 
     try {
       const skip = (page - 1) * PAGE_SIZE;
-      const response = await fetch(
-        `${API_V1}/visitas?skip=${skip}&limit=${PAGE_SIZE}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      
+      // Construir URL con parámetros de búsqueda
+      let url = `${API_V1}/visitas?skip=${skip}&limit=${PAGE_SIZE}`;
+      
+      // Si hay un término de búsqueda, añadirlo como parámetro
+      if (searchTerm.trim()) {
+        url += `&search=${encodeURIComponent(searchTerm)}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
@@ -151,9 +166,14 @@ export default function AccesosPage() {
     }
   };
 
+  // ✅ MODIFICADO: Ejecutar loadAccesos cuando cambie searchTerm o page
+  useEffect(() => {
+    setPage(1); // Resetear a página 1 cuando cambia la búsqueda
+  }, [searchTerm]);
+
   useEffect(() => {
     loadAccesos();
-  }, [page, token]);
+  }, [page, searchTerm, token]);
 
   // Función para eliminar acceso
   const handleDelete = async (id) => {
@@ -211,6 +231,28 @@ export default function AccesosPage() {
         />
       )}
 
+      {/* ✅ NUEVO: Barra de búsqueda */}
+      <div className="mb-6 flex gap-2">
+        <div className="flex-1 relative">
+          <FaSearch className="absolute left-3 top-3 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por cédula"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm("")}
+            className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors font-medium"
+          >
+            Limpiar
+          </button>
+        )}
+      </div>
+
       {/* Error */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6 flex items-center gap-2">
@@ -219,6 +261,7 @@ export default function AccesosPage() {
       )}
 
       {/* Tabla */}
+                {console.log(accesos)}
       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
         {loading ? (
           <div className="p-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
@@ -226,8 +269,9 @@ export default function AccesosPage() {
           </div>
         ) : accesos.length === 0 ? (
           <div className="p-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
-            No hay accesos registrados
+            {searchTerm ? `No hay accesos que coincidan con "${searchTerm}"` : "No hay accesos registrados"}
           </div>
+
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

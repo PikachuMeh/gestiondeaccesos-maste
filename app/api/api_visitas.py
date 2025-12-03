@@ -1,6 +1,7 @@
 # app/api/api_visitas.py
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request,APIRouter, Depends, HTTPException, Query, status,Request, Form, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_, cast, String, func
 from typing import Optional, List, Annotated
 from app.services.visita_service import VisitaService
 from app.services.persona_service import PersonaService
@@ -180,7 +181,7 @@ async def list_visitas(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    search: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),  # nombre o cédula
     persona_id: Optional[int] = Query(None),
     centro_datos_id: Optional[int] = Query(None),
     area_id: Optional[int] = Query(None),
@@ -191,60 +192,125 @@ async def list_visitas(
     current_user = Depends(require_operator_or_above),
     db: Session = Depends(get_db),
 ):
-    visita_service = VisitaService(db)
-    persona_service = PersonaService(db)
+    """
+    Listar visitas con filtros.
 
-    filters = {}
+    Búsqueda (search):
+    - Si es numérico (>=3 dígitos) => documento_identidad (cédula) que empieza por esos dígitos.
+    - Si no => nombre de la persona que contenga el texto.
+    """
+
+    query = db.query(Visita).options(
+        joinedload(Visita.persona),
+        joinedload(Visita.centro_datos),
+        joinedload(Visita.actividad),
+        joinedload(Visita.estado),
+    )
+
+    # Filtro de búsqueda por cédula/nombre (NO código)
+    if search:
+        search_clean = search.strip()
+        is_numeric = search_clean.replace(" ", "").isdigit()
+
+        query = query.join(Persona)
+
+        if is_numeric and len(search_clean) >= 3:
+            query = query.filter(Persona.documento_identidad.ilike(f"{search_clean}%"))
+        
+
+    # Filtros específicos
     if persona_id:
-        filters["persona_id"] = persona_id
+        query = query.filter(Visita.persona_id == persona_id)
     if centro_datos_id:
-        filters["centro_datos_id"] = centro_datos_id
+        query = query.filter(Visita.centro_datos_id == centro_datos_id)
     if area_id:
-        filters["area_id"] = area_id
-    if tipo_actividad_id:                      # ← NUEVO
-        filters["tipo_actividad_id"] = tipo_actividad_id
+        query = query.filter(Visita.area_id == area_id)
+    if tipo_actividad_id:
+        query = query.filter(Visita.tipo_actividad_id == tipo_actividad_id)
     if estado_id:
-        filters["estado_id"] = estado_id
+        query = query.filter(Visita.estado_id == estado_id)
 
-    fecha_desde_dt = None
-    fecha_hasta_dt = None
+    # Filtros de fecha
     if fecha_desde:
         fecha_desde_dt = datetime.combine(fecha_desde, datetime.min.time())
+        query = query.filter(Visita.fecha_programada >= fecha_desde_dt)
     if fecha_hasta:
         fecha_hasta_dt = datetime.combine(fecha_hasta, datetime.max.time())
+        query = query.filter(Visita.fecha_programada <= fecha_hasta_dt)
 
-    if search:
-        visitas = visita_service.search(search, ['codigo_visita', 'descripcion_actividad'])
-        total = len(visitas)
-        visitas = visitas[skip:skip + limit]
-    else:
-        visitas = visita_service.get_multi(skip=skip, limit=limit, filters=filters, order_by='fecha_programada', order_direction='desc')
-        total = visita_service.count(filters)
+    # Conteo y paginación
+    total = query.count()
+    visitas = (
+        query.order_by(Visita.fecha_programada.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    # Procesar nombres de áreas/centros (arrays JSON)
+    for v in visitas:
+        if (
+            hasattr(v, "areas_ids")
+            and v.areas_ids
+            and isinstance(v.areas_ids, list)
+            and len(v.areas_ids) > 0
+        ):
+            try:
+                areas = db.query(Area).filter(Area.id.in_(v.areas_ids)).all()
+                v.areas_nombres = [a.nombre for a in areas]
+            except Exception as e:
+                print(f"⚠️ Error procesando áreas: {e}")
+                v.areas_nombres = []
+        else:
+            v.areas_nombres = []
+
+        if (
+            hasattr(v, "centros_datos_ids")
+            and v.centros_datos_ids
+            and isinstance(v.centros_datos_ids, list)
+            and len(v.centros_datos_ids) > 0
+        ):
+            try:
+                centros = db.query(CentroDatos).filter(CentroDatos.id.in_(v.centros_datos_ids)).all()
+                v.centros_nombres = [c.nombre for c in centros]
+            except Exception as e:
+                print(f"⚠️ Error procesando centros: {e}")
+                v.centros_nombres = []
+        else:
+            v.centros_nombres = []
 
     pages = (total + limit - 1) // limit
     current_page = (skip // limit) + 1
-    response = VisitaListResponse(
+
+    filtros_detalles = {
+        "search": search,
+        "persona_id": persona_id,
+        "centro_datos_id": centro_datos_id,
+        "area_id": area_id,
+        "estado_id": estado_id,
+        "tipo_actividad_id": tipo_actividad_id,
+        "fecha_desde": str(fecha_desde) if fecha_desde else None,
+        "fecha_hasta": str(fecha_hasta) if fecha_hasta else None,
+        "page": current_page,
+        "total": total,
+    }
+
+    await log_action(
+        accion="consultar_visitas",
+        tabla_afectada="visitas",
+        detalles=filtros_detalles,
+        db=db,
+        request=request,
+        current_user=current_user,
+    )
+
+    return VisitaListResponse(
         items=visitas,
         total=total,
         page=current_page,
         size=limit,
-        pages=pages
+        pages=pages,
     )
-    # Logging
-    filtros_detalles = {
-        "search": search, "persona_id": persona_id, "centro_datos_id": centro_datos_id,
-        "area_id": area_id, "estado_id": estado_id, "fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta,
-        "skip": skip, "limit": limit
-    }
-    await log_action(
-        accion="consultar_visitas",
-        tabla_afectada="visitas",
-        detalles={"page": pages, "size": total, "filtros": filters},
-        db=db,
-        request=request,
-        current_user=current_user
-    )
-    return response
 
 @router.get("/persona/{persona_id}/historial", response_model=List[VisitaResponse])
 async def get_historial_persona(
@@ -303,115 +369,12 @@ async def get_historial_persona(
     
     return visitas
 
-## 2️⃣ ENDPOINT: list_visitas (LÍNEA ~130 aprox)
-# Este endpoint lista visitas y también necesita el arreglo
-
-
 @router.get("/areas/{centro_datos_id}", response_model=List[dict])
 async def obtener_areas_por_centro(centro_datos_id: int, db: Session = Depends(get_db)):
     areas = db.query(Area).filter(Area.id_centro_datos == centro_datos_id).all()
     return [{"id": a.id, "nombre": a.nombre} for a in areas]
 
 
-@router.get("/", response_model=VisitaListResponse, summary="Listar visitas")
-async def list_visitas(
-    request: Request,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    search: Optional[str] = Query(None),
-    persona_id: Optional[int] = Query(None),
-    centro_datos_id: Optional[int] = Query(None),
-    area_id: Optional[int] = Query(None),
-    estado_id: Optional[int] = Query(None),
-    tipo_actividad_id: Optional[int] = Query(None),
-    fecha_desde: Optional[date] = Query(None),
-    fecha_hasta: Optional[date] = Query(None),
-    current_user = Depends(require_operator_or_above),
-    db: Session = Depends(get_db),
-):
-    """Listar visitas con filtros"""
-    visita_service = VisitaService(db)
-    persona_service = PersonaService(db)
-    
-    filters = {}
-    if persona_id:
-        filters["persona_id"] = persona_id
-    if centro_datos_id:
-        filters["centro_datos_id"] = centro_datos_id
-    if area_id:
-        filters["area_id"] = area_id
-    if tipo_actividad_id:
-        filters["tipo_actividad_id"] = tipo_actividad_id
-    if estado_id:
-        filters["estado_id"] = estado_id
-    
-    fecha_desde_dt = None
-    fecha_hasta_dt = None
-    
-    if fecha_desde:
-        fecha_desde_dt = datetime.combine(fecha_desde, datetime.min.time())
-    if fecha_hasta:
-        fecha_hasta_dt = datetime.combine(fecha_hasta, datetime.max.time())
-    
-    if search:
-        visitas = visita_service.search(search, ['codigo_visita', 'descripcion_actividad'])
-        total = len(visitas)
-        visitas = visitas[skip:skip + limit]
-    else:
-        visitas = visita_service.get_multi(skip=skip, limit=limit, filters=filters, order_by='fecha_programada', order_direction='desc')
-        total = visita_service.count(filters)
-    
-    # ✅ ARREGLO: Procesar todas las visitas de forma segura
-    for v in visitas:
-        # Procesar ÁREAS
-        if (hasattr(v, 'areas_ids') and 
-            v.areas_ids and 
-            isinstance(v.areas_ids, list) and 
-            len(v.areas_ids) > 0):
-            try:
-                areas = db.query(Area).filter(Area.id.in_(v.areas_ids)).all()
-                v.areas_nombres = [a.nombre for a in areas]
-            except Exception as e:
-                print(f"⚠️ Error procesando áreas: {e}")
-                v.areas_nombres = []
-        else:
-            v.areas_nombres = []
-        
-        # Procesar CENTROS
-        if (hasattr(v, 'centros_datos_ids') and 
-            v.centros_datos_ids and 
-            isinstance(v.centros_datos_ids, list) and 
-            len(v.centros_datos_ids) > 0):
-            try:
-                centros = db.query(CentroDatos).filter(CentroDatos.id.in_(v.centros_datos_ids)).all()
-                v.centros_nombres = [c.nombre for c in centros]
-            except Exception as e:
-                print(f"⚠️ Error procesando centros: {e}")
-                v.centros_nombres = []
-        else:
-            v.centros_nombres = []
-    
-    pages = (total + limit - 1) // limit
-    current_page = (skip // limit) + 1
-    
-    response = VisitaListResponse(
-        items=visitas,
-        total=total,
-        page=current_page,
-        size=limit,
-        pages=pages
-    )
-    
-    await log_action(
-        accion="consultar_visitas",
-        tabla_afectada="visitas",
-        detalles={"page": pages, "size": total, "filtros": filters},
-        db=db,
-        request=request,
-        current_user=current_user
-    )
-    
-    return response
 
 @router.post("/", response_model=VisitaResponse, summary="Crear nueva visita")
 async def crear_visita(
