@@ -1,4 +1,4 @@
-// src/jsx/UsuariosPage.jsx - CORREGIDO CON TEMA OSCURO
+// src/jsx/UsuariosPage.jsx - MEJORADO (Click en toda la fila)
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +6,6 @@ import { useAuth } from "./auth/AuthContext.jsx";
 import { useApi } from "../context/ApiContext.jsx";
 import {
   FaPlus,
-  FaTrash,
   FaCheck,
   FaTimes,
   FaChevronLeft,
@@ -14,7 +13,9 @@ import {
   FaExclamationCircle,
   FaUsers,
   FaCheckCircle,
-  FaTimesCircle
+  FaTimesCircle,
+  FaToggleOn,
+  FaToggleOff
 } from "react-icons/fa";
 
 const PAGE_SIZE = 10;
@@ -51,9 +52,9 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
-  // ✅ CARGAR USUARIOS - Recibe el número de página como parámetro
+  // ✅ CARGAR USUARIOS
   const fetchUsuarios = async (pageNumber = 1) => {
     if (!token) {
       setError("No autenticado");
@@ -90,7 +91,6 @@ export default function UsuariosPage() {
         pages: data.pages,
       });
 
-      // ✅ IMPORTANTE: Actualizar state desde la respuesta del API
       setUsuarios(data.items || []);
       setTotal(data.total || 0);
       setTotalPages(data.pages || 1);
@@ -109,7 +109,7 @@ export default function UsuariosPage() {
     fetchUsuarios(1);
   }, [token]);
 
-  // ✅ BOTÓN ANTERIOR - Calcula la página ANTES de llamar
+  // ✅ BOTÓN ANTERIOR
   const handlePrevious = () => {
     const nextPage = currentPage - 1;
     console.log(`⬅️  Anterior: ${currentPage} → ${nextPage}`);
@@ -119,7 +119,7 @@ export default function UsuariosPage() {
     }
   };
 
-  // ✅ BOTÓN SIGUIENTE - Calcula la página ANTES de llamar
+  // ✅ BOTÓN SIGUIENTE
   const handleNext = () => {
     const nextPage = currentPage + 1;
     console.log(`➡️  Siguiente: ${currentPage} → ${nextPage} (totalPages=${totalPages})`);
@@ -129,53 +129,77 @@ export default function UsuariosPage() {
     }
   };
 
-  // Manejador de eliminación
-  const handleDelete = async (usuarioId) => {
+  // ✅ CLICK EN FILA - NAVEGA AL PERFIL
+  const handleRowClick = (usuarioId, e) => {
+    // Si clickeamos en el botón toggle, no navegamos
+    if (e.target.closest('button')) {
+      return;
+    }
+    
+    console.log(`🔗 Navegando al perfil del usuario ${usuarioId}`);
+    navigate(`/usuarios/${usuarioId}`);
+  };
+
+  // ✅ TOGGLE ACTIVAR/DESACTIVAR USUARIO
+  const handleToggleActivo = async (usuarioId, estadoActual, e) => {
+    // Evitar que se navegue cuando clickeamos el toggle
+    e.stopPropagation();
+
     if (!isAdmin()) {
-      setToast({ message: "Solo administradores pueden eliminar usuarios", type: "error" });
+      setToast({ message: "Solo administradores pueden cambiar el estado", type: "error" });
       return;
     }
 
-    setDeletingId(usuarioId);
+    setTogglingId(usuarioId);
+    const nuevoEstado = !estadoActual;
+    const accion = nuevoEstado ? "Activar" : "Desactivar";
 
     try {
+      console.log(`🔄 ${accion} usuario ${usuarioId}...`);
+      console.log(`Enviando: { activo: ${nuevoEstado} }`);
+      
+      const formData = new FormData();
+      formData.append("activo", nuevoEstado);
+
       const response = await fetch(`${API_V1}/usuarios/${usuarioId}`, {
-        method: "DELETE",
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
+        body: formData,
       });
+
+      console.log(`Respuesta status: ${response.status}`);
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || "Error eliminando usuario");
+        console.error("Error response:", errData);
+        throw new Error(errData.detail || `Error ${accion.toLowerCase()}`);
       }
 
-      setToast({ message: "Usuario eliminado correctamente", type: "success" });
+      const responseData = await response.json();
+      console.log(`✅ Usuario ${accion.toLowerCase()}do:`, responseData);
+
+      setToast({ 
+        message: `Usuario ${accion.toLowerCase()}do correctamente`, 
+        type: "success" 
+      });
       
       setTimeout(() => {
         fetchUsuarios(currentPage);
       }, 500);
+
     } catch (err) {
-      console.error("Error:", err);
+      console.error("❌ Error en handleToggleActivo:", err);
       setToast({ message: `Error: ${err.message}`, type: "error" });
     } finally {
-      setDeletingId(null);
+      setTogglingId(null);
     }
   };
 
   const handleCreateUser = () => {
-    navigate("/usuarios/nuevo");
+    navigate("/crear-usuario");
   };
-
-  const handleViewUser = (id) => {
-    navigate(`/usuarios/${id}`);
-  };
-
-  // ============================================================================
-  // RENDER - TEMA OSCURO
-  // ============================================================================
 
   return (
     <div className="w-full min-h-screen bg-slate-900 p-8">
@@ -230,19 +254,22 @@ export default function UsuariosPage() {
                   <tbody>
                     {usuarios.map((u, idx) => (
                       <tr 
-                        key={u.id} 
-                        className={`border-b border-slate-700 transition-colors ${
+                        key={u.id}
+                        onClick={(e) => handleRowClick(u.id, e)}
+                        className={`border-b border-slate-700 transition-colors cursor-pointer ${
                           idx % 2 === 0 
                             ? "bg-slate-800 hover:bg-slate-700" 
                             : "bg-slate-750 hover:bg-slate-700"
                         }`}
                       >
                         <td className="px-6 py-4 text-gray-100 font-medium">{u.nombre || "—"}</td>
+                        
                         <td className="px-6 py-4">
-                          <code className="bg-slate-900 text-blue-400 px-3 py-1 rounded text-sm font-mono">
+                          <span className="bg-slate-900 text-blue-400 px-3 py-1 rounded text-sm font-mono">
                             {u.username || "—"}
-                          </code>
+                          </span>
                         </td>
+                        
                         <td className="px-6 py-4 text-gray-300">{u.rol?.nombre_rol || u.rol || "—"}</td>
                         <td className="px-6 py-4 text-gray-400">{u.cedula || "—"}</td>
                         <td className="px-6 py-4 text-center">
@@ -256,24 +283,28 @@ export default function UsuariosPage() {
                             </span>
                           )}
                         </td>
+                        
                         {isAdmin() && (
                           <td className="px-6 py-4 text-center">
                             <button
-                              onClick={() => handleViewUser(u.id)}
-                              className="mr-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm font-semibold"
-                            >
-                              Ver
-                            </button>
-                            <button
-                              onClick={() => handleDelete(u.id)}
-                              disabled={deletingId === u.id}
-                              className={`px-4 py-2 rounded text-white text-sm font-semibold transition-colors ${
-                                deletingId === u.id
-                                  ? "bg-gray-600 cursor-not-allowed"
-                                  : "bg-red-600 hover:bg-red-700"
+                              onClick={(e) => handleToggleActivo(u.id, u.activo, e)}
+                              disabled={togglingId === u.id}
+                              title={u.activo ? "Desactivar usuario" : "Activar usuario"}
+                              className={`text-2xl transition-all transform hover:scale-110 ${
+                                togglingId === u.id
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : u.activo
+                                  ? "text-green-400 hover:text-green-300"
+                                  : "text-red-400 hover:text-red-300"
                               }`}
                             >
-                              <FaTrash className="inline mr-1" /> {deletingId === u.id ? "..." : "Eliminar"}
+                              {togglingId === u.id ? (
+                                <span className="text-sm">...</span>
+                              ) : u.activo ? (
+                                <FaToggleOn />
+                              ) : (
+                                <FaToggleOff />
+                              )}
                             </button>
                           </td>
                         )}
@@ -286,7 +317,6 @@ export default function UsuariosPage() {
 
             {/* PAGINACIÓN */}
             <div className="mt-8 flex items-center justify-center gap-6">
-              {/* ✅ BOTÓN ANTERIOR - Deshabilitado en página 1 */}
               <button
                 onClick={handlePrevious}
                 disabled={currentPage === 1}
@@ -299,7 +329,6 @@ export default function UsuariosPage() {
                 <FaChevronLeft /> Anterior
               </button>
 
-              {/* INFO DE PÁGINA */}
               <div className="bg-slate-800 px-6 py-3 rounded-lg border border-slate-700 shadow-md">
                 <p className="text-gray-200 font-semibold">
                   Página <span className="text-blue-400">{currentPage}</span> de{" "}
@@ -310,7 +339,6 @@ export default function UsuariosPage() {
                 </p>
               </div>
 
-              {/* ✅ BOTÓN SIGUIENTE - Deshabilitado en última página */}
               <button
                 onClick={handleNext}
                 disabled={currentPage >= totalPages}
