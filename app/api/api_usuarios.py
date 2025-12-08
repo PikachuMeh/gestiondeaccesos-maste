@@ -35,26 +35,59 @@ async def list_usuarios(
     - ADMIN: ve todos los usuarios
     - SUPERVISOR: ve solo operadores
     """
+    # ✅ VALIDACIÓN 1: page debe ser >= 1
+    if page < 1:
+        page = 1
+        logger.warning(f"Page menor a 1, ajustado a 1")
+    
+    # ✅ VALIDACIÓN 2: size debe estar entre 1 y 100
+    if size < 1:
+        size = 1
+        logger.warning(f"Size menor a 1, ajustado a 1")
+    if size > 100:
+        size = 100
+        logger.warning(f"Size mayor a 100, ajustado a 100")
+    
     usuario_service = UsuarioService(db)
     
+    # Obtener total y usuarios según rol
     if current_user.rol_id == 1:  # ADMIN
-        usuarios = usuario_service.get_multi(skip=(page-1)*size, limit=size, order_by='username')
         total = usuario_service.count()
-    else:  # SUPERVISOR (2)
         usuarios = usuario_service.get_multi(
-            skip=(page-1)*size,
+            skip=(page - 1) * size,
             limit=size,
-            filters={"rol_id": 3},  # Solo OPERADORES
             order_by='username'
         )
+    else:  # SUPERVISOR (2)
         total = usuario_service.count(filters={"rol_id": 3})
+        usuarios = usuario_service.get_multi(
+            skip=(page - 1) * size,
+            limit=size,
+            filters={"rol_id": 3},
+            order_by='username'
+        )
     
-    pages = (total + size - 1) // size
-    response = UsuarioListResponse(items=usuarios, total=total, page=page, size=size, pages=pages)
+    # ✅ VALIDACIÓN 3: Calcular páginas totales
+    pages = max(1, (total + size - 1) // size)  # min 1 página
     
-    # Log
-    logger.info(f"Usuarios listados: page={page}, size={size}, total={total}, rol_actual={current_user.rol_id}")
+    # ✅ VALIDACIÓN 4: Si page excede pages, retornar lista vacía
+    if page > pages:
+        logger.warning(f"Page {page} excede total de páginas {pages}")
+        usuarios = []
     
+    # ✅ RESPUESTA CONSISTENTE
+    response = UsuarioListResponse(
+        items=usuarios,
+        total=total,
+        page=page,
+        size=size,
+        pages=pages
+    )
+    
+    logger.info(
+        f"Usuarios listados: page={page}/{pages}, "
+        f"size={size}, total={total}, rol={current_user.rol_id}"
+    )
     return response
 
 

@@ -1,4 +1,4 @@
-// src/jsx/UsuariosPage.jsx - COMPLETO CON BOTÓN "REGISTRO DE USUARIOS"
+// src/jsx/UsuariosPage.jsx - CORREGIDO CON TEMA OSCURO
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,11 +26,13 @@ function Toast({ message, type, onClose }) {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
-  const icon = type === "success" ? <FaCheckCircle /> : <FaTimesCircle />;
+  const bgColor = type === "success" ? "bg-green-600" : "bg-red-600";
+  const icon = type === "success" ?
+    <FaCheckCircle className="text-2xl" /> :
+    <FaTimesCircle className="text-2xl" />;
 
   return (
-    <div className={`fixed bottom-5 right-5 px-6 py-4 ${bgColor} text-white rounded-lg shadow-lg z-50 flex items-center gap-3 animate-fade-in-up`}>
+    <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg flex items-center gap-3 shadow-lg animate-pulse z-50`}>
       {icon}
       <span>{message}</span>
     </div>
@@ -39,247 +41,300 @@ function Toast({ message, type, onClose }) {
 
 export default function UsuariosPage() {
   const { API_V1 } = useApi();
-  const API_BASE = `${API_V1}/usuarios`;
+  const { token, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { token, user, isSupervisorOrAbove, isAdmin, getCurrentRoleName, loading: authLoading } = useAuth();
 
   const [usuarios, setUsuarios] = useState([]);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  // Cargar usuarios
-  useEffect(() => {
-    if (authLoading) {
+  // ✅ CARGAR USUARIOS - Recibe el número de página como parámetro
+  const fetchUsuarios = async (pageNumber = 1) => {
+    if (!token) {
+      setError("No autenticado");
       return;
     }
-    fetchUsuarios();
-  }, [currentPage, authLoading]);
 
-  const fetchUsuarios = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setPageLoading(true);
-      setError(null);
-
-      console.log("📡 Fetching usuarios desde:", `${API_BASE}?skip=${(currentPage - 1) * PAGE_SIZE}&limit=${PAGE_SIZE}`);
-
+      console.log(`📥 Buscando usuarios: page=${pageNumber}, size=${PAGE_SIZE}`);
+      
       const response = await fetch(
-        `${API_BASE}?skip=${(currentPage - 1) * PAGE_SIZE}&limit=${PAGE_SIZE}`,
+        `${API_V1}/usuarios/?page=${pageNumber}&size=${PAGE_SIZE}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
-      console.log("📊 Response status:", response.status);
-
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Error al cargar usuarios`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("✅ Datos recibidos:", data);
 
-      // Manejo flexible de respuesta
-      if (Array.isArray(data)) {
-        setUsuarios(data);
-      } else if (data.items && Array.isArray(data.items)) {
-        setUsuarios(data.items);
-      } else if (data.usuarios && Array.isArray(data.usuarios)) {
-        setUsuarios(data.usuarios);
-      } else if (data.data && Array.isArray(data.data)) {
-        setUsuarios(data.data);
-      } else {
-        console.warn("⚠️ Formato de respuesta no reconocido:", data);
-        setUsuarios([]);
-      }
-    } catch (err) {
-      console.error("❌ Error fetching usuarios:", err);
-      setError(err.message || "Error al cargar usuarios");
-      setUsuarios([]);
-    } finally {
-      setPageLoading(false);
-    }
-  };
-
-  const handleDelete = async (usuarioId) => {
-    const currentUserId = user?.id;
-
-    if (!isSupervisorOrAbove()) {
-      setToast({ message: "No tienes permiso para eliminar usuarios", type: "error" });
-      return;
-    }
-
-    if (usuarioId === currentUserId) {
-      setToast({ message: "No puedes eliminarte a ti mismo", type: "error" });
-      return;
-    }
-
-    if (!window.confirm("¿Estás seguro de que quieres eliminar este usuario?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE}/${usuarioId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      console.log("✅ Datos recibidos:", {
+        items: data.items?.length || 0,
+        total: data.total,
+        page: data.page,
+        pages: data.pages,
       });
 
-      if (!response.ok) throw new Error("Error al eliminar");
-
-      setToast({ message: "Usuario eliminado", type: "success" });
-      fetchUsuarios();
+      // ✅ IMPORTANTE: Actualizar state desde la respuesta del API
+      setUsuarios(data.items || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.pages || 1);
+      setCurrentPage(data.page || 1);
+      
     } catch (err) {
-      setToast({ message: err.message, type: "error" });
+      console.error("❌ Error:", err);
+      setError(err.message || "Error cargando usuarios");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRowClick = (usuarioId) => {
-    navigate(`/usuarios/${usuarioId}`);
+  // ✅ CARGAR AL MONTAR
+  useEffect(() => {
+    fetchUsuarios(1);
+  }, [token]);
+
+  // ✅ BOTÓN ANTERIOR - Calcula la página ANTES de llamar
+  const handlePrevious = () => {
+    const nextPage = currentPage - 1;
+    console.log(`⬅️  Anterior: ${currentPage} → ${nextPage}`);
+    
+    if (nextPage >= 1) {
+      fetchUsuarios(nextPage);
+    }
   };
 
-  // Mientras se autentica, no mostrar nada
-  if (authLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center text-gray-600 dark:text-gray-400">Cargando...</div>
-      </div>
-    );
-  }
+  // ✅ BOTÓN SIGUIENTE - Calcula la página ANTES de llamar
+  const handleNext = () => {
+    const nextPage = currentPage + 1;
+    console.log(`➡️  Siguiente: ${currentPage} → ${nextPage} (totalPages=${totalPages})`);
+    
+    if (nextPage <= totalPages) {
+      fetchUsuarios(nextPage);
+    }
+  };
 
-  // Contenido principal
+  // Manejador de eliminación
+  const handleDelete = async (usuarioId) => {
+    if (!isAdmin()) {
+      setToast({ message: "Solo administradores pueden eliminar usuarios", type: "error" });
+      return;
+    }
+
+    setDeletingId(usuarioId);
+
+    try {
+      const response = await fetch(`${API_V1}/usuarios/${usuarioId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Error eliminando usuario");
+      }
+
+      setToast({ message: "Usuario eliminado correctamente", type: "success" });
+      
+      setTimeout(() => {
+        fetchUsuarios(currentPage);
+      }, 500);
+    } catch (err) {
+      console.error("Error:", err);
+      setToast({ message: `Error: ${err.message}`, type: "error" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCreateUser = () => {
+    navigate("/usuarios/nuevo");
+  };
+
+  const handleViewUser = (id) => {
+    navigate(`/usuarios/${id}`);
+  };
+
+  // ============================================================================
+  // RENDER - TEMA OSCURO
+  // ============================================================================
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white dark:bg-gray-800 min-h-screen">
-      {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-6 py-4 rounded-lg flex items-center gap-2">
-          <FaExclamationCircle /> {error}
-        </div>
-      )}
+    <div className="w-full min-h-screen bg-slate-900 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* HEADER */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <FaUsers className="text-3xl text-blue-400" />
+            <h1 className="text-4xl font-bold text-white">Usuarios</h1>
+          </div>
 
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <FaUsers className="text-blue-600 dark:text-blue-400" /> Usuarios
-        </h1>
-        <button
-          onClick={() => navigate("/usuarios/nuevo")}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
-        >
-          <FaPlus /> Registro de Usuarios
-        </button>
+          {isAdmin() && (
+            <button
+              onClick={handleCreateUser}
+              className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold shadow-lg"
+            >
+              <FaPlus /> Registro de Usuarios
+            </button>
+          )}
+        </div>
+
+        {/* ERROR */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/30 border border-red-500 rounded-lg flex items-center gap-3">
+            <FaExclamationCircle className="text-red-500 text-lg" />
+            <span className="text-red-300">{error}</span>
+          </div>
+        )}
+
+        {/* TABLA */}
+        {loading ? (
+          <div className="text-center py-16 text-gray-400">Cargando...</div>
+        ) : usuarios.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">No hay usuarios</div>
+        ) : (
+          <>
+            <div className="bg-slate-800 rounded-lg shadow-xl overflow-hidden border border-slate-700">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-700 border-b border-slate-600">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-200">Nombre</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-200">Usuario</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-200">Rol</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-200">Cédula</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-200">Activo</th>
+                      {isAdmin() && (
+                        <th className="px-6 py-4 text-center text-sm font-semibold text-gray-200">Acciones</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usuarios.map((u, idx) => (
+                      <tr 
+                        key={u.id} 
+                        className={`border-b border-slate-700 transition-colors ${
+                          idx % 2 === 0 
+                            ? "bg-slate-800 hover:bg-slate-700" 
+                            : "bg-slate-750 hover:bg-slate-700"
+                        }`}
+                      >
+                        <td className="px-6 py-4 text-gray-100 font-medium">{u.nombre || "—"}</td>
+                        <td className="px-6 py-4">
+                          <code className="bg-slate-900 text-blue-400 px-3 py-1 rounded text-sm font-mono">
+                            {u.username || "—"}
+                          </code>
+                        </td>
+                        <td className="px-6 py-4 text-gray-300">{u.rol?.nombre_rol || u.rol || "—"}</td>
+                        <td className="px-6 py-4 text-gray-400">{u.cedula || "—"}</td>
+                        <td className="px-6 py-4 text-center">
+                          {u.activo ? (
+                            <span className="inline-block px-3 py-1 bg-green-900/40 text-green-400 border border-green-500/30 rounded-full text-xs font-semibold">
+                              <FaCheck className="inline mr-1" /> Sí
+                            </span>
+                          ) : (
+                            <span className="inline-block px-3 py-1 bg-red-900/40 text-red-400 border border-red-500/30 rounded-full text-xs font-semibold">
+                              <FaTimes className="inline mr-1" /> No
+                            </span>
+                          )}
+                        </td>
+                        {isAdmin() && (
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleViewUser(u.id)}
+                              className="mr-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm font-semibold"
+                            >
+                              Ver
+                            </button>
+                            <button
+                              onClick={() => handleDelete(u.id)}
+                              disabled={deletingId === u.id}
+                              className={`px-4 py-2 rounded text-white text-sm font-semibold transition-colors ${
+                                deletingId === u.id
+                                  ? "bg-gray-600 cursor-not-allowed"
+                                  : "bg-red-600 hover:bg-red-700"
+                              }`}
+                            >
+                              <FaTrash className="inline mr-1" /> {deletingId === u.id ? "..." : "Eliminar"}
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* PAGINACIÓN */}
+            <div className="mt-8 flex items-center justify-center gap-6">
+              {/* ✅ BOTÓN ANTERIOR - Deshabilitado en página 1 */}
+              <button
+                onClick={handlePrevious}
+                disabled={currentPage === 1}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  currentPage === 1
+                    ? "bg-slate-700 text-gray-500 cursor-not-allowed opacity-50"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                }`}
+              >
+                <FaChevronLeft /> Anterior
+              </button>
+
+              {/* INFO DE PÁGINA */}
+              <div className="bg-slate-800 px-6 py-3 rounded-lg border border-slate-700 shadow-md">
+                <p className="text-gray-200 font-semibold">
+                  Página <span className="text-blue-400">{currentPage}</span> de{" "}
+                  <span className="text-blue-400">{totalPages}</span>
+                </p>
+                <p className="text-gray-400 text-sm">
+                  {usuarios.length} de {total} registros
+                </p>
+              </div>
+
+              {/* ✅ BOTÓN SIGUIENTE - Deshabilitado en última página */}
+              <button
+                onClick={handleNext}
+                disabled={currentPage >= totalPages}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  currentPage >= totalPages
+                    ? "bg-slate-700 text-gray-500 cursor-not-allowed opacity-50"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                }`}
+              >
+                Siguiente <FaChevronRight />
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* TOAST */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
       </div>
-
-      {pageLoading ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-          Cargando usuarios...
-        </div>
-      ) : usuarios.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-          No hay usuarios registrados
-        </div>
-      ) : (
-        <>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto border border-gray-200 dark:border-gray-700">
-            <table className="w-full border-collapse">
-              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Nombre
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Usuario
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Rol
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Cédula
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Activo
-                  </th>
-                  {isAdmin() && (
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                {usuarios.map((u) => (
-                  <tr
-                    key={u.id}
-                    onClick={() => handleRowClick(u.id)}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {u.nombre || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {u.username || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {u.rol?.nombre_rol || u.rol || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {u.cedula || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${u.activo
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                          : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                          }`}
-                      >
-                        {u.activo ? <><FaCheck size={10} /> Sí</> : <><FaTimes size={10} /> No</>}
-                      </span>
-                    </td>
-                    {isAdmin() && (
-                      <td
-                        className="px-6 py-4 text-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => handleDelete(u.id)}
-                          className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                        >
-                          <FaTrash /> Eliminar
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className="mt-6 flex justify-center gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="flex items-center gap-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
-            >
-              <FaChevronLeft /> Anterior
-            </button>
-            <span className="px-4 py-2 font-medium text-gray-900 dark:text-white">Página {currentPage}</span>
-            <button
-              onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={usuarios.length < PAGE_SIZE}
-              className="flex items-center gap-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
-            >
-              Siguiente <FaChevronRight />
-            </button>
-          </div>
-        </>
-      )}
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 }
