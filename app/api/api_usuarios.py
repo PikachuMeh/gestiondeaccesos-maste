@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, Up
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.usuario_service import UsuarioService
-from app.auth.api_permisos import require_supervisor_or_above, require_role
+from app.auth.api_permisos import require_supervisor_or_above, require_role,require_operator_or_above
 from app.models import Usuario, Visita, RolUsuario
 from app.schemas.esquema_usuario import UsuarioResponse, UsuarioListResponse, UsuarioUpdate, UsuarioCreate
 from sqlalchemy.exc import IntegrityError
@@ -299,7 +299,7 @@ async def get_usuario(
     usuario_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(require_supervisor_or_above),
+    current_user=Depends(require_operator_or_above),
 ):
     """
     Obtener detalles de un usuario específico.

@@ -198,7 +198,7 @@ export default function UsuariosPage() {
   };
 
   const handleCreateUser = () => {
-    navigate("/crear-usuario");
+    navigate("/usuarios/nuevo");
   };
 
   return (

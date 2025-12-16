@@ -1,5 +1,4 @@
-// src/main.jsx - VERSIÓN CORRECTA (ESTRUCTURA ORIGINAL RESTAURADA)
-
+// src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -19,7 +18,7 @@ import LoginPage from '@/jsx/LoginPage.jsx';
 import ForgotPasswordPage from '@/jsx/ForgotPasswordPage.jsx';
 import ResetPasswordPage from '@/jsx/ResetPasswordPage.jsx';
 
-// Páginas Protegidas - OPERADOR+
+// Páginas Protegidas - OPERADOR+ (rol <= 3)
 import AccesosPage from '@/jsx/AccesosPage.jsx';
 import PersonasPage from '@/jsx/PersonasPage.jsx';
 import DetallePersonaPage from '@/jsx/DetallePersona.jsx';
@@ -29,23 +28,26 @@ import CrearVisitante from '@/jsx/registros/registro_funcionario.jsx';
 import DetalleVisitaPage from '@/jsx/DetalleVisita.jsx';
 import Perfil_persona from '@/jsx/profile/perfil.jsx';
 
-// Páginas Protegidas - SUPERVISOR+
+// Páginas Protegidas - SUPERVISOR+ (rol <= 2)
 import UsuariosPage from '@/jsx/UsuariosPage.jsx';
 import DetalleUsuarioPage from '@/jsx/DetalleUsuarioPage.jsx';
 import CrearUsuarioPage from '@/jsx/registros/CrearUsuarioPage.jsx';
 
-// Páginas Protegidas - AUDITOR
+// Páginas Protegidas - AUDITOR (rol = 4)
 import AuditPage from '@/jsx/AuditPage.jsx';
+
+// Páginas de error
+import UnauthorizedPage from '@/jsx/UnauthorizedPage.jsx';
 
 // Estilos
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <BrowserRouter>
-        <ApiProvider>
-          <AuthProvider>
+    <BrowserRouter>
+      <ApiProvider>
+        <AuthProvider>
+          <ThemeProvider>
             <ImageProvider>
               <Routes>
                 {/* ==================== RUTAS PÚBLICAS ==================== */}
@@ -53,30 +55,124 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+                {/* ==================== PÁGINA DE SIN PERMISOS ==================== */}
+                <Route path="/unauthorized" element={<App><UnauthorizedPage /></App>} />
+
                 {/* ==================== RUTAS PROTEGIDAS ==================== */}
-                <Route
-                  element={<ProtectedRoute><App /></ProtectedRoute>}
-                >
-                  {/* OPERADOR+ (rol <= 3) */}
-                  <Route path="/accesos" element={<AccesosPage />} />
-                  <Route path="/accesos/:id" element={<DetalleVisitaPage />} />
-                  <Route path="/personas" element={<PersonasPage />} />
-                  <Route path="/personas/:id" element={<DetallePersonaPage />} />
-                  <Route path="/personas/:id/editar" element={<EditarPersonaPage />} />
-                  <Route path="/registro/acceso" element={<CrearAccesoPage />} />
-                  <Route path="/registro/visitante" element={<CrearVisitante />} />
-                  <Route path="/perfil" element={<Perfil_persona />} />
+                <Route path="/" element={<App />}>
+                  {/* ============ OPERADOR+ (rol <= 3) ============ */}
+                  <Route
+                    path="accesos"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <AccesosPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                  {/* SUPERVISOR+ (rol <= 2) */}
-                  <Route path="/usuarios" element={<UsuariosPage />} />
-                  <Route path="/usuarios/nuevo" element={<CrearUsuarioPage />} />
-                  <Route path="/usuarios/:id" element={<DetalleUsuarioPage />} />
+                  <Route
+                    path="personas"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <PersonasPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                  {/* AUDITOR (rol = 4) */}
-                  <Route path="/auditoria" element={<AuditPage />} />
+                  <Route
+                    path="personas/:id"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <DetallePersonaPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                  {/* Catch-all - Redirige a /accesos */}
-                  <Route path="/" element={<Navigate to="/accesos" replace />} />
+                  <Route
+                    path="personas/:id/editar"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <EditarPersonaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="registro/acceso"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <CrearAccesoPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="registro/visitante"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <CrearVisitante />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="visitas/:id"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <DetalleVisitaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="usuarios/:id"
+                    element={
+                      <ProtectedRoute requiredRoleId={3}>
+                        <DetalleUsuarioPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* ============ SUPERVISOR+ (rol <= 2) ============ */}
+                  <Route
+                    path="usuarios"
+                    element={
+                      <ProtectedRoute requiredRoleId={2}>
+                        <UsuariosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="usuarios/:id"
+                    element={
+                      <ProtectedRoute requiredRoleId={2}>
+                        <DetalleUsuarioPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="usuarios/nuevo"
+                    element={
+                      <ProtectedRoute requiredRoleId={2}>
+                        <CrearUsuarioPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* ============ AUDITOR (rol = 4) ============ */}
+                  <Route
+                    path="auditoria"
+                    element={
+                      <ProtectedRoute requiredRoleId={4}>
+                        <AuditPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Ruta por defecto dentro del layout */}
+                  <Route index element={<Navigate to="/accesos" replace />} />
                 </Route>
 
                 {/* ==================== CATCH-ALL ==================== */}
@@ -84,9 +180,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
             </ImageProvider>
-          </AuthProvider>
-        </ApiProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </ApiProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

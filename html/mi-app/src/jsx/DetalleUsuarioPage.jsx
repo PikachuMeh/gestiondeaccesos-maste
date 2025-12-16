@@ -1,10 +1,9 @@
-// src/jsx/DetalleUsuarioPage.jsx - CORREGIDO (handleChange para rol + foto funcionando)
+// src/jsx/DetalleUsuarioPage.jsx - FUNCIONANDO COMO DetallePersona.jsx
 
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext.jsx";
-import { useApi } from "../context/ApiContext.jsx";
-import { useImages } from "../context/ImageContext.jsx";
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from './auth/AuthContext.jsx';
+import { useApi } from '@/context/ApiContext.jsx';
 import {
   FaUser,
   FaEnvelope,
@@ -21,21 +20,19 @@ import {
   FaExclamationCircle,
   FaCheckCircle,
   FaTimesCircle,
-  FaExclamationTriangle,  
-  FaCheck 
-} from "react-icons/fa";
+  FaExclamationTriangle,
+  FaCheck,
+} from 'react-icons/fa';
 
 export default function DetalleUsuarioPage() {
   const { API_V1 } = useApi();
-  const { getImageUrl } = useImages();
-  const API_BASE = `${API_V1}/usuarios`;
-
+  const APIBASE = `${API_V1}/usuarios`;
   const { id } = useParams();
   const navigate = useNavigate();
   const { token, isAdmin } = useAuth();
 
   const [showModal, setShowModal] = useState(false);
-  const [modalMsg, setModalMsg] = useState("");
+  const [modalMsg, setModalMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,10 +43,28 @@ export default function DetalleUsuarioPage() {
   const [fotoFile, setFotoFile] = useState(null);
   const [updating, setUpdating] = useState(false);
 
+  // ✅ FUNCIÓN PARA CONSTRUIR URL DE IMAGEN (IGUAL QUE DetallePersona)
+  const getImageUrl = (fotoPath) => {
+    if (!fotoPath) return null;
+
+    // Si ya es una URL completa
+    if (fotoPath.startsWith('http')) return fotoPath;
+
+    const baseURL = 'http://localhost:5050';
+
+    // Si fotoPath ya incluye "imagenes/operadores/"
+    if (fotoPath.includes('imagenes/')) {
+      return `${baseURL}/${fotoPath}`;
+    }
+
+    // Si es solo el nombre del archivo
+    return `${baseURL}/imagenes/operadores/${fotoPath}`;
+  };
+
   // Cargar usuario
   useEffect(() => {
     if (!token) {
-      setError("No autenticado");
+      setError('No autenticado');
       setLoading(false);
       return;
     }
@@ -57,16 +72,16 @@ export default function DetalleUsuarioPage() {
     const fetchUsuario = async () => {
       try {
         setLoading(true);
-        const resp = await fetch(`${API_BASE}/${id}`, {
+        const resp = await fetch(`${APIBASE}/${id}`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
         });
 
         if (!resp.ok) {
           const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.detail || `HTTP ${resp.status}`);
+          throw new Error(errData?.detail || `Error ${resp.status}`);
         }
 
         const data = await resp.json();
@@ -74,25 +89,24 @@ export default function DetalleUsuarioPage() {
         setEditForm(data);
         setError(null);
       } catch (err) {
-        console.error("Error cargando usuario:", err);
-        setError(err.message || "Error cargando usuario");
+        console.error('Error cargando usuario:', err);
+        setError(err.message || 'Error cargando usuario');
       } finally {
         setLoading(false);
       }
     };
 
     fetchUsuario();
-  }, [id, token]);
+  }, [id, token, APIBASE]);
+
   const handleCloseModal = () => {
     setShowModal(false);
   };
-  // ✅ MANEJADOR DE CAMBIOS - CONVIERTE rol_id A NÚMERO
+
+  // Manejador de cambios
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // ✅ IMPORTANTE: Convertir rol_id a número porque los selects devuelven strings
-    const finalValue = name === "rol_id" ? Number(value) : value;
-
+    const finalValue = name === 'rolid' ? Number(value) : value;
     setEditForm((prev) => ({
       ...prev,
       [name]: finalValue,
@@ -102,30 +116,28 @@ export default function DetalleUsuarioPage() {
   // Manejador para cambio de foto
   const handleFotoChange = (e) => {
     const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (file) {
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-      if (!allowedTypes.includes(file.type)) {
-        setError("Tipo de archivo no permitido. Usa: JPG, PNG, GIF o WEBP");
-        return;
-      }
-
-      const maxSizeMB = 5;
-      if (file.size > maxSizeMB * 1024 * 1024) {
-        setError(`Archivo demasiado grande. Máximo: ${maxSizeMB}MB`);
-        return;
-      }
-
-      setFotoFile(file);
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFotoPreview(event.target.result);
-      };
-      reader.readAsDataURL(file);
-
-      setError(null);
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Tipo de archivo no permitido. Usa JPG, PNG, GIF o WEBP');
+      return;
     }
+
+    const maxSizeMB = 5;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      setError(`Archivo demasiado grande. Máximo ${maxSizeMB}MB`);
+      return;
+    }
+
+    setFotoFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFotoPreview(event.target.result);
+    };
+    reader.readAsDataURL(file);
+    setError(null);
   };
 
   // Limpiar foto
@@ -134,10 +146,10 @@ export default function DetalleUsuarioPage() {
     setFotoPreview(null);
   };
 
-  // Guardar cambios - SOLO ENVÍA CAMPOS QUE CAMBIARON
+  // Guardar cambios
   const handleSave = async () => {
-    if (!isAdmin()) {
-      setModalMsg("Solo administradores pueden editar usuarios.");
+    if (!isAdmin) {
+      setModalMsg('Solo administradores pueden editar usuarios.');
       setIsSuccess(false);
       setShowModal(true);
       return;
@@ -149,69 +161,44 @@ export default function DetalleUsuarioPage() {
     try {
       const formData = new FormData();
 
-      // ✅ IMPORTANTE: Solo agregar al FormData los campos que REALMENTE cambiaron
-      // Comparar con el usuario original para saber qué cambió
-
       if (editForm.username && editForm.username !== usuario.username) {
-        console.log(`✓ username cambió: ${usuario.username} → ${editForm.username}`);
-        formData.append("username", editForm.username);
-      } else if (editForm.username) {
-        console.log(`✗ username NO cambió, no se envía`);
+        formData.append('username', editForm.username);
       }
 
       if (editForm.email && editForm.email !== usuario.email) {
-        console.log(`✓ email cambió: ${usuario.email} → ${editForm.email}`);
-        formData.append("email", editForm.email);
-      } else if (editForm.email) {
-        console.log(`✗ email NO cambió, no se envía`);
+        formData.append('email', editForm.email);
       }
 
       if (editForm.cedula && editForm.cedula !== usuario.cedula) {
-        console.log(`✓ cedula cambió: ${usuario.cedula} → ${editForm.cedula}`);
-        formData.append("cedula", editForm.cedula);
-      } else if (editForm.cedula) {
-        console.log(`✗ cedula NO cambió, no se envía`);
+        formData.append('cedula', editForm.cedula);
       }
 
-      // ✅ AHORA FUNCIONA PORQUE rol_id ES UN NÚMERO EN AMBOS LADOS
-      if (editForm.rol_id && editForm.rol_id !== usuario.rol_id) {
-        console.log(`✓ rol_id cambió: ${usuario.rol_id} → ${editForm.rol_id}`);
-        formData.append("rol_id", editForm.rol_id);
-      } else if (editForm.rol_id) {
-        console.log(`✗ rol_id NO cambió (${editForm.rol_id} === ${usuario.rol_id}), no se envía`);
+      if (editForm.rolid && editForm.rolid !== usuario.rolid) {
+        formData.append('rolid', editForm.rolid);
       }
 
-      // Foto
       if (fotoFile) {
-        console.log(`✓ foto se va a actualizar`);
-        formData.append("foto", fotoFile);
+        formData.append('foto', fotoFile);
       }
 
-      // Debug: mostrar qué se va a enviar
-      console.log("=== FormData a enviar ===");
-      for (const [key, value] of formData.entries()) {
-        console.log(`${key}: ${value instanceof File ? `File(${value.name})` : value}`);
-      }
-
-      // Validar que al menos haya algo para actualizar
       const hasChanges = Array.from(formData.keys()).length > 0;
       if (!hasChanges) {
-        setError("No hay cambios para guardar");
+        setError('No hay cambios para guardar');
         setUpdating(false);
         return;
       }
 
-      const response = await fetch(`${API_BASE}/${id}`, {
-        method: "PUT",
+      const response = await fetch(`${APIBASE}/${id}`, {
+        method: 'PUT',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: formData,
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || `Error: ${response.status}`);
+        throw new Error(errData?.detail || `Error ${response.status}`);
       }
 
       const updated = await response.json();
@@ -220,16 +207,14 @@ export default function DetalleUsuarioPage() {
       setFotoFile(null);
       setFotoPreview(null);
       setIsEditing(false);
-
-      setModalMsg("Usuario actualizado correctamente.");
+      setModalMsg('Usuario actualizado correctamente.');
       setIsSuccess(true);
       setShowModal(true);
     } catch (err) {
-      console.error("Error guardando:", err);
-      setModalMsg("Error guardando cambios: " + err.message);
+      console.error('Error guardando:', err);
+      setModalMsg(`Error guardando cambios: ${err.message}`);
       setIsSuccess(false);
       setShowModal(true);
-
     } finally {
       setUpdating(false);
     }
@@ -243,7 +228,7 @@ export default function DetalleUsuarioPage() {
   };
 
   const handleBack = () => {
-    navigate("/usuarios");
+    navigate('/usuarios');
   };
 
   // Estados de carga
@@ -258,7 +243,7 @@ export default function DetalleUsuarioPage() {
     );
   }
 
-  if (error && !usuario) {
+  if (error || !usuario) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 p-6 rounded-lg mb-6 flex items-center gap-3">
@@ -278,25 +263,16 @@ export default function DetalleUsuarioPage() {
     );
   }
 
-  if (!usuario) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <p className="text-xl text-gray-600 dark:text-gray-400">Usuario no encontrado</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ Usar getImageUrl correctamente - CON DOS PARÁMETROS
-  const fotoUrl = fotoPreview || getImageUrl('operador', usuario.foto_path);
+  // ✅ USAR LA FUNCIÓN getImageUrl() - IGUAL QUE DetallePersona
+  const fotoUrl = fotoPreview || getImageUrl(usuario.foto_path);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 bg-white dark:bg-gray-800 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <FaUser className="text-blue-600 dark:text-blue-400" /> Detalle del Usuario
+          <FaUser className="text-blue-600 dark:text-blue-400" />
+          Detalle del Usuario
         </h1>
         <button
           onClick={handleBack}
@@ -309,27 +285,30 @@ export default function DetalleUsuarioPage() {
       {/* Mensaje de error */}
       {error && (
         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-6 py-4 rounded-lg flex items-center gap-2">
-          <FaExclamationCircle /> {error}
+          <FaExclamationCircle />
+          {error}
         </div>
       )}
 
       {/* Contenedor principal - Grid 2 columnas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-
-        {/* ===== COLUMNA IZQUIERDA - FOTO ===== */}
+        {/* COLUMNA IZQUIERDA - FOTO */}
         <div className="md:col-span-1 flex flex-col items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
             Foto del Operador
           </h3>
 
-          {/* Foto - Mostrar preview o URL de la API */}
+          {/* ✅ Mostrar foto usando getImageUrl */}
           {fotoUrl ? (
             <img
               src={fotoUrl}
               alt={usuario.nombre}
               className="w-48 h-48 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-600"
+              
               onError={(e) => {
-                e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23e0e0e0' width='200' height='200'/%3E%3Ctext x='50%' y='50%' fill='%23999' text-anchor='middle' dy='.3em'%3ESin Foto%3C/text%3E%3C/svg%3E";
+                // Si no carga, mostrar placeholder
+                e.target.src =
+                  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext x="50" y="50" fill="%23999" font-size="14" text-anchor="middle" dy=".3em"%3ESin Foto%3C/text%3E%3C/svg%3E';
               }}
             />
           ) : (
@@ -339,48 +318,62 @@ export default function DetalleUsuarioPage() {
             </div>
           )}
 
-          {/* Botón editar (solo admin) */}
-          {isAdmin() && (
+          {/* Botón editar - solo admin */}
+          {isAdmin && (
             <div className="w-full">
               {!isEditing ? (
-                <></>
+                <>
+                  <label className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-center font-bold transition-colors flex items-center justify-center gap-2">
+                    <FaCamera /> Cambiar Foto
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleFotoChange}
+                      className="hidden"
+                    />
+                  </label>
+                </>
               ) : (
-                <label className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-center font-bold transition-colors flex items-center justify-center gap-2">
-                  <FaCamera /> Cambiar Foto
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    onChange={handleFotoChange}
-                    className="hidden"
-                  />
-                </label>
+                <>
+                  <label className="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-center font-bold transition-colors flex items-center justify-center gap-2 mb-2">
+                    <FaCamera /> Cambiar Foto
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleFotoChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Limpiar foto si está en preview */}
+                  {fotoPreview && (
+                    <button
+                      onClick={handleClearFoto}
+                      className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FaTimes /> Cancelar cambio de foto
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}
-
-          {/* Limpiar foto si está en preview */}
-          {fotoPreview && (
-            <button
-              onClick={handleClearFoto}
-              className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
-            >
-              <FaTimes /> Cancelar cambio de foto
-            </button>
-          )}
         </div>
 
-        {/* ===== COLUMNA DERECHA - INFORMACIÓN ===== */}
+        {/* COLUMNA DERECHA - INFORMACIÓN */}
         <div className="md:col-span-2 p-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
           {isEditing ? (
             // MODO EDICIÓN
             <div className="space-y-4">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <FaEdit className="text-blue-600 dark:text-blue-400" /> Editar Usuario
+                <FaEdit className="text-blue-600 dark:text-blue-400" />
+                Editar Usuario
               </h3>
 
+              {/* Username */}
               <div>
                 <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">
-                  Username:
+                  Username
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -389,16 +382,17 @@ export default function DetalleUsuarioPage() {
                   <input
                     type="text"
                     name="username"
-                    value={editForm.username || ""}
+                    value={editForm.username || ''}
                     onChange={handleChange}
                     className="w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
+              {/* Email */}
               <div>
                 <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">
-                  Email:
+                  Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -407,16 +401,17 @@ export default function DetalleUsuarioPage() {
                   <input
                     type="email"
                     name="email"
-                    value={editForm.email || ""}
+                    value={editForm.email || ''}
                     onChange={handleChange}
                     className="w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
+              {/* Cédula */}
               <div>
                 <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">
-                  Cédula:
+                  Cédula
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -425,30 +420,31 @@ export default function DetalleUsuarioPage() {
                   <input
                     type="text"
                     name="cedula"
-                    value={editForm.cedula || ""}
+                    value={editForm.cedula || ''}
                     onChange={handleChange}
                     className="w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
+              {/* Rol */}
               <div>
                 <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">
-                  Rol:
+                  Rol
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaUserTag className="text-gray-400" />
                   </div>
                   <select
-                    name="rol_id"
-                    value={editForm.rol_id || ""}
+                    name="rolid"
+                    value={editForm.rolid || ''}
                     onChange={handleChange}
                     className="w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
                   >
                     <option value="">Seleccionar rol...</option>
-                    <option value="2">Supervisor</option>
-                    <option value="3">Operador</option>
+                    <option value={2}>Supervisor</option>
+                    <option value={3}>Operador</option>
                   </select>
                 </div>
               </div>
@@ -460,13 +456,7 @@ export default function DetalleUsuarioPage() {
                   disabled={updating}
                   className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {updating ? (
-                    <>Guardando...</>
-                  ) : (
-                    <>
-                      <FaSave /> Guardar
-                    </>
-                  )}
+                  {updating ? 'Guardando...' : <><FaSave /> Guardar</>}
                 </button>
                 <button
                   onClick={handleCancel}
@@ -481,82 +471,111 @@ export default function DetalleUsuarioPage() {
             // MODO VISTA
             <div className="space-y-4">
               <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Información Personal</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Información Personal
+                </h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Username */}
                 <div>
                   <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaUser className="text-gray-400" /> Username:
+                    <FaUser className="text-gray-400" /> Username
                   </p>
                   <p className="text-gray-900 dark:text-white">{usuario.username}</p>
                 </div>
 
+                {/* Nombre Completo */}
                 <div>
                   <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaUser className="text-gray-400" /> Nombre Completo:
+                    <FaUser className="text-gray-400" /> Nombre Completo
                   </p>
                   <p className="text-gray-900 dark:text-white">
                     {usuario.nombre} {usuario.apellidos}
                   </p>
                 </div>
 
+                {/* Email */}
                 <div>
                   <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaEnvelope className="text-gray-400" /> Email:
+                    <FaEnvelope className="text-gray-400" /> Email
                   </p>
                   <p className="text-gray-900 dark:text-white">{usuario.email}</p>
                 </div>
 
+                {/* Cédula */}
                 <div>
                   <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaIdCard className="text-gray-400" /> Cédula:
+                    <FaIdCard className="text-gray-400" /> Cédula
                   </p>
                   <p className="text-gray-900 dark:text-white">{usuario.cedula}</p>
                 </div>
 
+                {/* Rol */}
                 <div>
                   <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaUserTag className="text-gray-400" /> Rol:
-                  </p>
-                  <p className="text-gray-900 dark:text-white">{usuario.rol?.nombre_rol || "N/A"}</p>
-                </div>
-
-                <div>
-                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaPhone className="text-gray-400" /> Teléfono:
-                  </p>
-                  <p className="text-gray-900 dark:text-white">{usuario.telefono || "N/A"}</p>
-                </div>
-
-                <div>
-                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaBuilding className="text-gray-400" /> Departamento:
-                  </p>
-                  <p className="text-gray-900 dark:text-white">{usuario.departamento || "N/A"}</p>
-                </div>
-
-                <div>
-                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaCheckCircle className="text-gray-400" /> Estado:
-                  </p>
-                  <p className={`font-bold flex items-center gap-1 ${usuario.activo ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                    {usuario.activo ? <><FaCheckCircle /> Activo</> : <><FaTimesCircle /> Inactivo</>}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FaCalendarAlt className="text-gray-400" /> Fecha de Creación:
+                    <FaUserTag className="text-gray-400" /> Rol
                   </p>
                   <p className="text-gray-900 dark:text-white">
-                    {usuario.fecha_creacion ? new Date(usuario.fecha_creacion).toLocaleDateString() : "N/A"}
+                    {usuario.rol?.nombre_rol || 'N/A'}
+                  </p>
+                </div>
+
+                {/* Teléfono */}
+                <div>
+                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <FaPhone className="text-gray-400" /> Teléfono
+                  </p>
+                  <p className="text-gray-900 dark:text-white">{usuario.telefono || 'N/A'}</p>
+                </div>
+
+                {/* Departamento */}
+                <div>
+                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <FaBuilding className="text-gray-400" /> Departamento
+                  </p>
+                  <p className="text-gray-900 dark:text-white">{usuario.departamento || 'N/A'}</p>
+                </div>
+
+                {/* Estado */}
+                <div>
+                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <FaCheckCircle className="text-gray-400" /> Estado
+                  </p>
+                  <p
+                    className={`font-bold flex items-center gap-1 ${
+                      usuario.activo
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {usuario.activo ? (
+                      <>
+                        <FaCheckCircle /> Activo
+                      </>
+                    ) : (
+                      <>
+                        <FaTimesCircle /> Inactivo
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                {/* Fecha de Creación */}
+                <div>
+                  <p className="mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <FaCalendarAlt className="text-gray-400" /> Fecha de Creación
+                  </p>
+                  <p className="text-gray-900 dark:text-white">
+                    {usuario.fecha_creacion
+                      ? new Date(usuario.fecha_creacion).toLocaleDateString()
+                      : 'N/A'}
                   </p>
                 </div>
               </div>
 
               {/* Botón editar */}
-              {isAdmin() && (
+              {isAdmin && (
                 <button
                   onClick={() => setIsEditing(true)}
                   className="w-full mt-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
@@ -568,34 +587,43 @@ export default function DetalleUsuarioPage() {
           )}
         </div>
       </div>
-    {showModal && (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all scale-100">
-          <div className="text-center">
-            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isSuccess ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-              {isSuccess ? (
-                <FaCheck className="text-green-600 dark:text-green-400 text-xl" />
-              ) : (
-                <FaExclamationTriangle className="text-red-600 dark:text-red-400 text-xl" />
-              )}
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all scale-100">
+            <div className="text-center">
+              <div
+                className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+                  isSuccess
+                    ? 'bg-green-100 dark:bg-green-900/30'
+                    : 'bg-red-100 dark:bg-red-900/30'
+                }`}
+              >
+                {isSuccess ? (
+                  <FaCheck className="text-green-600 dark:text-green-400 text-xl" />
+                ) : (
+                  <FaExclamationTriangle className="text-red-600 dark:text-red-400 text-xl" />
+                )}
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                {isSuccess ? '¡Éxito!' : 'Atención'}
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">{modalMsg}</p>
+              <button
+                className={`w-full px-4 py-2 rounded-lg text-white font-medium transition-colors ${
+                  isSuccess
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+                onClick={handleCloseModal}
+              >
+                Aceptar
+              </button>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {isSuccess ? '¡Éxito!' : 'Atención'}
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">{modalMsg}</p>
-            <button
-              className={`w-full px-4 py-2 rounded-lg text-white font-medium transition-colors ${isSuccess
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-              onClick={handleCloseModal}
-            >
-              Aceptar
-            </button>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }

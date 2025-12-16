@@ -1,56 +1,59 @@
-// src/context/ImageContext.jsx - VERSION SIMPLIFICADA Y ROBUSTA
+// src/context/ImageContext.jsx
 import { createContext, useContext } from 'react';
+import { useApi } from './ApiContext';
 
 const ImageContext = createContext(null);
 
 export const ImageProvider = ({ children }) => {
-  const getImageUrl = (type, filename) => {
-    // Debug
-    // console.log(`[ImageContext] getImageUrl(${type}, ${filename})`);
+  const { API_V1 } = useApi();
 
-    if (!filename) {
-      // console.warn(`[ImageContext] filename vacío para tipo: ${type}`);
+  /**
+   * Construir URL de imagen según el tipo
+   * @param {string} type - 'operador', 'persona', 'captura'
+   * @param {string} filename - nombre del archivo (ej: "8698d097-4551-4d7b-a978-472303a644e2.png")
+   * @returns {string} URL completa de la imagen
+   */
+  const getImageUrl = (type, filename) => {
+    if (!filename || filename === 'null' || filename === '') {
+      // Retornar imagen por defecto si no hay filename
       return null;
     }
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050';
-
-    // Si ya es una URL completa, devuélvela
-    if (filename.startsWith('http')) {
-      // console.log(`[ImageContext] URL completa detectada: ${filename}`);
-      return filename;
-    }
-
-    // Mapeo de tipos de imágenes
-    const routes = {
-      operador: `${baseUrl}/imagenes/operadores/`,
-      persona: `${baseUrl}/imagenes/personas/`,
-      captura: `${baseUrl}/imagenes/capturas/`,
+    // Construir URLs según el tipo
+    const imageUrls = {
+      operador: `${API_V1.replace('/api/v1', '')}/imagenes/operadores/${filename}`,
+      persona: `${API_V1.replace('/api/v1', '')}/imagenes/personas/${filename}`,
+      captura: `${API_V1.replace('/api/v1', '')}/imagenes/capturas/${filename}`,
     };
 
-    const url = `${routes[type] || routes.operador}${filename}`;
-    // console.log(`[ImageContext] URL generada: ${url}`);
-
-    return url;
+    return imageUrls[type] || null;
   };
 
-  const value = { getImageUrl };
+  /**
+   * Obtener fallback para imagen no disponible
+   */
+  const getPlaceholderImage = (type = 'generic') => {
+    const placeholders = {
+      operador: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext x="50" y="50" fill="%23999" font-size="14" text-anchor="middle" dy=".3em"%3ESin Foto%3C/text%3E%3C/svg%3E',
+      persona: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext x="50" y="50" fill="%23999" font-size="14" text-anchor="middle" dy=".3em"%3ESin Foto%3C/text%3E%3C/svg%3E',
+      captura: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%23e0e0e0" width="200" height="200"/%3E%3Ctext x="50" y="50" fill="%23999" font-size="14" text-anchor="middle" dy=".3em"%3ESin Captura%3C/text%3E%3C/svg%3E',
+    };
 
-  return (
-    <ImageContext.Provider value={value}>
-      {children}
-    </ImageContext.Provider>
-  );
+    return placeholders[type] || placeholders.operador;
+  };
+
+  const value = {
+    getImageUrl,
+    getPlaceholderImage,
+  };
+
+  return <ImageContext.Provider value={value}>{children}</ImageContext.Provider>;
 };
 
 export const useImages = () => {
   const context = useContext(ImageContext);
-
   if (!context) {
-    console.error('[ImageContext] ❌ useImages debe estar dentro de ImageProvider');
-    throw new Error('useImages debe estar dentro de ImageProvider');
+    throw new Error('useImages debe usarse dentro de ImageProvider');
   }
-
-  // console.log('[ImageContext] ✓ useImages cargado correctamente');
   return context;
 };

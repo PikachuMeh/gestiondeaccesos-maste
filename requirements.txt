@@ -29,7 +29,6 @@ structlog==23.2.0
 
 # Validación de datos
 email-validator==2.1.0
-# phone-validator==0.0.1  # No existe
 fastapi-mail
 passlib[bcrypt]==1.7.4
 reportlab
