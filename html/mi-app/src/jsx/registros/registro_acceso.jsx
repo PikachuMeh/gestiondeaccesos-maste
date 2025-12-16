@@ -1,9 +1,10 @@
-// src/components/RegistroAcceso.jsx - COMPLETO CON MENSAJES DE ERROR DEBAJO DE CAMPOS
+// src/components/RegistroAcceso.jsx - COMPLETO CON MENSAJES DE ERROR + TEMA DINÁMICO (LIGHT/DARK)
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useApi } from "../../context/ApiContext.jsx";
 import { useImages } from "../../context/ImageContext.jsx";
+
 
 // ✅ Helper sin hook - recibe token como parámetro
 function apiFetch(url, options = {}) {
@@ -30,10 +31,12 @@ function apiFetch(url, options = {}) {
   });
 }
 
+
 export default function RegistroAcceso() {
   const navigate = useNavigate();
   const { API_V1 } = useApi(); // ✅ Hook top-level componente
   const { getImageUrl } = useImages(); // ✅ Para construir URLs de imagen
+
 
   // Estados varios
   const [detalleCache, setDetalleCache] = useState(new Map());
@@ -47,6 +50,7 @@ export default function RegistroAcceso() {
   const [newFoto, setNewFoto] = useState(null);
   const [fotoFile, setFotoFile] = useState(null); // ✅ Para guardar el archivo
   const [imagenError, setImagenError] = useState(false); // ✅ Para manejar errores de imagen
+
 
   // ✅ 1 CENTRO ÚNICO + MÚLTIPLES ÁREAS
   const [centros, setCentros] = useState([]);
@@ -63,6 +67,7 @@ export default function RegistroAcceso() {
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
 
+
   // ✅ ESTADOS PARA MENSAJES DE ERROR EN CAMPOS
   const [errors, setErrors] = useState({
     visitante: false,
@@ -72,12 +77,15 @@ export default function RegistroAcceso() {
     general: ""
   });
 
+
   const debounceRef = useRef();
+
 
   const API_PERSONAS = `${API_V1}/personas`;
   const API_VISITAS = `${API_V1}/visitas`;
   const API_CENTROS = `${API_V1}/visitas/centros-datos`;
   const API_AUTH = `${API_V1}/auth`;
+
 
   async function fetchCurrentUser() {
     try {
@@ -94,6 +102,7 @@ export default function RegistroAcceso() {
     }
   }
 
+
   // ✅ SELECCIÓN CENTRO ÚNICO
   const onCentroCheckboxChange = (id) => {
     setCdSel(id);
@@ -107,6 +116,7 @@ export default function RegistroAcceso() {
     setErrors(prev => ({ ...prev, centro: false }));
   };
 
+
   // ✅ SELECCIÓN MÚLTIPLES ÁREAS
   const onAreaCheckboxChange = (id) => {
     setAreasSel(prev => {
@@ -117,17 +127,20 @@ export default function RegistroAcceso() {
     });
   };
 
+
   async function fetchCedulas() {
     const r = await apiFetch(`${API_PERSONAS}/cedulas`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
 
+
   async function searchCedulas(prefix) {
     const r = await apiFetch(`${API_PERSONAS}/search?q=${encodeURIComponent(prefix)}`);
     const items = await r.json();
     return Array.isArray(items) ? items : (items.items ?? items.data ?? []);
   }
+
 
   async function fetchPersonaById(id) {
     if (detalleCache.has(id)) return detalleCache.get(id);
@@ -136,6 +149,7 @@ export default function RegistroAcceso() {
     setDetalleCache(prev => new Map(prev).set(id, p));
     return p;
   }
+
 
   async function loadCentros() {
     setLoading(true);
@@ -150,6 +164,7 @@ export default function RegistroAcceso() {
       setLoading(false);
     }
   }
+
 
   async function loadAreasPorCentro(centro_id) {
     if (!centro_id) {
@@ -169,6 +184,7 @@ export default function RegistroAcceso() {
     }
   }
 
+
   async function loadTipoActividad() {
     setLoading(true);
     try {
@@ -183,12 +199,14 @@ export default function RegistroAcceso() {
     }
   }
 
+
   useEffect(() => {
     loadCentros();
     loadTipoActividad();
     fetchCedulas().then(setSugerencias).catch(console.error);
     fetchCurrentUser();
   }, []);
+
 
   const onCedulaChange = (e) => {
     const raw = e.target.value;
@@ -215,6 +233,7 @@ export default function RegistroAcceso() {
     }, 200);
   };
 
+
   const getSelectedActividadName = () => {
     const selectedTipo = tiposActividad.find(
       t => String(t.id_tipo_actividad) === String(idTipo_act)
@@ -222,7 +241,9 @@ export default function RegistroAcceso() {
     return selectedTipo ? selectedTipo.nombre_actividad : null;
   };
 
+
   const requiereEquiposYObs = ["1", "2", "3", "6", "7"].includes(String(idTipo_act));
+
 
   // ✅ OBTENER URL DE FOTO CONSTRUIDA CORRECTAMENTE
   const getFotoPersonaUrl = () => {
@@ -241,6 +262,7 @@ export default function RegistroAcceso() {
     }
     return null;
   };
+
 
   const onSelectById = async (id) => {
     try {
@@ -270,6 +292,7 @@ export default function RegistroAcceso() {
     }
   };
 
+
   const onFileChange = (e) => {
     console.log(e)
     const file = e.target.files?.[0];
@@ -280,12 +303,14 @@ export default function RegistroAcceso() {
     setImagenError(false); // ✅ Reset error de imagen
   };
 
+
   const onActividadChange = (e) => {
     const id = e.target.value;
     setidTipo_act(id);
     // Limpiar error de actividad
     setErrors(prev => ({ ...prev, actividad: false }));
   };
+
 
   function onChangeVisita(e) {
     const { name, value, type, checked } = e.target;
@@ -299,15 +324,18 @@ export default function RegistroAcceso() {
     }
   }
 
+
   function validarDescripcion(desc) {
     return typeof desc === "string" && desc.trim().length >= 3;
   }
+
 
   // ✅ Manejar error al cargar imagen
   const handleImageError = (type) => {
     console.error(`Error cargando imagen de ${type}`);
     setImagenError(true);
   };
+
 
   // ✅ VALIDACIONES VISUALES ANTES DE POST
   const validateForm = () => {
@@ -318,6 +346,7 @@ export default function RegistroAcceso() {
       descripcion: false,
       general: ""
     };
+
 
     if (!selected?.id) {
       newErrors.visitante = true;
@@ -332,9 +361,11 @@ export default function RegistroAcceso() {
       newErrors.descripcion = true;
     }
 
+
     setErrors(newErrors);
     return Object.values(newErrors).every(v => !v);
   };
+
 
   // ✅ POST: 1 CENTRO + MÚLTIPLES ÁREAS + FOTO
   async function onRegistrarAcceso() {
@@ -343,12 +374,14 @@ export default function RegistroAcceso() {
       return;
     }
 
+
     setPosting(true);
     try {
       const tipoActividadId = parseInt(idTipo_act, 10);
       if (isNaN(tipoActividadId)) {
         throw new Error("ID de tipo de actividad inválido");
       }
+
 
       // ✅ USAR FORMDATA PARA ENVIAR FOTO
       const formData = new FormData();
@@ -364,18 +397,22 @@ export default function RegistroAcceso() {
       formData.append('observaciones', formVisita.observaciones?.trim() || '');
       formData.append('estado_id', 1);
 
+
       // ✅ AGREGAR FOTO SI EXISTE
       if (fotoFile) {
         formData.append('foto', fotoFile);
         console.log("✅ Foto adjuntada al FormData:", fotoFile.name);
       }
 
+
       const res = await apiFetch(API_VISITAS, {
         method: "POST",
         body: formData, // ✅ Usar FormData en lugar de JSON
       });
 
+
       const created = await res.json();
+
 
       // ✅ Reset form y navegar
       setCdSel(null);
@@ -400,61 +437,69 @@ export default function RegistroAcceso() {
     }
   }
 
+
   const goRegistrarVisitante = () => navigate(`/registro/visitante?cedula=${encodeURIComponent(q || "")}`);
 
+
   const showNoResults = q && !selected && sugerencias.length === 0;
+
 
   // ✅ Obtener URL de foto actual
   const fotoUrl = getFotoPersonaUrl();
 
+
   if (userLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center py-12 text-gray-500">Cargando usuario...</div>
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando usuario...</div>
       </div>
     );
   }
 
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px] gap-6">
           {/* Left side - FORMULARIO */}
-          <div className="p-8">
+          <div className="p-8 bg-white dark:bg-gray-900">
             <form className="space-y-5" autoComplete="off" onSubmit={e => e.preventDefault()}>
-              <div className="text-2xl font-semibold text-on-surface mb-8">REGISTRO ACCESO</div>
+              <div className="text-2xl font-semibold text-gray-900 dark:text-white mb-8">REGISTRO ACCESO</div>
+
 
               {/* CÉDULA - CON MENSAJE DE ERROR */}
               <div className="space-y-2">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-on-surface mb-2">
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                     CÉDULA
                   </label>
+
 
                   <input
                     type="text"
                     placeholder="Buscar..."
                     value={q}
                     onChange={onCedulaChange}
-                    className={`block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface placeholder-gray-400 focus:border-primary focus:bg-primary/5 focus:outline-none transition-all ${
-                      errors.visitante ? "border-red-500 focus:border-red-500" : ""
+                    className={`block w-full px-0 py-2 border-b bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary focus:bg-primary/5 dark:focus:bg-primary/10 focus:outline-none transition-all ${
+                      errors.visitante ? "border-red-500 dark:border-red-500 focus:border-red-500" : "border-gray-200 dark:border-gray-700"
                     }`}
                     autoFocus={selected || sugerencias.length === 0}
                   />
+
 
                   {/* SUGERENCIAS */}
                   {sugerencias.length > 0 && (
                     <ul
                       className="
                         absolute left-0 right-0 mt-1 
-                        bg-surface border border-outline rounded-lg shadow-lg 
+                        bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg 
                         max-h-60 overflow-auto z-30
                       "
                     >
                       {sugerencias.slice(0, 100).map((p) => (
                         <li
                           key={p.id}
-                          className="px-3 py-2 hover:bg-surface-variant cursor-pointer text-on-surface text-sm"
+                          className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-white text-sm"
                           onMouseDown={() => {
                             onSelectById(p.id);     // selecciona persona
                             setSugerencias([]);     // <- oculta lista
@@ -467,23 +512,26 @@ export default function RegistroAcceso() {
                   )}
                 </div>
 
+
                 {errors.visitante && (
-                  <p className="text-sm text-red-600">Seleccione un visitante</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">Seleccione un visitante</p>
                 )}
               </div>
+
 
               {/* DATOS VISITA */}
               {selected && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-on-surface">Datos de visita</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Datos de visita</h3>
+
 
                   {/* CENTRO DE DATOS - CON MENSAJE DE ERROR */}
                   <div>
-                    <label className="block text-sm font-medium text-on-surface mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                       Centro de datos {cdSel ? "(1 seleccionado)" : ""}
                     </label>
                     {errors.centro && (
-                      <p className="mb-2 text-sm text-red-600">Seleccione un centro de datos</p>
+                      <p className="mb-2 text-sm text-red-600 dark:text-red-400">Seleccione un centro de datos</p>
                     )}
                     <div className="flex w-full gap-4 flex-wrap">
                       {centros.map(c => (
@@ -495,10 +543,10 @@ export default function RegistroAcceso() {
                             onChange={() => onCentroCheckboxChange(c.id)}
                           />
                           <span
-                            className={`flex justify-center items-center flex-1 px-4 py-3 rounded-full border-2 border-gray-200 transition-all shadow-sm text-sm font-semibold h-14 ${
+                            className={`flex justify-center items-center flex-1 px-4 py-3 rounded-full border-2 transition-all shadow-sm text-sm font-semibold h-14 ${
                               cdSel === c.id
                                 ? "bg-[#8ADD64] text-white border-green-400 shadow-md scale-105"
-                                : "bg-gray-100 text-gray-800 hover:bg-gray-200 hover:border-gray-400 hover:scale-105"
+                                : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:scale-105"
                             }`}
                             style={{ width: "100%" }}
                           >
@@ -509,15 +557,16 @@ export default function RegistroAcceso() {
                     </div>
                   </div>
 
+
                   {/* ÁREAS - MÚLTIPLES */}
                   {cdSel && areas.length === 0 && (
-                    <div className="text-sm text-on-surface-variant p-4 bg-surface-variant/50 rounded-lg">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       Seleccione un centro para ver sus áreas disponibles
                     </div>
                   )}
                   {cdSel && (
                     <div>
-                      <label className="block text-sm font-medium text-on-surface mb-2">
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                         Áreas ({areasSel.length} {areasSel.length !== 1 ? 'seleccionadas' : 'seleccionada'})
                       </label>
                       <div className="flex w-full gap-3 flex-wrap">
@@ -530,10 +579,10 @@ export default function RegistroAcceso() {
                               onChange={() => onAreaCheckboxChange(a.id)}
                             />
                             <span
-                              className={`flex justify-center items-center px-3 py-2 rounded-full border-2 border-gray-200 transition-all shadow-sm text-xs font-medium h-12 ${
+                              className={`flex justify-center items-center px-3 py-2 rounded-full border-2 transition-all shadow-sm text-xs font-medium h-12 ${
                                 areasSel.includes(a.id)
                                   ? "bg-[#8ADD64] text-white border-green-400 shadow-md"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:border-gray-400"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
                               }`}
                               style={{ width: "100%" }}
                             >
@@ -545,18 +594,19 @@ export default function RegistroAcceso() {
                     </div>
                   )}
 
+
                   {/* TIPO ACTIVIDAD - CON MENSAJE DE ERROR */}
                   <div>
-                    <label className="block text-sm font-medium text-on-surface mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                       Tipo de actividad
                     </label>
                     {errors.actividad && (
-                      <p className="mb-2 text-sm text-red-600">Tiene que seleccionar una actividad</p>
+                      <p className="mb-2 text-sm text-red-600 dark:text-red-400">Tiene que seleccionar una actividad</p>
                     )}
                     <select
-                      className={`block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all ${
-                        errors.actividad ? 'border-red-500 focus:border-red-500' : ''
-                      }`}
+                      className={`block w-full px-0 py-2 border-b bg-transparent text-gray-900 dark:text-white focus:outline-none transition-all ${
+                        errors.actividad ? 'border-red-500 dark:border-red-500 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:border-primary'
+                      } focus:bg-primary/5 dark:focus:bg-primary/10`}
                       value={idTipo_act}
                       onChange={onActividadChange}
                       required
@@ -570,52 +620,53 @@ export default function RegistroAcceso() {
                     </select>
                   </div>
 
+
                   {/* CAMPOS TEXTO - CON MENSAJE DE ERROR EN DESCRIPCIÓN */}
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-on-surface mb-2">Descripción</label>
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Descripción</label>
                       <input
                         name="descripcion_actividad"
                         value={formVisita.descripcion_actividad}
                         onChange={onChangeVisita}
-                        className={`block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all ${
-                          errors.descripcion ? 'border-red-500 focus:border-red-500' : ''
-                        }`}
+                        className={`block w-full px-0 py-2 border-b bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none transition-all ${
+                          errors.descripcion ? 'border-red-500 dark:border-red-500 focus:border-red-500' : 'border-gray-200 dark:border-gray-700 focus:border-primary'
+                        } focus:bg-primary/5 dark:focus:bg-primary/10`}
                         placeholder="Describa el motivo de la visita..."
                       />
                       {errors.descripcion && (
-                        <p className="mt-1 text-sm text-red-600">La descripción debe tener al menos 3 caracteres</p>
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">La descripción debe tener al menos 3 caracteres</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-on-surface mb-2">Autorizado por</label>
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Autorizado por</label>
                       <input
                         name="autorizado_por"
                         value={formVisita.autorizado_por || (currentUser ? `${currentUser.nombre} ${currentUser.apellidos}` : "")}
                         onChange={onChangeVisita}
-                        className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                        className="block w-full px-0 py-2 border-b border-gray-200 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white focus:border-primary dark:focus:border-primary focus:bg-primary/5 dark:focus:bg-primary/10 focus:outline-none transition-all"
                         disabled={!currentUser}
                       />
                     </div>
                     {requiereEquiposYObs && (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-on-surface mb-2">Equipos ingresados</label>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Equipos ingresados</label>
                           <input
                             name="equipos_ingresados"
                             value={formVisita.equipos_ingresados}
                             onChange={onChangeVisita}
-                            className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                            className="block w-full px-0 py-2 border-b border-gray-200 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary dark:focus:border-primary focus:bg-primary/5 dark:focus:bg-primary/10 focus:outline-none transition-all"
                             placeholder="Laptop, celular, documentos..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-on-surface mb-2">Observaciones</label>
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Observaciones</label>
                           <input
                             name="observaciones"
                             value={formVisita.observaciones}
                             onChange={onChangeVisita}
-                            className="block w-full px-0 py-2 border-b border-gray-200 bg-transparent text-on-surface focus:border-primary focus:bg-primary/5 focus:outline-none transition-all"
+                            className="block w-full px-0 py-2 border-b border-gray-200 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary dark:focus:border-primary focus:bg-primary/5 dark:focus:bg-primary/10 focus:outline-none transition-all"
                             placeholder="Información adicional..."
                           />
                         </div>
@@ -623,17 +674,19 @@ export default function RegistroAcceso() {
                     )}
                   </div>
 
+
                   {/* ERROR GENERAL */}
                   {errors.general && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-red-800">{errors.general}</p>
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <p className="text-red-800 dark:text-red-200">{errors.general}</p>
                     </div>
                   )}
+
 
                   <div className="flex justify-start pt-6">
                     <button
                       type="button"
-                      className="bg-primary text-primary-foreground px-10 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="bg-primary hover:bg-primary/90 text-white px-10 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       onClick={onRegistrarAcceso}
                       disabled={posting || loading}
                     >
@@ -652,14 +705,16 @@ export default function RegistroAcceso() {
             </form>
           </div>
 
+
           {/* Right side - FOTO */}
-          <div className="bg-primary flex items-center justify-center p-8 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-primary via-primary/95 to-primary/80 flex items-center justify-center p-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/80"></div>
             <div className="absolute inset-0 opacity-20 transform scale-110 animate-pulse">
               <div className="w-full h-full bg-gradient-to-br from-white/20 via-transparent to-white/10 rounded-full"></div>
             </div>
             <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full transform rotate-45 animate-bounce" style={{ animationDuration: '3s' }}></div>
             <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/20 rounded-full transform -rotate-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
+
 
             <div className="text-center relative z-10">
               {/* VALIDACIÓN Y MOSTRADO DE FOTO CORREGIDO */}
@@ -679,6 +734,7 @@ export default function RegistroAcceso() {
                   </svg>
                 </div>
               )}
+
 
               {selected ? (
                 <div className="space-y-2">
