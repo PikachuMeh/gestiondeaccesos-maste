@@ -116,7 +116,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   />
 
                   <Route
-                    path="visitas/:id"
+                    path="accesos/:id"
                     element={
                       <ProtectedRoute requiredRoleId={3}>
                         <DetalleVisitaPage />
