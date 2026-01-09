@@ -94,7 +94,7 @@ export default function DetallePersonaPage() {
       navigate("/accesos");
     }
   };
-
+  const baseURL = "http://localhost:5050";
   // ✅ Función para construir URL de imagen
   const getImageUrl = (fotoPath) => {
     if (!fotoPath) return null;
@@ -102,10 +102,10 @@ export default function DetallePersonaPage() {
     // Si ya es una URL completa
     if (fotoPath.startsWith("http")) return fotoPath;
 
-    const baseURL = "http://localhost:5050";
 
     // Si fotoPath ya incluye "imagenes/personas/"
     if (fotoPath.includes("imagenes/")) {
+
       return `${baseURL}/${fotoPath}`;
     }
 

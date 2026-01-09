@@ -59,13 +59,13 @@ class Settings(BaseSettings):
 
     # ✅ FOTOS - Lee directamente del .env (LOCAL)
     upload_personas_path: str = "./html/mi-app/src/img/personas/"
-    upload_operadores_path: str = "./src/img/operadores/"
-    upload_capturas_path: str = "./src/img/capturas/"
+    upload_operadores_path: str = "./html/mi-app/src/img/operadores/"
+    upload_capturas_path: str = "./html/mi-app/src/img/capturas/"
     
-    upload_personas_url: str = "http://localhost:5050/imagenes/personas/"
-    upload_operadores_url: str = "http://localhost:5050/imagenes/operadores/"
-    upload_capturas_url: str = "http://localhost:5050/imagenes/capturas/"
-    
+    upload_personas_url: str = "http://localhost:5050/html/mi-app/img/personas/"
+    upload_operadores_url: str = "http://localhost:5050/html/mi-app/img/operadores/"
+    upload_capturas_url: str = "http://localhost:5050/html/mi-app/img/capturas/"
+
     upload_max_size_mb: int = 5
     upload_allowed_extensions: str = "jpg,jpeg,png,gif,webp"
 
